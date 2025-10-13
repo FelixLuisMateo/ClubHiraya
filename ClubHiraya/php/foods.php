@@ -7,7 +7,7 @@ $foods = [
     [ 'id' => 3, 'name' => 'Mango Habanero', 'price' => 439, 'image' => 'assets/mango habanero.jpg', 'category' => 'Main Course' ],
     [ 'id' => 4, 'name' => 'Smoked Carbonara', 'price' => 349, 'image' => 'assets/smoked_carbonara.jpg', 'category' => 'Main Course' ],
     [ 'id' => 5, 'name' => 'Mozzarella Poppers', 'price' => 280, 'image' => 'assets/mozzarella poppers.jpg', 'category' => 'Appetizer' ],
-    [ 'id' => 6, 'name' => 'Chili Lime Chicken Wings', 'price' => 379, 'image' => 'assets/Chickens Wings (Chili Lime).jpg', 'category' => 'Main Course' ],
+    [ 'id' => 6, 'name' => 'Chili Limed Chicken Wings', 'price' => 379, 'image' => 'assets/Chickens Wings (Chili Lime).jpg', 'category' => 'Main Course' ],
     [ 'id' => 8, 'name' => 'Pepperoni Pizza', 'price' => 499, 'image' => 'assets/pepperoni.jpg', 'category' => 'Main Course' ],
     [ 'id' => 9, 'name' => 'Seafood Cajun', 'price' => 1099, 'image' => 'assets/cajun.jpg', 'category' => 'Seafood Platter' ],
     [ 'id' => 6, 'name' => 'Salmon Tare-Tare', 'price' => 379, 'image' => 'assets/salmon tare tare.jpg', 'category' => 'Seafood Platter' ],
