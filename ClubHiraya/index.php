@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>POS Club Hiraya</title>
+    <title>POS Club Hiraya test</title>
     <link rel="stylesheet" href="css/style.css">
     <script defer src="js/app.js"></script>
 </head>
