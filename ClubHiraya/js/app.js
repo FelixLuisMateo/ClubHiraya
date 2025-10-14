@@ -1,33 +1,32 @@
 // Simulating backend. Replace with real backend/database for prod!
 const FOODS = [
-    {id:1, name:"Lechon Baka", price:420, category:"Main Course", image:"assets/lechon baka.jpg"},
-    {id:2, name:"Hoisin BBQ Pork Ribs", price:599, category:"Main Course", image:"assets/Hoisin BBQ Pork Ribs.jpg"},
-    {id:3, name:"Mango Habanero", price:439, category:"Main Course", image:"assets/mango habanero.jpg"},
-    {id:4, name:"Smoked Carbonara", price:349, category:"Main Course", image:"assets/Smoked Carbonara.jpg"},
-    {id:5, name:"Mozzarella Poppers", price:280, category:"Appetizer", image:"assets/mozzarella poppers.jpg"},
-    {id:6, name:"Salmon Tare-Tare", price:379, category:"Seafood Platter", image:"assets/salmon tare tare.jpg"},
-    {id:7, name:"Chili Lime Chicken Wings", price:379, category:"Main Course", image:"assets/Chicken Wings (Chilli Lime).jpg"},
-    {id:8, name:"Pepperoni Pizza", price:499, category:"Main Course", image:"assets/pepperoni.jpg"},
-    {id:9, name:"Lechon Baka", price:420, category:"Main Course", image:"assets/lechon baka.jpg"},
-    {id:10, name:"Hoisin BBQ Pork Ribs", price:599, category:"Main Course", image:"assets/Hoisin BBQ Pork Ribs.jpg"},
-    {id:11, name:"Mango Habanero", price:439, category:"Main Course", image:"assets/mango habanero.jpg"},
-    {id:12, name:"Smoked Carbonara", price:349, category:"Main Course", image:"assets/Smoked Carbonara.jpg"},
-    {id:13, name:"Mozzarella Poppers", price:280, category:"Appetizer", image:"assets/mozzarella poppers.jpg"},
-    {id:14, name:"Salmon Tare-Tare", price:379, category:"Seafood Platter", image:"assets/salmon tare tare.jpg"},
-    {id:15, name:"Chili Lime Chicken Wings", price:379, category:"Main Course", image:"assets/Chicken Wings (Chilli Lime).jpg"},
-    {id:16, name:"Pepperoni Pizza", price:499, category:"Main Course", image:"assets/pepperoni.jpg"},
+    //  MAIN COURSE 
+    { id: 1, name: "Lechon Baka", price: 420, category: "Main Course", image: "assets/lechon baka.jpg" },
+    { id: 2, name: "Hoisin BBQ Pork Ribs", price: 599, category: "Main Course", image: "assets/Hoisin BBQ Pork Ribs.jpg" },
+    { id: 3, name: "Mango Habanero", price: 439, category: "Main Course", image: "assets/mango habanero.jpg" },
+    { id: 4, name: "Smoked Carbonara", price: 349, category: "Main Course", image: "assets/Smoked Carbonara.jpg" },
+    { id: 5, name: "Chili Lime Chicken Wings", price: 379, category: "Main Course", image: "assets/Chicken Wings (Chilli Lime).jpg" },
+    { id: 6, name: "Pepperoni Pizza", price: 499, category: "Main Course", image: "assets/pepperoni.jpg" },
+    { id: 7, name: "Beef Steak", price: 599, category: "Main Course", image: "assets/beefsteak.jpg" },
 
+    //  SEAFOOD PLATTER 
+    { id: 8, name: "Salmon Tare-Tare", price: 379, category: "Seafood Platter", image: "assets/salmon tare tare.jpg" },
+    { id: 9, name: "Seafood Cajun (1.5kg)", price: 1099, category: "Seafood Platter", image: "assets/Seafood Cajun.jpg" },
+    { id: 10, name: "Calamari", price: 350, category: "Seafood Platter", image: "assets/calamari.jpg" },
+    { id: 11, name: "Shrimp Tempura", price: 420, category: "Seafood Platter", image: "assets/tempura.jpg" },
 
-    {id:17, name:"Seafood Cajun (1.5kg)", price:1099, category:"Seafood Platter", image:"assets/Seafood Cajun.jpg"},
-    {id:18, name:"French Fries", price:150, category:"Side dish", image:"assets/fries.jpg"},
-    {id:19, name:"Buffalo Wings", price:420, category:"Appetizer", image:"assets/buffalo.jpg"},
-    {id:20, name:"Iced Tea", price:99, category:"Drinks", image:"assets/iced_tea.jpg"},
-    {id:21, name:"Soft Drink", price:80, category:"Drinks", image:"assets/soda.jpg"},
-    {id:22, name:"Calamari", price:350, category:"Seafood Platter", image:"assets/calamari.jpg"},
-    {id:23, name:"Potato Wedges", price:170, category:"Side dish", image:"assets/potato_wedges.jpg"},
-    {id:24, name:"Beef Steak", price:599, category:"Main Course", image:"assets/beefsteak.jpg"},
-    {id:25, name:"Shrimp Tempura", price:420, category:"Seafood Platter", image:"assets/tempura.jpg"},
-    {id:26, name:"Onion Rings", price:180, category:"Side dish", image:"assets/onion_rings.jpg"},
+    //  APPETIZER 
+    { id: 12, name: "Mozzarella Poppers", price: 280, category: "Appetizer", image: "assets/mozzarella poppers.jpg" },
+    { id: 13, name: "Buffalo Wings", price: 420, category: "Appetizer", image: "assets/buffalo.jpg" },
+
+    //  SIDE DISH 
+    { id: 14, name: "French Fries", price: 150, category: "Side dish", image: "assets/fries.jpg" },
+    { id: 15, name: "Potato Wedges", price: 170, category: "Side dish", image: "assets/potato_wedges.jpg" },
+    { id: 16, name: "Onion Rings", price: 180, category: "Side dish", image: "assets/onion_rings.jpg" },
+
+    //  DRINKS 
+    { id: 17, name: "Iced Tea", price: 99, category: "Drinks", image: "assets/iced_tea.jpg" },
+    { id: 18, name: "Soft Drink", price: 80, category: "Drinks", image: "assets/soda.jpg" }
 ];
 
 let order = [];

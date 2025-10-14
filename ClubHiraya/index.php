@@ -17,23 +17,23 @@
         </div>
         <nav class="sidebar-menu">
             <button class="sidebar-btn active">
-                <span class="sidebar-icon"><img src="assets/home.svg"></span>
+                <span class="sidebar-icon"><img src="assets/home.png"></span>
                 <span>Home</span>
             </button>
             <button class="sidebar-btn">
-                <span class="sidebar-icon"><img src="assets/table.svg"></span>
+                <span class="sidebar-icon"><img src="assets/table.png"></span>
                 <span>Tables</span>
             </button>
             <button class="sidebar-btn">
-                <span class="sidebar-icon"><img src="assets/inventory.svg"></span>
+                <span class="sidebar-icon"><img src="assets/inventory.png"></span>
                 <span>Inventory</span>
             </button>
             <button class="sidebar-btn">
-                <span class="sidebar-icon"><img src="assets/report.svg"></span>
-                <span>Sales Report</span>
+                <span class="sidebar-icon"><img src="assets/sales.png"></span>
+                <span>SalesReport</span>
             </button>
             <button class="sidebar-btn">
-                <span class="sidebar-icon"><img src="assets/settings.svg"></span>
+                <span class="sidebar-icon"><img src="assets/setting.png"></span>
                 <span>Settings</span>
             </button>
         </nav>
@@ -49,7 +49,7 @@
                 <span class="search-icon">&#128269;</span>
             </div>
             <button class="select-table-btn">
-                Select Table <span class="table-icon"><img src="assets/table-btn.svg"></span>
+                Select Table <span class="table-icon"><img src="assets/table.png"></span>
             </button>
         </div>
         <div class="content-area">
@@ -69,14 +69,14 @@
             <div class="order-section">
                 <div class="order-actions">
                     <button class="order-action-btn plus" id="newOrderBtn">+</button>
-                    <button class="order-action-btn draft" id="draftBtn"><img src="assets/draft.svg"></button>
-                    <button class="order-action-btn refresh" id="refreshBtn"><img src="assets/refresh.svg"></button>
+                    <button class="order-action-btn draft" id="draftBtn"><img src="assets/draft.png"></button>
+                    <button class="order-action-btn refresh" id="refreshBtn"><img src="assets/reset.png"></button>
                 </div>
                 <div class="order-list" id="orderList"></div>
                 <div class="order-compute" id="orderCompute"></div>
                 <div class="order-buttons">
-                    <button class="hold-btn">Hold Order</button>
-                    <button class="proceed-btn">Proceed</button>
+                    <button class="hold-btn">Bill Out</button>
+                    <button class="proceed-btn">Order</button>
                 </div>
             </div>
         </div>

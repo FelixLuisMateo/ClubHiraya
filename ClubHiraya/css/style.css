@@ -1,13 +1,13 @@
 body {
     margin: 0;
-    font-family: 'Segoe UI', Arial, sans-serif;
+    font-family: 'Poppins', sans-serif;
     background: #f4f4f6;
 }
 .sidebar {
     position: fixed;
     left: 0; top: 0; bottom: 0;
     width: 150px;
-    background: linear-gradient(180deg,#e940b8 0%, #f26dff 100%);
+    background: linear-gradient(to bottom, #e44ac2, #a00080);
     box-shadow: 2px 0 10px #0002;
     display: flex;
     flex-direction: column;
@@ -20,7 +20,7 @@ body {
     padding: 14px 0 4px 0;
     display: flex;
     flex-direction: column;
-    align-items: left;
+    align-items: center;
     font-family: Abhaya Libre SemiBold;
     
 }
@@ -222,7 +222,7 @@ body {
 .category-btn:hover {
     background: #001B89;
     color: #fff;
-    border-color: #00000;
+    border-color: #000000;
 }
 .foods-grid {
     display: grid;
@@ -269,31 +269,30 @@ body {
 .order-section {
     flex: 1.15;
     background: #fff;
-    border-radius: 13px;
-    box-shadow: 0 6px 24px #0001;
-    padding: 11px 6px 300px 6px;
-    min-width: 210px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    padding: 15px;
     display: flex;
     flex-direction: column;
-    height: 900px;
-    justify-content: flex-end;
+    justify-content: space-between;
 }
 .order-actions {
     display: flex;
-    gap: 5px;
-    margin-bottom: 7px;
+    justify-content: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
 }
 .order-action-btn {
-    background: #eaeaea;
+    background: #f2f2f2;
     border: none;
-    border-radius: 4px;
-    font-size: 15px;
-    width: 24px; height: 24px;
+    border-radius: 8px;
+    width: 34px;
+    height: 34px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.15s;
+    transition: background 0.2s;
 }
 .order-action-btn.plus {
     font-size: 17px;
@@ -303,19 +302,20 @@ body {
 }
 .order-action-btn.draft img,
 .order-action-btn.refresh img {
-    width: 13px;
-    height: 13px;
+    width: 17px;
+    height: 17px;
 }
 .order-action-btn:hover { background: #d0d0d0; }
 .order-list {
     min-height: 300px;
-    max-height: 105px;
+    max-height: 605px;
     overflow-y: auto;
-    border-radius: 5px;
+    border-radius: 10px;
     border: 1.2px solid #e5e5e5;
     margin-bottom: 5px;
-    background: #f8f8fa;
-    padding: 4px 1px;
+    background: #fafafa;
+    padding: 8px 1px;
+    flex: 1;
 }
 .order-item {
     display: flex;
