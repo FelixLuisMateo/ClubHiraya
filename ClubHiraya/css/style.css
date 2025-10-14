@@ -15,6 +15,21 @@ body {
     z-index: 100;
     
 }
+
+.sidebar-header {
+    width: 100%;
+    padding: 16px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.sidebar-header-img {
+    width: 120px; /* logo size */
+    height: auto;
+    object-fit: contain;
+}
+
 .sidebar-logo {
     width: 100%;
     padding: 14px 0 4px 0;

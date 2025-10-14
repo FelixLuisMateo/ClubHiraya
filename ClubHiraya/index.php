@@ -8,39 +8,38 @@
 </head>
 <body>
     <div class="sidebar">
-        <div class="sidebar-logo">
-            <img src="assets/clublogo.png" alt="Club Hiraya Logo" class="logo-img">
-            <div class="sidebar-brand">
-                <span class="sidebar-brand-club">CLUB</span><br>
-                <span class="sidebar-brand-hiraya">HIRAYA</span>
-            </div>
+        <div class="sidebar-header">
+            <img src="assets/logo1.png" alt="Club Hiraya Logo" class="sidebar-header-img">
         </div>
+
         <nav class="sidebar-menu">
             <button class="sidebar-btn active">
-                <span class="sidebar-icon"><img src="assets/home.png"></span>
+                <span class="sidebar-icon"><img src="assets/home.png" alt=""></span>
                 <span>Home</span>
             </button>
             <button class="sidebar-btn">
-                <span class="sidebar-icon"><img src="assets/table.png"></span>
+                <span class="sidebar-icon"><img src="assets/table.png" alt=""></span>
                 <span>Tables</span>
             </button>
             <button class="sidebar-btn">
-                <span class="sidebar-icon"><img src="assets/inventory.png"></span>
+                <span class="sidebar-icon"><img src="assets/inventory.png" alt=""></span>
                 <span>Inventory</span>
             </button>
             <button class="sidebar-btn">
-                <span class="sidebar-icon"><img src="assets/sales.png"></span>
-                <span>SalesReport</span>
+                <span class="sidebar-icon"><img src="assets/sales.png" alt=""></span>
+                <span>Sales Report</span>
             </button>
             <button class="sidebar-btn">
-                <span class="sidebar-icon"><img src="assets/setting.png"></span>
+                <span class="sidebar-icon"><img src="assets/setting.png" alt=""></span>
                 <span>Settings</span>
             </button>
         </nav>
+
         <div style="flex:1"></div>
         <button class="sidebar-logout">
             <span>Logout</span>
         </button>
+    </div>
     </div>
     <div class="main-content">
         <div class="topbar">
