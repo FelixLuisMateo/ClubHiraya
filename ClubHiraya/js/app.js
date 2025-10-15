@@ -25,8 +25,8 @@ const FOODS = [
     { id: 16, name: "Onion Rings", price: 180, category: "Side dish", image: "assets/onion_rings.jpg" },
 
     //  DRINKS 
-    { id: 17, name: "Don Boulivardier", price: 250, category: "Drinks", image: "assets/Don Boulivardier.png" },
-    { id: 18, name: "Soft Drink", price: 190, category: "Drinks", image: "assets/soda.jpg" }
+    { id: 17, name: "Don Boulivardier", price: 250, category: "Drinks", image: "assets/DonBoulivardier.jpg" },
+    { id: 18, name: "Dagat sa Baso", price: 190, category: "Drinks", image: "assets/DagatsaBaso.jpg" }
 ];
 
 let order = [];
