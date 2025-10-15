@@ -45,7 +45,6 @@
         <div class="topbar">
             <div class="search-section">
                 <input type="text" class="search-input" placeholder="Search products" id="searchBox">
-                <span class="search-icon">&#128269;</span>
             </div>
             <button class="select-table-btn">
                 Select Table <span class="table-icon"><img src="assets/table.png"></span>
