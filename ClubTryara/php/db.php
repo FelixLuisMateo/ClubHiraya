@@ -1,6 +1,6 @@
 <?php
 // DB connection - update these values if your phpMyAdmin / MySQL uses different credentials
-$DB_HOST = '127.0.0.1';
+$DB_HOST = 'localhost';
 $DB_USER = 'root';
 $DB_PASS = ''; // default for local installations like XAMPP; change if needed
 $DB_NAME = 'restaurant';
