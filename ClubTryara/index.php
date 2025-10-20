@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <title>Club Tryara</title>
     <link rel="stylesheet" href="css/style.css">
-    <!-- ✅ Load the fixed app.js file -->
+    <!-- Load the app.js file that requests products from php/get_products.php -->
     <script defer src="js/app.js"></script>
 </head>
 <body>
-    <!-- ✅ Sidebar -->
+    <!-- Sidebar -->
     <div class="sidebar">
         <div class="sidebar-header">
             <img src="assets/logo1.png" alt="Club Hiraya Logo" class="sidebar-header-img">
@@ -43,7 +43,7 @@
         </button>
     </div>
 
-    <!-- ✅ Main Content -->
+    <!-- Main Content -->
     <div class="main-content">
         <!-- Top Bar -->
         <div class="topbar">
@@ -58,22 +58,19 @@
 
         <!-- Content Area -->
         <div class="content-area">
-            <!-- ✅ Products Section -->
+            <!-- Products Section -->
             <div class="products-section">
+                <!-- Category tabs are rendered dynamically by js/app.js -->
                 <div class="category-tabs" id="categoryTabs">
-                    <button class="category-btn active" data-category="Main Course">Main Course</button>
-                    <button class="category-btn" data-category="Seafood Platter">Seafood Platter</button>
-                    <button class="category-btn" data-category="Appetizer">Appetizer</button>
-                    <button class="category-btn" data-category="Side Dish">Side Dish</button>
-                    <button class="category-btn" data-category="Drinks">Drinks</button>
+                    <!-- JS will populate category buttons here -->
                 </div>
 
                 <div class="foods-grid" id="foodsGrid">
-                    <!-- ✅ Foods will be loaded dynamically from MySQL by app.js -->
+                    <!-- Foods will be loaded dynamically from MySQL by app.js -->
                 </div>
             </div>
 
-            <!-- ✅ Order Section -->
+            <!-- Order Section -->
             <div class="order-section">
                 <div class="order-actions">
                     <button class="order-action-btn plus" id="newOrderBtn">+</button>
@@ -92,7 +89,7 @@
         </div>
     </div>
 
-    <!-- ✅ Draft Modal -->
+    <!-- Draft Modal -->
     <div class="modal hidden" id="draftModal">
         <div class="modal-content">
             <span class="close-btn" id="closeDraftModal">&times;</span>
