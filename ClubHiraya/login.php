@@ -1,7 +1,7 @@
 <?php
 // Start the session to store login info
 session_start();
-include 'db_connect.php';
+include 'db_connecto.php';
 
 // Check if the form was submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -20,10 +20,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $user = $result->fetch_assoc();
 
         // Verify password (if stored using password_hash)
-        if (password_verify($password, $user['password'])) {
+        if (password_verify($password, $user['password']) || $password === $user['password']) {
             $_SESSION['employee_id'] = $user['id'];
             $_SESSION['employee_email'] = $user['email'];
-            header("Location: dashboard.php");
+            header("Location: home.php");
             exit();
         } else {
             echo "<script>alert('Incorrect password!');</script>";
