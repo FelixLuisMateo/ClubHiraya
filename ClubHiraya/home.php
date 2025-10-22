@@ -46,8 +46,7 @@
             <div class="search-section">
                 <input type="text" class="search-input" placeholder="Search products" id="searchBox">
             </div>
-            <button class="select-table-btn">
-                Select Table <span class="table-icon"><img src="assets/table.png"></span>
+            <button class="select-table-btn">Select Table<span class="table-icon"></span>
             </button>
         </div>
         <div class="content-area">
