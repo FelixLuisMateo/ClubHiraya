@@ -322,8 +322,8 @@ body {
 }
 .order-action-btn:hover { background: #d0d0d0; }
 .order-list {
-    min-height: 300px;
-    max-height: 605px;
+    min-height: 615px;
+    max-height: 800px;
     overflow-y: auto;
     border-radius: 10px;
     border: 1.2px solid #e5e5e5;
