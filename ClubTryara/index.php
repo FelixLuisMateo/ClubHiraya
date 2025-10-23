@@ -31,7 +31,7 @@
                 <span class="sidebar-icon"><img src="assets/table.png" alt="Tables icon"></span>
                 <span>Tables</span>
             </a>
-            <a href="inventory.php" class="sidebar-btn">
+            <a href="php/inventory.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="assets/inventory.png" alt="Inventory icon"></span>
                 <span>Inventory</span>
             </a>
