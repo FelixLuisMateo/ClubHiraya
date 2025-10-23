@@ -1,5 +1,5 @@
 <?php
-include "db/db_connect.php"; // include database connection
+include "db_connect.php"; // include database connection
 
 // Handle form submission
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -50,25 +50,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <!-- Name -->
                 <div class="mb-3">
                     <label class="form-label">Name</label>
-                    <input type="text" name="name" class="form-control" required>
+                    <input type="text" name="name" class="form-control" placeholder="Product Name" required>
                 </div>
 
                 <!-- Price -->
                 <div class="mb-3">
                     <label class="form-label">Price</label>
-                    <input type="text" name="price" class="form-control" required>
+                    <input type="text" name="price" class="form-control" placeholder="Product Price"required>
                 </div>
 
                 <!-- Category -->
                 <div class="mb-3">
                     <label class="form-label">Category</label>
-                    <input type="text" name="category" class="form-control" required>
+                    <input type="text" name="category" class="form-control" placeholder="Main Course, Appetizer, Soup, Salad, Seafoods, Pasta & Noodles, Sides, Drinks" required>
                 </div>
 
                  <!-- Stock -->
                 <div class="mb-3">
                     <label class="form-label">Stock</label>
-                    <input type="text" name="stock" class="form-control" required>
+                    <input type="text" name="stock" class="form-control" placeholder="Product Quantity" required>
                 </div>
 
                 <!-- Buttons -->

@@ -23,11 +23,11 @@
         </div>
 
         <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
-            <a href="index.php" class="sidebar-btn active" aria-current="page">
+            <a href="php/home.php" class="sidebar-btn active" aria-current="page">
                 <span class="sidebar-icon"><img src="assets/home.png" alt="Home icon"></span>
                 <span>Home</span>
             </a>
-            <a href="tables.php" class="sidebar-btn">
+            <a href="php/tables.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="assets/table.png" alt="Tables icon"></span>
                 <span>Tables</span>
             </a>
@@ -35,11 +35,11 @@
                 <span class="sidebar-icon"><img src="assets/inventory.png" alt="Inventory icon"></span>
                 <span>Inventory</span>
             </a>
-            <a href="sales_report.php" class="sidebar-btn">
+            <a href="php/sales_report.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="assets/sales.png" alt="Sales report icon"></span>
                 <span>Sales Report</span>
             </a>
-            <a href="settings.php" class="sidebar-btn">
+            <a href="php/settings.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="assets/setting.png" alt="Settings icon"></span>
                 <span>Settings</span>
             </a>
@@ -58,7 +58,6 @@
         <div class="topbar">
             <div class="search-section">
                 <input type="text" class="search-input" placeholder="Search products" id="searchBox" aria-label="Search products">
-                <span class="search-icon" aria-hidden="true">&#128269;</span>
             </div>
             <button class="select-table-btn" type="button" aria-haspopup="dialog">
                 Select Table <span class="table-icon"><img src="assets/table.png" alt="Table icon"></span>
