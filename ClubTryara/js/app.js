@@ -187,15 +187,6 @@ document.addEventListener('DOMContentLoaded', () => {
       price.textContent = '₱' + (Number(prod.price) || 0).toFixed(2);
       card.appendChild(price);
 
-      const addBtn = document.createElement('button');
-      addBtn.type = 'button';
-      addBtn.textContent = 'Add';
-      addBtn.style.marginTop = '8px';
-      addBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        addToOrder(prod);
-      });
-      card.appendChild(addBtn);
 
       card.addEventListener('click', () => addToOrder(prod));
       foodsGrid.appendChild(card);
