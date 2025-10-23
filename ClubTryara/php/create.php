@@ -7,6 +7,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $price = $_POST['price'];
     $category = $_POST['category']; 
     $stock = $_POST['stock']; 
+    $image = $_POST['image']; 
 
      // ✅ Check if product number already exists
      $check_sql = "SELECT name FROM foods WHERE name = '$name'";
@@ -18,8 +19,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
               </div>";
     } else {
         // ✅ Insert query
-        $sql = "INSERT INTO foods (name, price, category, stock) 
-                VALUES ('$name', '$price', '$category', '$stock')";
+        $sql = "INSERT INTO foods (name, price, category, stock, image) 
+                VALUES ('$name', '$price', '$category', '$stock', '$image')";
 
         if (mysqli_query($conn, $sql)) {
             echo "<div class='alert alert-success text-center'>New Item added successfully!</div>";
@@ -69,6 +70,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <div class="mb-3">
                     <label class="form-label">Stock</label>
                     <input type="text" name="stock" class="form-control" placeholder="Product Quantity" required>
+                </div>
+
+                <!-- Image -->
+                <div class="mb-3">
+                    <label class="form-label">Image</label>
+                    <input type="text" name="image" class="form-control" placeholder="File Name" required>
                 </div>
 
                 <!-- Buttons -->

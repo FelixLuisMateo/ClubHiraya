@@ -43,6 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = ($_POST['name']);
     $price = ($_POST['price']);
     $category = ($_POST['category']);
+    $image = ($_POST['image']);
     $stock = ($_POST['stock']);
     
     // Validation
@@ -59,6 +60,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($category)) {
         $errors[] = "Category is required";
     }
+
+    if (empty($image)) {
+        $errors[] = "Category is required";
+    }
     
     if ($stock < 0) {
         $errors[] = "Stock cannot be negative";
@@ -66,13 +71,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (empty($errors)) {
         try {
-            $sql = "UPDATE foods SET name = :name, price = :price, category = :category, stock = :stock WHERE id = :id";
+            $sql = "UPDATE foods SET name = :name, price = :price, category = :category, stock = :stock, image = :image WHERE id = :id";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
                 ':name' => $name,
                 ':price' => $price,
                 ':category' => $category,
                 ':stock' => $stock,
+                ':image' => $image,
                 ':id' => $item_id
             ]);
             
@@ -252,10 +258,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label for="stock">Stock</label>
                 <input type="number" id="stock" name="stock" min="0" value="<?php echo isset($_POST['stock']) ? htmlspecialchars($_POST['stock']) : htmlspecialchars($item['stock']); ?>" required>
             </div>
-            
+
+            <div class="form-group">
+                <label for="image">Image</label>
+                <input type="text" id="image" name="image" value="<?php echo isset($_POST['image']) ? htmlspecialchars($_POST['image']) : htmlspecialchars($item['image']); ?>" required>
+            </div>
+
             <div class="button-group">
                 <button type="submit" class="btn-save">Save</button>
-                <a href="in.php" class="btn-cancel">Cancel</a>
+                <a href="inventory.php" class="btn-cancel">Cancel</a>
             </div>
         </form>
     </div>

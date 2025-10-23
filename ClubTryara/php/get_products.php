@@ -1,43 +1,39 @@
 <?php
 // get_products.php
-// Place this in ClubTryara/php/get_products.php
-// Configure DB credentials below or include a separate config.php with constants.
+// Located at ClubTryara/php/get_products.php
+
 $DB_HOST = 'localhost';
 $DB_USER = 'root';
-$DB_PASS = ''; // default for local installations like XAMPP; change if needed
+$DB_PASS = ''; // default for XAMPP
 $DB_NAME = 'restaurant';
 
 $mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME);
 
 if ($mysqli->connect_errno) {
-    // If accessed by browser, it's helpful to return JSON error for the ajax caller
     http_response_code(500);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['error' => 'Database connection failed: ' . $mysqli->connect_error]);
     exit;
 }
 
-
-// Allow CORS for local dev if needed (adjust in production)
 header("Access-Control-Allow-Origin: *");
+header('Content-Type: application/json; charset=utf-8');
 
-// Accept optional query params: category, q (search)
 $category = isset($_GET['category']) ? trim($_GET['category']) : '';
 $q = isset($_GET['q']) ? trim($_GET['q']) : '';
 
-// Prepare base query
 $sql = "SELECT id, name, price, category, image, description FROM foods WHERE 1=1";
 $params = [];
 $types = "";
 
-// Filter by category if provided and not "All"
+// Filter by category if provided
 if ($category !== '' && strtolower($category) !== 'all') {
     $sql .= " AND category = ?";
     $params[] = $category;
     $types .= "s";
 }
 
-// Search by name or description
+// Search filter
 if ($q !== '') {
     $sql .= " AND (name LIKE ? OR description LIKE ?)";
     $like = '%' . $q . '%';
@@ -48,7 +44,6 @@ if ($q !== '') {
 
 $sql .= " ORDER BY category, name";
 
-// Prepare statement
 $stmt = $mysqli->prepare($sql);
 if ($stmt === false) {
     http_response_code(500);
@@ -67,14 +62,21 @@ $foods = [];
 $categories_set = [];
 
 while ($row = $result->fetch_assoc()) {
-    // Adjust image path if you store filename only. Assume images are under ../assets/foods/
-    $img = $row['image'];
+    // ---- FIXED IMAGE PATH HANDLING ----
+    $img = trim($row['image']);
+
+    // if it’s only the filename (e.g., "lechon_baka.jpg")
     if ($img && !preg_match('/^https?:\\/\\//', $img)) {
-        // relative path to project's assets
-        $img = '/ClubTryara/assets/' . ltrim($img, '/'); // adjust path if needed
+        // use relative path from index.php (one level up from /php/)
+        $img = '../assets/' . ltrim($img, '/');
     }
 
-    $food = [
+    // fallback image if missing or file not found
+    if (!file_exists(__DIR__ . '/../assets/' . basename($img))) {
+        $img = '../assets/placeholder.png';
+    }
+
+    $foods[] = [
         'id' => (int)$row['id'],
         'name' => $row['name'],
         'price' => (float)$row['price'],
@@ -82,18 +84,18 @@ while ($row = $result->fetch_assoc()) {
         'image' => $img,
         'description' => $row['description']
     ];
-    $foods[] = $food;
     $categories_set[$row['category']] = true;
 }
 
 $stmt->close();
 
-// Return categories as an array (unique). Order will be applied on client.
 $categories = array_keys($categories_set);
 
+// final JSON output
 echo json_encode([
     'categories' => $categories,
     'foods' => $foods
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
 $mysqli->close();
+?>
