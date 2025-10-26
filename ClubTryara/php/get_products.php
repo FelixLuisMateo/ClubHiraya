@@ -61,19 +61,38 @@ $result = $stmt->get_result();
 $foods = [];
 $categories_set = [];
 
+// Path to the assets folder on disk (one level up from php/)
+$assets_dir = realpath(__DIR__ . '/../assets');
+$placeholder_filename = 'placeholder.png';
+
 while ($row = $result->fetch_assoc()) {
-    // ---- FIXED IMAGE PATH HANDLING ----
-    $img = trim($row['image']);
+    // ---- IMAGE PATH HANDLING ----
+    $imgRaw = trim((string)$row['image']);
 
-    // if it’s only the filename (e.g., "lechon_baka.jpg")
-    if ($img && !preg_match('/^https?:\\/\\//', $img)) {
-        // use relative path from index.php (one level up from /php/)
-        $img = '../assets/' . ltrim($img, '/');
-    }
+    // If it's an absolute URL (http/https), keep as-is
+    if ($imgRaw !== '' && preg_match('#^https?://#i', $imgRaw)) {
+        $imgUrl = $imgRaw;
+    } else {
+        // Determine filename (basename) to avoid directory traversal
+        $basename = basename($imgRaw ?: '');
 
-    // fallback image if missing or file not found
-    if (!file_exists(__DIR__ . '/../assets/' . basename($img))) {
-        $img = '../assets/placeholder.png';
+        // If there was no image provided, use placeholder
+        if ($basename === '') {
+            $basename = $placeholder_filename;
+        }
+
+        // Build filesystem path to check existence
+        $fsPath = $assets_dir . DIRECTORY_SEPARATOR . $basename;
+
+        if (!empty($assets_dir) && file_exists($fsPath)) {
+            // Return a URL path that is correct when used from ClubTryara/index.php:
+            // index.php references images as "assets/...", so return that.
+            // URL-encode the filename to handle spaces/symbols.
+            $imgUrl = 'assets/' . rawurlencode($basename);
+        } else {
+            // fallback to placeholder (ensure placeholder exists or still return placeholder path)
+            $imgUrl = 'assets/' . rawurlencode($placeholder_filename);
+        }
     }
 
     $foods[] = [
@@ -81,7 +100,7 @@ while ($row = $result->fetch_assoc()) {
         'name' => $row['name'],
         'price' => (float)$row['price'],
         'category' => $row['category'],
-        'image' => $img,
+        'image' => $imgUrl,
         'description' => $row['description']
     ];
     $categories_set[$row['category']] = true;

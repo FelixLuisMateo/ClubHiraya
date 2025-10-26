@@ -193,8 +193,61 @@ document.addEventListener('DOMContentLoaded', () => {
       card.className = 'food-card';
       card.setAttribute('data-id', prod.id);
 
+      // create image element and resolve path safely with fallbacks
       const img = document.createElement('img');
-      img.src = prod.image || 'assets/placeholder.png';
+
+      // raw image path from product
+      const raw = (prod.image || 'assets/placeholder.png').toString();
+
+      // helper to set src safely
+      function setSrc(path) {
+        try {
+          img.src = new URL(path, window.location.href).href;
+        } catch (e) {
+          img.src = path;
+        }
+      }
+
+      // Try the provided path first
+      setSrc(raw);
+
+      // If the image fails to load, attempt fallback paths that place assets under the ClubTryara folder
+      img.addEventListener('error', function handleImgError() {
+        img.removeEventListener('error', handleImgError);
+
+        const fileName = raw.split('/').pop();
+        const trimmedRaw = raw.replace(/^\.\//, '').replace(/^\//, '');
+
+        // candidate paths to try (in order). Adjust/add more if your deployment uses another structure.
+        const candidates = [
+          // try prefixing the product path with ClubTryara (relative)
+          `ClubTryara/${trimmedRaw}`,
+          // try the assets folder under ClubTryara with the same filename
+          `ClubTryara/assets/${fileName}`,
+          // absolute paths pointing to the repo root served at /ClubHiraya
+          `/ClubHiraya/ClubTryara/${trimmedRaw}`,
+          `/ClubHiraya/ClubTryara/assets/${fileName}`,
+          // legacy attempt: root-level ClubHiraya path (in case some entries already assumed /ClubHiraya/)
+          `/ClubHiraya/${trimmedRaw}`
+        ];
+
+        // try each candidate sequentially until one loads (uses onerror chaining)
+        let idx = 0;
+        function tryNext() {
+          if (idx >= candidates.length) {
+            // no candidate worked — use placeholder
+            setSrc('assets/placeholder.png');
+            return;
+          }
+          const candidate = candidates[idx++];
+          // attach a temporary error handler to try the next candidate if this fails
+          img.addEventListener('error', tryNext, { once: true });
+          setSrc(candidate);
+        }
+
+        tryNext();
+      }, { once: true });
+
       img.alt = prod.name || 'Product image';
       card.appendChild(img);
 
@@ -529,7 +582,15 @@ document.addEventListener('DOMContentLoaded', () => {
           renderProducts();
           renderOrder();
         });
-        const delBtn = document.createElement('button'); delBtn.type = 'button'; delBtn.textContent = 'Delete'; delBtn.style.padding = '6px 10px'; delBtn.style.cursor = 'pointer'; delBtn.style.background = '#ff4d4d'; delBtn.style.color = '#fff';
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.textContent = 'Delete';
+        delBtn.style.padding = '6px 10px';
+        delBtn.style.cursor = 'pointer';
+        // sensible default styles for delete button
+        delBtn.style.background = '#fff';
+        delBtn.style.border = '1px solid #ccc';
+        delBtn.style.borderRadius = '6px';
         delBtn.addEventListener('click', () => {
           const arr = getLocalDrafts();
           arr.splice(i, 1);
@@ -585,7 +646,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.createElement('form');
     form.method = 'POST'; form.action = 'print_receipt.php'; form.target = w.name;
     const input = document.createElement('input'); input.type = 'hidden'; input.name = 'cart'; input.value = JSON.stringify(order); form.appendChild(input);
-    const totals = computeNumbers(); const totalsInput = document.createElement('input'); totalsInput.type = 'hidden'; totalsInput.name = 'totals'; totalsInput.value = JSON.stringify(totals); form.appendChild(totalsInput);
+    const totals = computeNumbers();
+    const totalsInput = document.createElement('input');
+    totalsInput.type = 'hidden';
+    totalsInput.name = 'totals';
+    totalsInput.value = JSON.stringify(totals);
+    form.appendChild(totalsInput);
     document.body.appendChild(form); form.submit(); document.body.removeChild(form);
   }
 
