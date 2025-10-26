@@ -1,11 +1,10 @@
 /**
- * Updated app.js
- * - Drafts: full localStorage-based draft manager (list/load/delete). Clicking the Drafts button shows previous drafts.
- * - Discounts: selectable choices only (Regular = 0%, Senior Citizen = 20%, PWD = 20%). Discount is calculated as percentage of subtotal.
- * - Removed Hold Order creation in the compute area and removed any Bill Out handler/UI usage (existing bill out button removed from DOM if present).
- * - Keeps order management (add/remove/qty), category tabs (no "All"), search and proceed behavior.
+ * Fixed app.js to remove duplicate Proceed and prevent Bill Out from being hidden/removed.
+ * - Ensures renderOrder DOES NOT create inline proceed buttons.
+ * - Removes any leftover .order-buttons inside the compute area at startup and each render.
+ * - Forces page-level billOutBtn and proceedBtn to be visible and above the compute UI.
  *
- * Replace your existing ClubTryara/js/app.js with this file.
+ * Replace ClubTryara/js/app.js with this file and hard-refresh the page (Ctrl+F5).
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -17,52 +16,77 @@ document.addEventListener('DOMContentLoaded', () => {
   const orderCompute = document.getElementById('orderCompute');
 
   const draftModal = document.getElementById('draftModal'); // modal wrapper
-  // we'll build modal-content dynamically inside .modal-content element
-  const draftModalContent = draftModal.querySelector('.modal-content');
+  const draftModalContent = draftModal ? draftModal.querySelector('.modal-content') : null;
 
   const draftBtn = document.getElementById('draftBtn');
-  const closeDraftModalFallback = document.getElementById('closeDraftModal'); // might be replaced later
+  const closeDraftModalFallback = document.getElementById('closeDraftModal');
 
   const newOrderBtn = document.getElementById('newOrderBtn');
   const refreshBtn = document.getElementById('refreshBtn');
-  const billOutBtn = document.getElementById('billOutBtn'); // will be removed if present
 
-  // desired order for categories (fixed)
+  // Page-level action buttons (these are the single canonical buttons we use)
+  const billOutBtn = document.getElementById('billOutBtn'); // page-level Bill Out (must exist in index.php)
+  const proceedBtnPage = document.getElementById('proceedBtn'); // page-level Proceed (must exist in index.php)
+
+  // Make sure page-level buttons are visible and on top (avoid overlap)
+  function ensurePageButtonsVisible() {
+    const asideBtns = document.querySelector('.order-section > .order-buttons');
+    if (asideBtns) {
+      // ensure it's visible and above compute area
+      asideBtns.style.position = asideBtns.style.position || 'relative';
+      asideBtns.style.zIndex = '20';
+      asideBtns.style.background = asideBtns.style.background || 'transparent';
+    }
+    if (billOutBtn) {
+      billOutBtn.style.display = billOutBtn.style.display || 'inline-block';
+      billOutBtn.style.zIndex = '21';
+    }
+    if (proceedBtnPage) {
+      proceedBtnPage.style.display = proceedBtnPage.style.display || 'inline-block';
+      proceedBtnPage.style.zIndex = '21';
+    }
+  }
+
+  // Remove any duplicate .order-buttons that might be inside orderCompute (leftover from older scripts)
+  function removeInlineComputeButtons() {
+    if (!orderCompute) return;
+    // Remove container-level duplicates inside the compute area
+    const inlineBtnContainers = orderCompute.querySelectorAll('.order-buttons');
+    inlineBtnContainers.forEach(node => {
+      // If this container is the same node as the aside's container, skip. Otherwise remove.
+      if (!node.closest('.order-section')) {
+        node.remove();
+      }
+    });
+    // Also remove any stray proceed buttons inside compute (keep only the page-level proceed)
+    const inlineProceeds = orderCompute.querySelectorAll('.proceed-btn');
+    inlineProceeds.forEach(btn => {
+      // if it's the same element as the page-level proceed (shouldn't be), keep; else remove
+      if (proceedBtnPage && btn === proceedBtnPage) return;
+      btn.remove();
+    });
+  }
+
+  // call cleanup at start
+  ensurePageButtonsVisible();
+  removeInlineComputeButtons();
+
+  // ---------- Settings ----------
   const desiredOrder = [
-    "Main Course",
-    "Appetizer",
-    "Soup",
-    "Salad",
-    "Seafoods",
-    "Pasta & Noodles",
-    "Sides",
-    "Drinks"
+    "Main Course", "Appetizer", "Soup", "Salad",
+    "Seafoods", "Pasta & Noodles", "Sides", "Drinks"
   ];
-
-  // tax/service rates (as previously used)
   const SERVICE_RATE = 0.10;
   const TAX_RATE = 0.12;
-
-  // Discount types
-  const DISCOUNT_TYPES = {
-    'Regular': 0.00,
-    'Senior Citizen': 0.20,
-    'PWD': 0.20
-  };
+  const DISCOUNT_TYPES = { 'Regular': 0.00, 'Senior Citizen': 0.20, 'PWD': 0.20 };
 
   let products = [];
   let categories = [];
   let currentCategory = null;
   let order = [];
-  // discountRate expressed as decimal (e.g., 0.2). Default Regular
   let discountRate = DISCOUNT_TYPES['Regular'];
   let discountType = 'Regular';
   let noteValue = '';
-
-  // Remove Bill Out button from DOM to meet the user's request
-  if (billOutBtn) {
-    billOutBtn.remove();
-  }
 
   // ---------- PRODUCT LOADING ----------
   async function loadProducts() {
@@ -86,7 +110,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     buildCategoryList();
-    // choose initial category: first desired that exists, else first available
     const found = desiredOrder.find(c => categories.includes(c));
     currentCategory = found || (categories.length ? categories[0] : null);
     renderCategoryTabs();
@@ -99,10 +122,10 @@ document.addEventListener('DOMContentLoaded', () => {
     categories = Array.from(set);
   }
 
-  // ---------- CATEGORIES (no "All" button) ----------
+  // ---------- CATEGORIES ----------
   function renderCategoryTabs() {
+    if (!categoryTabs) return;
     categoryTabs.innerHTML = '';
-
     desiredOrder.forEach(cat => {
       const btn = document.createElement('button');
       btn.className = 'category-btn';
@@ -120,8 +143,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       categoryTabs.appendChild(btn);
     });
-
-    // extras if DB has categories not in desired list
     const extras = categories.filter(c => !desiredOrder.includes(c));
     extras.forEach(cat => {
       const btn = document.createElement('button');
@@ -136,11 +157,10 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       categoryTabs.appendChild(btn);
     });
-
     setActiveCategory(currentCategory);
   }
-
   function setActiveCategory(cat) {
+    if (!categoryTabs) return;
     Array.from(categoryTabs.children).forEach(btn => {
       if (btn.dataset.category === cat) btn.classList.add('active');
       else btn.classList.remove('active');
@@ -149,7 +169,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---------- PRODUCTS ----------
   function renderProducts() {
-    const q = (searchBox.value || '').trim().toLowerCase();
+    if (!foodsGrid) return;
+    const q = (searchBox && searchBox.value || '').trim().toLowerCase();
     const visible = products.filter(p => {
       if (currentCategory && p.category !== currentCategory) return false;
       if (!q) return true;
@@ -186,7 +207,6 @@ document.addEventListener('DOMContentLoaded', () => {
       price.className = 'food-price';
       price.textContent = '₱' + (Number(prod.price) || 0).toFixed(2);
       card.appendChild(price);
-
 
       card.addEventListener('click', () => addToOrder(prod));
       foodsGrid.appendChild(card);
@@ -234,6 +254,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---------- RENDER ORDER + COMPUTE UI ----------
   function renderOrder() {
+    // cleanup duplicates before rendering
+    removeInlineComputeButtons();
+    ensurePageButtonsVisible();
+
+    if (!orderList || !orderCompute) return;
     orderList.innerHTML = '';
     if (order.length === 0) {
       orderList.textContent = 'No items in order.';
@@ -305,13 +330,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const actions = document.createElement('div');
     actions.className = 'compute-actions';
 
-    // Discount button toggles discount panel
     const discountBtn = document.createElement('button');
     discountBtn.className = 'compute-btn discount';
     discountBtn.textContent = 'Discount';
     actions.appendChild(discountBtn);
 
-    // Note button toggles note input
     const noteBtn = document.createElement('button');
     noteBtn.className = 'compute-btn note';
     noteBtn.textContent = 'Note';
@@ -323,7 +346,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const interactiveWrap = document.createElement('div');
     interactiveWrap.style.marginBottom = '8px';
 
-    // Discount choices panel (hidden by default)
     const discountPanel = document.createElement('div');
     discountPanel.style.display = 'none';
     discountPanel.style.gap = '8px';
@@ -335,14 +357,12 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.className = 'compute-btn';
       btn.textContent = `${type} ${DISCOUNT_TYPES[type] > 0 ? `(${(DISCOUNT_TYPES[type]*100).toFixed(0)}%)` : ''}`;
       btn.style.marginRight = '6px';
-      // mark currently selected
       if (type === discountType) {
         btn.classList.add('active');
       }
       btn.addEventListener('click', () => {
         discountType = type;
         discountRate = DISCOUNT_TYPES[type];
-        // refresh UI selection
         Array.from(discountPanel.children).forEach(c => c.classList.remove('active'));
         btn.classList.add('active');
         renderOrder();
@@ -350,7 +370,6 @@ document.addEventListener('DOMContentLoaded', () => {
       discountPanel.appendChild(btn);
     });
 
-    // Note input
     const noteInput = document.createElement('textarea');
     noteInput.value = noteValue || '';
     noteInput.placeholder = 'Order note...';
@@ -360,7 +379,6 @@ document.addEventListener('DOMContentLoaded', () => {
     noteInput.style.border = '1px solid #ccc';
     noteInput.addEventListener('input', () => { noteValue = noteInput.value; });
 
-    // Hide note and discount panels by default
     discountPanel.style.display = 'none';
     noteInput.style.display = 'none';
 
@@ -394,24 +412,36 @@ document.addEventListener('DOMContentLoaded', () => {
     orderCompute.appendChild(makeRow(`Discount (${discountType})`, nums.discountAmount));
     orderCompute.appendChild(makeRow('Payable Amount', nums.payable, true));
 
-    // bottom action buttons: only Proceed (Hold & Bill Out removed per request)
-    const btns = document.createElement('div');
-    btns.className = 'order-buttons';
-
-    const proceed = document.createElement('button');
-    proceed.className = 'proceed-btn';
-    proceed.textContent = 'Proceed';
-    proceed.addEventListener('click', () => {
-      if (order.length === 0) { alert('No items to proceed.'); return; }
-      console.log('Proceeding with order:', { order, discountType, discountRate, note: noteValue, compute: computeNumbers() });
-      alert('Proceed invoked. Check console for order details.');
-    });
-
-    btns.appendChild(proceed);
-    orderCompute.appendChild(btns);
+    // IMPORTANT: do not create inline Proceed button here anymore.
+    // The page-level '.order-section > .order-buttons' is the single source of Bill Out & Proceed.
+    // If the page-level buttons are missing, re-create minimal replacements to ensure UI works:
+    if (!billOutBtn || !proceedBtnPage) {
+      // create a lightweight in-place container (only if page-level ones do not exist)
+      const fallback = document.createElement('div');
+      fallback.className = 'order-buttons fallback';
+      // Bill Out fallback
+      if (!billOutBtn) {
+        const b = document.createElement('button');
+        b.id = 'billOutBtn_fallback';
+        b.className = 'hold-btn';
+        b.textContent = 'Bill Out';
+        b.addEventListener('click', handleBillOut);
+        fallback.appendChild(b);
+      }
+      // Proceed fallback
+      if (!proceedBtnPage) {
+        const p = document.createElement('button');
+        p.id = 'proceedBtn_fallback';
+        p.className = 'proceed-btn';
+        p.textContent = 'Proceed';
+        p.addEventListener('click', handleProceed);
+        fallback.appendChild(p);
+      }
+      orderCompute.appendChild(fallback);
+    }
   }
 
-  // ---------- DRAFTS (localStorage manager) ----------
+  // ---------- DRAFTS ----------
   function getLocalDrafts() {
     try {
       const raw = localStorage.getItem('local_drafts') || '[]';
@@ -427,11 +457,9 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('local_drafts', JSON.stringify(arr || []));
   }
 
-  // Build and open drafts modal content
   function openDraftsModal() {
-    // Build modal HTML inside draftModalContent
+    if (!draftModal || !draftModalContent) return;
     draftModalContent.innerHTML = '';
-    // Close button
     const closeBtn = document.createElement('button');
     closeBtn.className = 'close-btn';
     closeBtn.id = 'closeDraftModal_js';
@@ -440,24 +468,14 @@ document.addEventListener('DOMContentLoaded', () => {
     closeBtn.addEventListener('click', () => draftModal.classList.add('hidden'));
     draftModalContent.appendChild(closeBtn);
 
-    // Title
-    const h3 = document.createElement('h3');
-    h3.textContent = 'Drafts';
-    draftModalContent.appendChild(h3);
+    const h3 = document.createElement('h3'); h3.textContent = 'Drafts'; draftModalContent.appendChild(h3);
 
-    // Draft list container
     const listWrap = document.createElement('div');
-    listWrap.style.maxHeight = '320px';
-    listWrap.style.overflowY = 'auto';
-    listWrap.style.marginBottom = '10px';
-    listWrap.id = 'draftList';
-    draftModalContent.appendChild(listWrap);
+    listWrap.style.maxHeight = '320px'; listWrap.style.overflowY = 'auto'; listWrap.style.marginBottom = '10px';
+    listWrap.id = 'draftList'; draftModalContent.appendChild(listWrap);
 
-    // New draft section
-    const newLabel = document.createElement('div');
-    newLabel.style.margin = '6px 0';
-    newLabel.textContent = 'Save current order as draft';
-    draftModalContent.appendChild(newLabel);
+    const newLabel = document.createElement('div'); newLabel.style.margin = '6px 0';
+    newLabel.textContent = 'Save current order as draft'; draftModalContent.appendChild(newLabel);
 
     const draftNameInputNew = document.createElement('input');
     draftNameInputNew.type = 'text';
@@ -480,16 +498,11 @@ document.addEventListener('DOMContentLoaded', () => {
     saveDraftBtnNew.style.cursor = 'pointer';
     draftModalContent.appendChild(saveDraftBtnNew);
 
-    // Populate existing drafts
     function refreshDraftList() {
       listWrap.innerHTML = '';
       const drafts = getLocalDrafts();
       if (drafts.length === 0) {
-        const p = document.createElement('div');
-        p.style.color = '#666';
-        p.textContent = 'No drafts saved.';
-        listWrap.appendChild(p);
-        return;
+        const p = document.createElement('div'); p.style.color = '#666'; p.textContent = 'No drafts saved.'; listWrap.appendChild(p); return;
       }
       drafts.forEach((d, i) => {
         const row = document.createElement('div');
@@ -499,134 +512,110 @@ document.addEventListener('DOMContentLoaded', () => {
         row.style.padding = '8px';
         row.style.borderBottom = '1px solid #eee';
 
-        const left = document.createElement('div');
-        left.style.flex = '1';
-        const name = document.createElement('div');
-        name.textContent = d.name || ('Draft ' + (i+1));
-        name.style.fontWeight = '600';
-        const meta = document.createElement('div');
-        meta.textContent = d.created ? new Date(d.created).toLocaleString() : '';
-        meta.style.fontSize = '12px';
-        meta.style.color = '#666';
-        left.appendChild(name);
-        left.appendChild(meta);
+        const left = document.createElement('div'); left.style.flex = '1';
+        const name = document.createElement('div'); name.textContent = d.name || ('Draft ' + (i+1)); name.style.fontWeight = '600';
+        const meta = document.createElement('div'); meta.textContent = d.created ? new Date(d.created).toLocaleString() : ''; meta.style.fontSize = '12px'; meta.style.color = '#666';
+        left.appendChild(name); left.appendChild(meta);
 
-        const actions = document.createElement('div');
-        actions.style.display = 'flex';
-        actions.style.gap = '6px';
-
-        const loadBtn = document.createElement('button');
-        loadBtn.type = 'button';
-        loadBtn.textContent = 'Load';
-        loadBtn.style.padding = '6px 10px';
-        loadBtn.style.cursor = 'pointer';
+        const actions = document.createElement('div'); actions.style.display = 'flex'; actions.style.gap = '6px';
+        const loadBtn = document.createElement('button'); loadBtn.type = 'button'; loadBtn.textContent = 'Load'; loadBtn.style.padding = '6px 10px'; loadBtn.style.cursor = 'pointer';
         loadBtn.addEventListener('click', () => {
-          // load draft into order
           order = Array.isArray(d.order) ? JSON.parse(JSON.stringify(d.order)) : [];
           discountType = d.discountType || 'Regular';
           discountRate = DISCOUNT_TYPES[discountType] || 0;
           noteValue = d.note || '';
-          // update UI
           draftModal.classList.add('hidden');
           setActiveCategory(currentCategory);
           renderProducts();
           renderOrder();
         });
-
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.textContent = 'Delete';
-        delBtn.style.padding = '6px 10px';
-        delBtn.style.cursor = 'pointer';
-        delBtn.style.background = '#ff4d4d';
-        delBtn.style.color = '#fff';
+        const delBtn = document.createElement('button'); delBtn.type = 'button'; delBtn.textContent = 'Delete'; delBtn.style.padding = '6px 10px'; delBtn.style.cursor = 'pointer'; delBtn.style.background = '#ff4d4d'; delBtn.style.color = '#fff';
         delBtn.addEventListener('click', () => {
           const arr = getLocalDrafts();
           arr.splice(i, 1);
           saveLocalDrafts(arr);
           refreshDraftList();
         });
+        actions.appendChild(loadBtn); actions.appendChild(delBtn);
 
-        actions.appendChild(loadBtn);
-        actions.appendChild(delBtn);
-
-        row.appendChild(left);
-        row.appendChild(actions);
-        listWrap.appendChild(row);
+        row.appendChild(left); row.appendChild(actions); listWrap.appendChild(row);
       });
     }
 
     refreshDraftList();
-
-    // Save draft handler
     saveDraftBtnNew.addEventListener('click', () => {
       const name = (draftNameInputNew.value || '').trim() || ('Draft ' + new Date().toLocaleString());
-      const payload = {
-        name,
-        order: JSON.parse(JSON.stringify(order || [])),
-        discountType,
-        discountRate,
-        note: noteValue,
-        created: new Date().toISOString()
-      };
-      const arr = getLocalDrafts();
-      arr.push(payload);
-      saveLocalDrafts(arr);
-      alert('Draft saved locally.');
-      draftNameInputNew.value = '';
-      refreshDraftList();
+      const payload = { name, order: JSON.parse(JSON.stringify(order || [])), discountType, discountRate, note: noteValue, created: new Date().toISOString() };
+      const arr = getLocalDrafts(); arr.push(payload); saveLocalDrafts(arr);
+      alert('Draft saved locally.'); draftNameInputNew.value = ''; refreshDraftList();
     });
 
-    // show modal
     draftModal.classList.remove('hidden');
   }
 
-  // Hook draft button
-  if (draftBtn) {
-    draftBtn.addEventListener('click', () => {
-      openDraftsModal();
-    });
-  }
-  // fallback close if any existing close element exists
-  if (closeDraftModalFallback) {
-    closeDraftModalFallback.addEventListener('click', () => draftModal.classList.add('hidden'));
-  }
+  if (draftBtn) draftBtn.addEventListener('click', () => openDraftsModal());
+  if (closeDraftModalFallback) closeDraftModalFallback.addEventListener('click', () => draftModal.classList.add('hidden'));
 
   // ---------- OTHER UI HANDLERS ----------
   if (newOrderBtn) newOrderBtn.addEventListener('click', () => {
     if (confirm('Clear current order and start a new one?')) {
-      order = [];
-      discountRate = DISCOUNT_TYPES['Regular'];
-      discountType = 'Regular';
-      noteValue = '';
-      renderOrder();
+      order = []; discountRate = DISCOUNT_TYPES['Regular']; discountType = 'Regular'; noteValue = ''; renderOrder();
     }
   });
 
   if (refreshBtn) refreshBtn.addEventListener('click', async () => {
-    await loadProducts();
-    order = [];
-    discountRate = DISCOUNT_TYPES['Regular'];
-    discountType = 'Regular';
-    noteValue = '';
-    renderOrder();
+    await loadProducts(); order = []; discountRate = DISCOUNT_TYPES['Regular']; discountType = 'Regular'; noteValue = ''; renderOrder();
   });
 
-  // ensure proceed button in DOM (if present elsewhere) also works
-  const proceedBtnDom = document.querySelector('.proceed-btn');
-  if (proceedBtnDom) {
-    proceedBtnDom.addEventListener('click', () => {
-      if (order.length === 0) { alert('No items to proceed.'); return; }
-      console.log('Proceed with order:', { order, discountType, discountRate, note: noteValue, compute: computeNumbers() });
-      alert('Proceed invoked. Check console for details.');
-    });
+  // Hook the page-level proceed button (single canonical handler)
+  if (proceedBtnPage) {
+    proceedBtnPage.addEventListener('click', async () => { await handleProceed(); });
+  }
+
+  // Hook the page-level bill out button (single canonical handler)
+  if (billOutBtn) {
+    billOutBtn.addEventListener('click', (e) => { e.preventDefault(); handleBillOut(); });
+  }
+
+  // ---------- Bill Out (print without DB changes) ----------
+  function handleBillOut() {
+    if (order.length === 0) { alert('Cart is empty.'); return; }
+    const w = window.open('', '_blank', 'width=800,height=900');
+    if (!w) { alert('Please allow popups for printing.'); return; }
+    const form = document.createElement('form');
+    form.method = 'POST'; form.action = 'print_receipt.php'; form.target = w.name;
+    const input = document.createElement('input'); input.type = 'hidden'; input.name = 'cart'; input.value = JSON.stringify(order); form.appendChild(input);
+    const totals = computeNumbers(); const totalsInput = document.createElement('input'); totalsInput.type = 'hidden'; totalsInput.name = 'totals'; totalsInput.value = JSON.stringify(totals); form.appendChild(totalsInput);
+    document.body.appendChild(form); form.submit(); document.body.removeChild(form);
+  }
+
+  // ---------- Proceed (update DB stock) ----------
+  async function handleProceed() {
+    if (order.length === 0) { alert('No items to proceed.'); return; }
+    if (!confirm('Proceed with this order and update stock?')) return;
+    if (billOutBtn) billOutBtn.disabled = true; if (proceedBtnPage) proceedBtnPage.disabled = true;
+    try {
+      const payload = order.map(i => ({ id: i.id, qty: i.qty }));
+      const res = await fetch('api/update_stock.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: payload }) });
+      if (!res.ok) throw new Error('Network response was not OK');
+      const body = await res.json();
+      if (body.success) {
+        alert('Stock updated successfully.');
+        order = []; await loadProducts(); renderOrder();
+      } else {
+        if (body.errors && body.errors.length) alert('Some items could not be processed:\n' + body.errors.join('\n'));
+        else alert('Could not update stock: ' + (body.message || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error(err); alert('Error while updating stock: ' + (err.message || err));
+    } finally {
+      if (billOutBtn) billOutBtn.disabled = false; if (proceedBtnPage) proceedBtnPage.disabled = false;
+    }
   }
 
   // Escape closes modal
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !draftModal.classList.contains('hidden')) {
-      draftModal.classList.add('hidden');
-    }
+    if (e.key === 'Escape' && draftModal && !draftModal.classList.contains('hidden')) draftModal.classList.add('hidden');
   });
 
   // Search input

@@ -7,125 +7,170 @@
 
 /* Base */
 body {
-    margin: 0;
-    font-family: 'Poppins', sans-serif;
-    background: #f4f4f6;
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background: #f4f4f6;
+  color: #111;
 }
 
 /* Sidebar */
 .sidebar {
-    position: fixed;
-    left: 0; top: 0; bottom: 0;
-    width: 150px;
-    background: linear-gradient(to bottom, #e44ac2, #a00080);
-    box-shadow: 2px 0 10px #0002;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    z-index: 100;
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: 150px;
+  background: linear-gradient(180deg, #e44ac2 0%, #9a0076 100%);
+  box-shadow: 2px 0 10px rgba(0,0,0,0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 100;
+  padding-top: 8px;
+  overflow: hidden; /* prevent overflowing large images */
 }
 .sidebar-header {
-    width: 100%;
-    padding: 16px 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-.sidebar-header-img {
-    width: 120px; /* logo size */
-    height: auto;
-    object-fit: contain;
+  width: 100%;
+  padding: 12px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
 }
 
-/* Sidebar brand and menu */
-.sidebar-logo {
-    width: 100%;
-    padding: 14px 0 4px 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    font-family: Abhaya Libre SemiBold;
+/* Sidebar logo - constrain size strictly to avoid large images */
+.sidebar-header-img {
+  width: 86px;      /* desired logo width */
+  height: 86px;     /* desired logo height */
+  object-fit: contain;
+  display: block;
+  max-width: 86px;
+  max-height: 86px;
 }
-.logo-img { width: 38px; height: 38px; border-radius: 10px; margin-bottom: 4px; }
-.sidebar-brand {
-    text-align: center;
-    font-size: 10px;
-    font-weight: bold;
-    color: #111;
-    margin-bottom: 8px;
-    line-height: 1.1;
+
+/* Ensure no img inside sidebar exceeds container bounds */
+.sidebar img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  pointer-events: none;
 }
-.sidebar-menu {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    margin-top: 10px;
-    flex: 1;
-}
+
+/* Sidebar buttons */
 .sidebar-btn {
-    width: 115px;
-    height: 80px;
-    margin: 0 auto 22px auto;
-    background: #fff;
-    color: #111;
-    border: 5px solid #000000;
-    border-radius: 16px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: 15px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s, border 0.2s;
-    box-sizing: border-box;
-    position: relative;
-    gap: 0;
-    padding: 0;
-    text-decoration: none;
+  width: 115px;
+  height: 80px;
+  margin: 0 auto 18px auto;
+  background: #fff;
+  color: #111;
+  border: 5px solid #000000;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  box-sizing: border-box;
+  text-decoration: none;
+  overflow: hidden; /* clip any oversized content inside the button */
+  position: relative;
 }
-.sidebar-btn.active {
-    background: #001B89;
-    color: #fff;
-    border: 7px solid #000;
+
+/* Icon holder inside button - guarantee consistent sizing */
+.sidebar-btn .sidebar-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  box-sizing: border-box;
 }
-.sidebar-btn .sidebar-icon { margin-bottom: 3px; }
-.sidebar-btn .sidebar-icon img { width: 26px; height: 26px; display: block; margin: 0 auto; filter: none; }
+
+/* Actual icon images inside sidebar buttons */
+.sidebar-btn .sidebar-icon img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* Improve spacing and avoid text wrapping */
 .sidebar-btn span:last-child {
-    font-size: 18px;
-    margin-top: 2px;
-    display: block;
-    text-align: center;
-    width: 100%;
-    font-family: inter;
+  font-size: 17px;
+  margin-top: 0;
+  display: block;
+  text-align: center;
+  width: 100%;
+  font-family: inter;
+  line-height: 1.05;
+  padding: 0 4px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+/* Hover and active states for sidebar buttons */
+.sidebar-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
+.sidebar-btn.active {
+  background: #001B89;
+  color: #fff;
+  border: 7px solid #000;
+}
+
+/* Logout */
 .sidebar-logout {
-    width: 120px;
-    height: 49px;
-    margin: 36px auto 18px auto;
-    background: #0066ff;
-    color: #fff;
-    border: none;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 1px 6px #2221;
-    transition: background 0.2s;
-    text-align: center;
-    gap: 2px;
+  width: 120px;
+  height: 49px;
+  margin: 32px auto 18px auto;
+  background: #001B89;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
 }
-.sidebar-logout span:last-child {
-    font-size: 20px;
-    display: block;
-    width: 100%;
-    text-align: center;
-    margin-top: 2px;
+
+/* Main Content */
+.main-content {
+  margin-left: 160px; /* space for sidebar */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Topbar */
+.topbar {
+  height: 52px;
+  background: #121212;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 36px 0 18px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+.search-section { position: relative; display: flex; align-items: center; }
+.search-input {
+  width: 280px;
+  height: 34px;
+  border-radius: 16px;
+  border: none;
+  font-size: 14px;
+  padding: 0 36px 0 12px;
+  outline: none;
+  background: #fff;
+}
+.select-table-btn {
+  background: linear-gradient(180deg,#274edb 0%,#0b3cb8 100%);
+  color: #fff; border: none; border-radius: 8px;
+  font-weight: 700; padding: 8px 16px;
 }
 
 /* Main content and topbar */
@@ -186,11 +231,11 @@ body {
 .table-icon img { width: 15px; margin-left: 7px; position: relative; top: 1px; }
 
 /* Layout */
-.content-area {
-    display: flex;
-    gap: 15px;
-    padding: 17px 10px 0 50px;
-}
+/*.content-area {*/
+/*    display: flex;*/
+/*    gap: 15px;*/
+/*    padding: 17px 10px 0 50px;*/
+/*}*/
 
 /* Products area */
 .products-section {
@@ -272,6 +317,7 @@ body {
     padding: 6px 6px 6px 6px;
     max-height: 790px;
     padding-right: 4px;
+    padding-left: 50px;
 }
 
 /* Food card */
@@ -550,4 +596,115 @@ body {
 .foods-grid::-webkit-scrollbar-thumb, .order-list::-webkit-scrollbar-thumb {
     background: #dcdcdc;
     border-radius: 6px;
+}
+/* --- FIXED LAYOUT ADJUSTMENTS ---
+   Make Topbar, Category Tabs and Order Section fixed.
+   Append this to the end of css/style.css
+*/
+/* === FIX: topbar, category-tabs, order-section (append to css/style.css) === */
+:root{
+  --sidebar-width: 150px;   /* matches your sidebar width */
+  --topbar-height: 52px;    /* matches your topbar height */
+  --order-width: 360px;     /* change if your order panel width is different */
+  --category-height: 56px;  /* approx height of category tabs row */
+  --gutter: 16px;
+}
+
+/* Keep topbar fixed and not overlapping the order panel */
+.topbar{
+  position: fixed;
+  left: var(--sidebar-width);
+  right: var(--order-width);
+  top: 0;
+  height: var(--topbar-height);
+  z-index: 1200;
+}
+
+/* Fix category tabs under topbar but DO NOT extend into the order panel */
+.category-tabs{
+  position: fixed;
+  left: calc(var(--sidebar-width) + var(--gutter));
+  /* stop tabs before the order panel so they don't draw over it */
+  right: calc(var(--order-width) + var(--gutter));
+  top: calc(var(--topbar-height) + 10px);
+  height: var(--category-height);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  z-index: 1150;
+  background: transparent; /* transparent so it won't create a white bar over the order panel */
+}
+
+/* Ensure the products area doesn't get covered by the fixed order panel or category-tabs */
+.products-section{
+  /* leave enough right margin so grid/cards never go under the order panel */
+  margin-right: calc(var(--order-width) + 28px);
+  /* push content down to clear the fixed topbar + category tabs */
+  padding-top: calc(var(--topbar-height) + var(--category-height) + 18px);
+  min-width: 0; /* allow flex shrink */
+  box-sizing: border-box;
+}
+
+/* Add a little right padding in the grid so the last card is fully visible */
+.foods-grid{
+  padding-right: 12px;
+  box-sizing: border-box;
+}
+
+/* Fixed order section: single size/height (viewport minus topbar), internal scroll for list */
+.order-section{
+  position: fixed;
+  right: 0;
+  top: var(--topbar-height);
+  width: var(--order-width);
+  height: calc(100vh - var(--topbar-height));
+  overflow: hidden; /* inner .order-list will scroll */
+  z-index: 1190;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+/* Make the order-list scrollable inside the fixed panel */
+.order-list{
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* keep compute & buttons pinned inside panel */
+.order-compute, .order-buttons {
+  flex: 0 0 auto;
+}
+
+/* MOBILE: convert order panel into a bottom sheet and remove large right margin */
+@media (max-width: 900px) {
+  :root { --order-width: 100%; }
+
+  .topbar { left: 0; right: 0; }
+
+  .category-tabs {
+    left: 12px;
+    right: 12px;
+    top: calc(var(--topbar-height) + 8px);
+    background: rgba(255,255,255,0.98);
+  }
+
+  .order-section{
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    height: 48vh; /* mobile fixed height - change if desired */
+    width: 100%;
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.12);
+  }
+
+  .products-section {
+    margin-right: 0;
+    padding-bottom: calc(48vh + 18px); /* prevent content behind bottom sheet */
+    padding-top: calc(var(--topbar-height) + var(--category-height) + 18px);
+  }
 }

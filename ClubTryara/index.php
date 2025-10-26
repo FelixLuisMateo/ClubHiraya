@@ -90,8 +90,9 @@
                 <div class="order-compute" id="orderCompute" aria-live="polite"></div>
 
                 <div class="order-buttons">
+                    <!-- Page-level Bill Out and Proceed (single copy of each) -->
                     <button class="hold-btn" id="billOutBtn" type="button">Bill Out</button>
-                    <button class="proceed-btn" type="button">Proceed</button>
+                    <button class="proceed-btn" id="proceedBtn" type="button">Proceed</button>
                 </div>
             </aside>
         </div>
