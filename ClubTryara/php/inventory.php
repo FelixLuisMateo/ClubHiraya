@@ -48,6 +48,15 @@ if ($search !== '') {
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Inventory - Club Hiraya</title>
   <link rel="stylesheet" href="../css/inventory.css">
+  <style>
+    /* Highlight style for matched text */
+    mark.highlight {
+      background: #ffea8a;
+      padding: 0 2px;
+      border-radius: 3px;
+      color: inherit;
+    }
+  </style>
 </head>
 <body>
   <!-- Sidebar -->
@@ -91,8 +100,8 @@ if ($search !== '') {
       <!-- Top Bar -->
       <div class="topbar">
           <div class="search-section">
-              <form class="search-container" method="GET" action="">
-                  <input type="text" name="search" class="search-input" placeholder="Search products" value="<?php echo htmlspecialchars($search, ENT_QUOTES); ?>">
+              <form id="searchForm" class="search-container" method="GET" action="">
+                  <input id="searchInput" type="text" name="search" class="search-input" placeholder="Search products" value="<?php echo htmlspecialchars($search, ENT_QUOTES); ?>">
               </form>
           </div>
       </div>
@@ -137,7 +146,7 @@ if ($search !== '') {
 
           <!-- Table Rows -->
           <?php if (empty($items)): ?>
-              <div class="empty-state">
+              <div class="empty-state" id="noResultsServer">
                   <?php if ($search !== ''): ?>
                       No items found matching "<?php echo htmlspecialchars($search, ENT_QUOTES); ?>"
                   <?php else: ?>
@@ -146,7 +155,9 @@ if ($search !== '') {
               </div>
           <?php else: ?>
               <?php foreach ($items as $item): ?>
-                  <div class="table-row">
+                  <div class="table-row"
+                       data-name="<?php echo htmlspecialchars($item['name'], ENT_QUOTES); ?>"
+                       data-category="<?php echo htmlspecialchars($item['category'], ENT_QUOTES); ?>">
                       <div><?php echo htmlspecialchars($item['id']); ?></div>
                       <div><?php echo htmlspecialchars($item['name']); ?></div>
                       <div>₱<?php echo number_format($item['price'], 2); ?></div>
@@ -163,21 +174,28 @@ if ($search !== '') {
                   </div>
               <?php endforeach; ?>
           <?php endif; ?>
+
+          <!-- Dynamic no-results message for client-side filtering (hidden by default) -->
+          <div id="noResults" class="empty-state" style="display:none;"></div>
       </div>
   </main>
 
   <script>
-    // Toggle the Image column visibility
+    // Live search, highlighting and Image column toggle
     (function() {
       const toggleBtn = document.getElementById('toggleImageBtn');
       const container = document.getElementById('inventoryContainer');
+      const searchForm = document.getElementById('searchForm');
+      const searchInput = document.getElementById('searchInput');
+      const noResults = document.getElementById('noResults');
+      const serverEmpty = document.getElementById('noResultsServer');
 
       function updateButton(isShown) {
         toggleBtn.textContent = isShown ? 'Hide File Name' : 'Show File Name';
         toggleBtn.setAttribute('aria-pressed', isShown ? 'true' : 'false');
       }
 
-      // initialize from localStorage
+      // initialize image column visibility from localStorage
       const saved = localStorage.getItem('inventory_show_images');
       if (saved === '1') {
         container.classList.add('show-images');
@@ -197,6 +215,103 @@ if ($search !== '') {
           window.location.href = 'delete.php?id=' + encodeURIComponent(id);
         }
       };
+
+      // Prevent form submit to avoid page reload — we do client-side filtering instead.
+      if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+        });
+      }
+
+      // Utility: escape HTML for safe insertion
+      function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>"'`=\/]/g, function(s) {
+          return ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+            '/': '&#x2F;',
+            '`': '&#x60;',
+            '=': '&#x3D;'
+          })[s];
+        });
+      }
+
+      // Build a highlighted HTML string by wrapping matches in <mark class="highlight">
+      function highlightText(text, query) {
+        if (!query) return escapeHtml(text);
+        const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // escape regex chars
+        const re = new RegExp(escapedQuery, 'gi');
+        // Replace using a function so we can escape the matched text as well
+        return escapeHtml(text).replace(re, match => '<mark class="highlight">' + escapeHtml(match) + '</mark>');
+      }
+
+      // Client-side filtering of the rendered rows with highlighting
+      function filterRows(q) {
+        q = (q || '').trim();
+        const qLower = q.toLowerCase();
+        const rows = Array.from(document.querySelectorAll('.table-row'));
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+          // raw values stored in data attributes
+          const rawName = row.dataset.name || '';
+          const rawCategory = row.dataset.category || '';
+          const nameLower = rawName.toLowerCase();
+          const categoryLower = rawCategory.toLowerCase();
+
+          const matches = q === '' || nameLower.includes(qLower) || categoryLower.includes(qLower);
+          row.style.display = matches ? '' : 'none';
+
+          // update cells with highlighted HTML when visible, otherwise leave original text
+          const nameCell = row.children[1];
+          const categoryCell = row.children[3];
+          if (nameCell) nameCell.innerHTML = highlightText(rawName, q);
+          if (categoryCell) categoryCell.innerHTML = highlightText(rawCategory, q);
+
+          if (matches) visibleCount++;
+        });
+
+        // If server-side returned no rows at all, keep the server message
+        const serverHadNoRows = !!serverEmpty && serverEmpty.style.display !== 'none';
+
+        if (visibleCount === 0) {
+          // show the client-side no-results message (only if there are rows on the page or server had rows)
+          const msg = q ? `No items found matching "${escapeHtml(q)}"` : (serverHadNoRows ? serverEmpty.textContent : 'No items in inventory.');
+          noResults.textContent = msg;
+          noResults.style.display = 'block';
+        } else {
+          noResults.style.display = 'none';
+          // hide server message if present (we have results)
+          if (serverEmpty) serverEmpty.style.display = 'none';
+        }
+      }
+
+      // Debounce typing
+      let to;
+      if (searchInput) {
+        // initialize filter from any existing value (e.g., when page was loaded with ?search=)
+        filterRows(searchInput.value || '');
+
+        searchInput.addEventListener('input', function() {
+          clearTimeout(to);
+          to = setTimeout(function() {
+            filterRows(searchInput.value);
+          }, 180);
+        });
+
+        // Optional: pressing ESC clears the search
+        searchInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape') {
+            searchInput.value = '';
+            filterRows('');
+          }
+        });
+      }
+
     })();
   </script>
 </body>
