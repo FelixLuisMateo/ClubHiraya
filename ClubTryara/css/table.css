@@ -230,55 +230,6 @@ body {
 }
 .party-size-control.visible { display: flex; }
 
-.party-counts {
-  margin-top: 8px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  font-size: 14px;
-  color: #222;
-}
-.party-counts .exact-count strong,
-.party-counts .larger-count strong { font-weight: 800; }
-
-.no-matches-banner {
-  margin-top: 10px;
-  padding: 10px 12px;
-  background: #fff5e6;
-  border: 1px solid rgba(255,165,0,0.2);
-  color: #4a2a00;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-.no-matches-banner .show-larger-btn {
-  background: #001b89;
-  color: #fff;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-.no-matches-banner .show-larger-btn:hover { transform: translateY(-1px); }
-
-/* Visually indicate exact vs larger matches in cards (optional) */
-.table-card.large-match {
-  border-style: dashed;
-  border-color: rgba(0,27,137,0.12);
-}
-
-/* Availability classes (from previous snippet) */
-.table-card.available {
-  box-shadow: 0 12px 30px rgba(0,178,86,0.08), 0 6px 18px rgba(0,0,0,0.06);
-  border-color: #00b256;
-}
-.table-card.unavailable {
-  opacity: 0.45;
-  transform: none !important;
-  filter: grayscale(0.12);
-}
-
 /* main container that holds the card area */
 .content-wrap {
   margin-left: 130px;
@@ -408,35 +359,6 @@ body {
   box-shadow: none;
 }
 
-.party-buckets { display:inline-flex; gap:8px; align-items:center; margin-left:8px; }
-.bucket-btn {
-  padding:6px 10px;
-  border-radius:8px;
-  border:1px solid rgba(0,0,0,0.08);
-  background:#fff;
-  cursor:pointer;
-  font-weight:700;
-  color:#222;
-}
-.bucket-btn.active {
-  background:#001B89;
-  color:#fff;
-  border-color:#001B89;
-  box-shadow:0 6px 18px rgba(0,0,0,0.08);
-}
-.bucket-btn:focus { outline:3px solid rgba(43,140,255,0.18); }
-
-/* allow-larger toggle */
-.allow-larger {
-  margin-left:12px;
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  font-size:13px;
-  color:#222;
-}
-.allow-larger input { transform:scale(1.02); margin-right:6px; }
-
 /* layout for date/time left calendar + right content */
 .date-layout {
   display: flex;
@@ -549,23 +471,6 @@ body {
   }
   .calendar { flex: none; }
   .calendar-box { width: 100%; max-width: 380px; }
-}
-
-/* Constrain flatpickr inline calendar to the calendar-box and avoid floating */
-.calendar-box .flatpickr-calendar {
-  position: static !important;
-  transform: none !important;
-  left: auto !important;
-  top: auto !important;
-  margin: 0 !important;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-  z-index: 2; /* keep it above the calendar box but below sidebar */
-}
-
-/* If flatpickr renders a popup for the input, ensure it won't overflow the main card */
-.flatpickr-calendar {
-  max-width: 100%;
-  box-sizing: border-box;
 }
 
 /* make sure main headings etc align */

@@ -1,89 +1,73 @@
-// file: ../js/table.js
-// Updated to bind "Create Reservation" modal to api/create_reservation.php.
-// - Adds openReservationModal() and wires global New/FAB buttons to it.
-// - On successful reservation creation, reloads tables and availability.
+// ../js/table.js
+// Render table cards and switch between All / Party / Date / Time views.
+// Now wired to a simple API: loads tables from API_GET and updates via API_UPDATE.
+// If no API is available yet, it will still work with the local data after the first load fails.
 
 document.addEventListener('DOMContentLoaded', () => {
-  /* --------------------------
-     CONFIG
-     -------------------------- */
+  // API endpoints (adjust paths if your api folder is in a different place)
   const API_GET = '../api/get_tables.php';
   const API_UPDATE = '../api/update_table.php';
-  const API_AVAILABILITY = '../api/get_availability.php';
-  const API_CREATE_RESERVATION = '../api/create_reservation.php'; // new endpoint
-  const CARDS_GRID_ID = 'cardsGrid';
-  const LOCALSTORAGE_ALLOW_LARGER = 'tables_allow_larger';
 
-  /* --------------------------
-     STATE
-     -------------------------- */
-  const state = {
-    tables: [],
-    filter: 'all',
-    search: '',
-    partySeats: 'any',
-    allowLarger: false,
-    date: '',
-    time: '',
-    duration: 90,
-    availableIds: null,
-    selectedId: null
-  };
+  // tablesData will be populated by loadTables()
+  let tablesData = [];
 
-  /* --------------------------
-     DOM REFS
-     -------------------------- */
-  const refs = {
-    viewHeader: document.getElementById('viewHeader'),
-    viewContent: document.getElementById('viewContent'),
-    searchInput: document.getElementById('searchInput'),
-    searchClear: document.getElementById('searchClear'),
-    filterButtons: Array.from(document.querySelectorAll('.filter-btn')),
-    partyControl: document.getElementById('partyControl'),
-    partySelect: document.getElementById('partySelect'),
-    allowLargerCheckbox: document.getElementById('allowLarger'),
-    partyBuckets: Array.from(document.querySelectorAll('.bucket-btn')),
-    dateInput: document.getElementById('filterDateInput'),
-    timeInput: document.getElementById('filterTimeInput'),
-    btnAddReservation: document.getElementById('btnAddReservation'),
-    fabNew: document.getElementById('fabNew')
-  };
+  // DOM refs
+  const viewHeader = document.getElementById('viewHeader');
+  const viewContent = document.getElementById('viewContent');
+  let cardsGrid = document.getElementById('cardsGrid'); // may be re-created per view
+  const searchInput = document.getElementById('searchInput');
+  const searchClear = document.getElementById('searchClear');
+  const filterButtons = document.querySelectorAll('.filter-btn');
+  const partyControl = document.getElementById('partyControl');
+  const partySelect = document.getElementById('partySelect');
+  const dateControl = document.getElementById('dateControl');
+  const dateInput = document.getElementById('filterDateInput');
+  const timeControl = document.getElementById('timeControl');
+  const timeInput = document.getElementById('filterTimeInput');
 
-  if (!refs.viewHeader || !refs.viewContent) {
-    console.error('UI containers missing (#viewHeader or #viewContent)');
+  if (!viewHeader || !viewContent) {
+    console.error('Missing view containers (#viewHeader or #viewContent)');
     return;
   }
 
-  /* --------------------------
-     UTILITIES
-     -------------------------- */
-  const escapeHtml = (text = '') => String(text).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
-  const capitalize = (s = '') => (s ? s[0].toUpperCase() + s.slice(1) : '');
-  const createElementFromHTML = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
-  const getCardsGrid = () => document.getElementById(CARDS_GRID_ID);
-  const showToast = (msg, t = 2200) => {
-    const id = 'simple-toast'; let el = document.getElementById(id);
-    if (!el) { el = document.createElement('div'); el.id = id; el.style.position = 'fixed'; el.style.right = '18px'; el.style.bottom = '18px'; el.style.zIndex = '99999'; document.body.appendChild(el); }
-    const it = document.createElement('div'); it.textContent = msg; it.style.background = '#111'; it.style.color = '#fff'; it.style.padding = '8px 12px'; it.style.marginTop = '8px'; it.style.borderRadius = '8px'; it.style.boxShadow = '0 6px 18px rgba(0,0,0,0.18)'; el.appendChild(it); setTimeout(() => it.remove(), t);
+  // state
+  const state = {
+    filter: 'all',
+    search: '',
+    partySeats: 'any',
+    date: '',
+    time: '',
+    selectedId: null
   };
 
-  /* --------------------------
-     API HELPERS
-     -------------------------- */
-  async function fetchJson(url, options = {}) {
-    const res = await fetch(url, options);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
+  // helpers
+  function capitalize(s){ return s && s.length ? s[0].toUpperCase()+s.slice(1) : ''; }
+  function escapeHtml(text=''){ return String(text).replace(/[&<>"']/g, (m)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]); }
+  function statusDotHtml(status) {
+    const dotColor = status === 'available' ? '#00b256' : status === 'reserved' ? '#ffd400' : '#d20000';
+    return `<span class="status-dot" style="background:${dotColor}"></span><span class="status-label">${capitalize(status)}</span>`;
   }
 
+  // Fetch tables from server and fallback to sample data if request fails
   async function loadTables() {
     try {
-      const json = await fetchJson(API_GET, { cache: 'no-store' });
-      if (!json.success) throw new Error(json.error || 'Invalid response');
-      state.tables = (json.data || []).map(t => ({ id: Number(t.id), name: t.name, status: t.status, seats: Number(t.seats), guest: t.guest || '' }));
+      const res = await fetch(API_GET, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Network response was not ok: ' + res.status);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || 'Failed to load');
+      // Expect json.data to be an array of table objects
+      tablesData = json.data.map(t => ({
+        id: Number(t.id),
+        name: t.name,
+        status: t.status,
+        seats: Number(t.seats),
+        guest: t.guest || ''
+      }));
+      renderView();
     } catch (err) {
-      console.warn('loadTables fallback:', err);
-      state.tables = [
+      // If API unavailable, fall back to a small local dataset so UI still works for testing.
+      console.warn('loadTables(): API failed, falling back to local sample data. Error:', err);
+      tablesData = [
         { id: 1, name: 'Table 1', status: 'occupied', seats: 6, guest: '' },
         { id: 2, name: 'Table 2', status: 'available', seats: 4, guest: '' },
         { id: 3, name: 'Table 3', status: 'reserved', seats: 2, guest: '' },
@@ -94,340 +78,428 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 8, name: 'Table 8', status: 'reserved', seats: 4, guest: '' },
         { id: 9, name: 'Table 9', status: 'occupied', seats: 6, guest: '' }
       ];
-      const grid = getCardsGrid(); if (grid) grid.innerHTML = `<div style="padding:18px;color:#900">Using local fallback data (API load failed).</div>`;
+      // show a quick error message in the grid if present
+      const grid = document.getElementById('cardsGrid');
+      if (grid) grid.innerHTML = `<div style="padding:18px;color:#900">Using local fallback data (API load failed).</div>`;
+      renderView();
     }
-    // restore allow-larger preference
-    state.allowLarger = localStorage.getItem(LOCALSTORAGE_ALLOW_LARGER) === '1';
-    if (refs.allowLargerCheckbox) refs.allowLargerCheckbox.checked = state.allowLarger;
-    renderView();
-    updateAvailabilityIfNeeded();
   }
 
-  async function sendUpdate(payload) {
-    const res = await fetchJson(API_UPDATE, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+  // Update local data helper (and optionally return boolean success)
+  function updateTableData(id, updates) {
+    const idx = tablesData.findIndex(t => t.id === Number(id));
+    if (idx === -1) return false;
+    tablesData[idx] = Object.assign({}, tablesData[idx], updates);
+    return true;
+  }
+
+  // Render cards into a container element (adds per-card action buttons)
+  function renderCardsInto(container, data, opts = {}) {
+    container.innerHTML = '';
+    if (!data.length) {
+      container.innerHTML = '<div style="padding:18px; font-weight:700">No tables found</div>';
+      return;
+    }
+    data.forEach(tbl => {
+      const card = document.createElement('div');
+      card.className = 'table-card' + (opts.light ? ' light' : '');
+      card.setAttribute('role','button');
+      card.setAttribute('tabindex','0');
+      card.dataset.id = tbl.id;
+
+      if (state.selectedId === tbl.id) card.classList.add('active');
+
+      const statusDotColor = tbl.status === 'available' ? '#00b256' : tbl.status === 'reserved' ? '#ffd400' : '#d20000';
+
+      card.innerHTML = `
+        <div class="title">${escapeHtml(tbl.name)}</div>
+        <div class="status-row">
+          <span class="status-dot" style="background:${statusDotColor}"></span>
+          <span class="status-label">${escapeHtml(capitalize(tbl.status))}</span>
+        </div>
+        <div class="seats-row"><span style="font-size:18px">👥</span><div>${escapeHtml(String(tbl.seats))} Seats</div></div>
+        ${tbl.guest ? `<div class="guest">${escapeHtml(tbl.guest)}</div>` : ''}
+        <div class="card-actions" aria-hidden="false">
+          <button class="icon-btn edit-btn" aria-label="Edit table" title="Edit">✎</button>
+          <button class="icon-btn toggle-btn" aria-label="Toggle status" title="Toggle">⟳</button>
+          <button class="icon-btn clear-btn" aria-label="Clear table" title="Clear">🗑</button>
+        </div>
+      `;
+
+      // card selection (click the card body)
+      card.addEventListener('click', ()=> setSelected(tbl.id));
+      card.addEventListener('keydown', (ev)=> {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setSelected(tbl.id); }
+      });
+
+      // attach per-card action handlers (stopPropagation so card click doesn't also run)
+      const editBtn = card.querySelector('.edit-btn');
+      const toggleBtn = card.querySelector('.toggle-btn');
+      const clearBtn = card.querySelector('.clear-btn');
+
+      if (editBtn) {
+        editBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openEditModal(tbl);
+        });
+      }
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          quickToggleStatus(tbl);
+        });
+      }
+      if (clearBtn) {
+        clearBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          confirmClear(tbl);
+        });
+      }
+
+      container.appendChild(card);
     });
-    return res;
   }
 
-  /* --------------------------
-     AVAILABILITY helpers
-     -------------------------- */
-  async function fetchAvailability({ seats = 1, date = '', time = '', duration = 90 } = {}) {
-    const params = new URLSearchParams(); params.set('seats', String(seats));
-    if (date) params.set('date', date); if (time) params.set('time', time); if (duration) params.set('duration', String(duration));
-    try {
-      const json = await fetchJson(`../api/get_availability.php?${params.toString()}`, { cache: 'no-store' });
-      if (!json.success) throw new Error(json.error || 'Availability API error');
-      return (json.data || []).map(r => Number(r.id));
-    } catch (err) {
-      console.warn('fetchAvailability failed', err);
-      return null;
-    }
+  function setSelected(id){
+    state.selectedId = id;
+    document.querySelectorAll('.table-card').forEach(c => {
+      c.classList.toggle('active', c.dataset.id == id);
+    });
+    const selected = tablesData.find(t => t.id === Number(id));
+    if(selected) console.info('Selected table:', selected.name);
   }
 
-  async function updateAvailabilityIfNeeded() {
-    const seats = state.partySeats === 'any' ? 1 : Number(state.partySeats);
-    if (state.filter === 'party' || (state.date && state.time)) {
-      const ids = await fetchAvailability({ seats, date: state.date, time: state.time, duration: state.duration });
-      state.availableIds = Array.isArray(ids) ? ids : null;
-    } else {
-      state.availableIds = null;
-    }
-    applyAvailabilityHighlights();
+  // Filtering helpers used by views
+  function filterBySearchAndParty(data) {
+    const s = state.search.trim().toLowerCase();
+    const seatsFilter = state.partySeats;
+    return data.filter(t => {
+      if (s) {
+        const hay = (t.name + ' ' + (t.guest||'')).toLowerCase();
+        if (!hay.includes(s)) return false;
+      }
+      if (state.filter === 'party' && seatsFilter !== 'any') {
+        const v = Number(seatsFilter);
+        const [min,max] = v === 2 ? [1,2] : v === 4 ? [3,4] : v === 6 ? [5,6] : [7,8];
+        if (t.seats < min || t.seats > max) return false;
+      }
+      return true;
+    });
   }
 
-  function applyAvailabilityHighlights() {
-    const cards = document.querySelectorAll('.table-card');
-    if (!state.availableIds) { cards.forEach(c => { c.classList.remove('available','unavailable'); }); return; }
-    const set = new Set(state.availableIds.map(id => Number(id)));
-    cards.forEach(c => { const id = Number(c.dataset.id); if (set.has(id)) { c.classList.add('available'); c.classList.remove('unavailable'); } else { c.classList.add('unavailable'); c.classList.remove('available'); } });
-  }
-
-  /* --------------------------
-     PARTY helpers (bucket mapping, compute matches)
-     -------------------------- */
-  function bucketRange(bucketVal) {
-    if (bucketVal === 2) return [1,2];
-    if (bucketVal === 4) return [3,4];
-    if (bucketVal === 6) return [5,6];
-    return [7, 999];
-  }
-
-  function computePartyMatches(tables, bucket) {
-    if (!bucket || bucket === 'any') return { exact: tables.slice(), larger: [] };
-    const v = Number(bucket); const [min,max] = bucketRange(v);
-    const exact = [], larger = [];
-    tables.forEach(t => { if (t.seats >= min && t.seats <= max) exact.push(t); else if (t.seats > max) larger.push(t); });
-    exact.sort((a,b) => a.seats-b.seats || a.id-b.id); larger.sort((a,b) => a.seats-b.seats || a.id-b.id);
-    return { exact, larger };
-  }
-
-  function filterBySearchAndParty(tables = []) {
-    const q = (state.search || '').trim().toLowerCase(); let out = tables.slice();
-    if (q) out = out.filter(t => (t.name + ' ' + (t.guest || '')).toLowerCase().includes(q));
-    if (state.filter === 'party' && state.partySeats !== 'any') {
-      const { exact, larger } = computePartyMatches(out, state.partySeats);
-      return state.allowLarger ? exact.concat(larger) : exact;
-    }
-    return out;
-  }
-
-  /* --------------------------
-     RENDER: cards and views
-     -------------------------- */
-  function renderCard(table, opts = {}) {
-    const statusColor = table.status === 'available' ? '#00b256' : table.status === 'reserved' ? '#ffd400' : '#d20000';
-    const card = document.createElement('div'); card.className = 'table-card' + (opts.light ? ' light' : ''); card.tabIndex = 0; card.dataset.id = table.id;
-    if (state.selectedId && Number(state.selectedId) === Number(table.id)) card.classList.add('active');
-    card.innerHTML = `
-      <div class="title">${escapeHtml(table.name)}</div>
-      <div class="status-row"><span class="status-dot" style="background:${statusColor}"></span><span class="status-label">${escapeHtml(capitalize(table.status))}</span></div>
-      <div class="seats-row"><span style="font-size:18px">👥</span><div>${escapeHtml(String(table.seats))} Seats</div></div>
-      ${table.guest ? `<div class="guest">${escapeHtml(table.guest)}</div>` : ''}
-      <div class="card-actions" aria-hidden="false">
-        <button class="icon-btn edit-btn" aria-label="Edit table" title="Edit">✎</button>
-        <button class="icon-btn toggle-btn" aria-label="Toggle status" title="Toggle">⟳</button>
-        <button class="icon-btn clear-btn" aria-label="Clear table" title="Clear">🗑</button>
-      </div>
-    `;
-    card.addEventListener('click', () => setSelected(table.id));
-    card.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setSelected(table.id); }});
-    card.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(table); });
-    card.querySelector('.toggle-btn')?.addEventListener('click', (e) => { e.stopPropagation(); quickToggleStatus(table); });
-    card.querySelector('.clear-btn')?.addEventListener('click', (e) => { e.stopPropagation(); confirmClear(table); });
-    return card;
-  }
-
-  function renderCardsInto(container, data = [], opts = {}) {
-    container.innerHTML = ''; if (!data || data.length === 0) { container.innerHTML = '<div style="padding:18px; font-weight:700">No tables found</div>'; return; }
-    const frag = document.createDocumentFragment(); data.forEach(t => frag.appendChild(renderCard(t, opts))); container.appendChild(frag); applyAvailabilityHighlights();
-  }
-
+  // Renderers for each view
   function renderAllView() {
-    refs.viewHeader.innerHTML = '<h1>All Tables</h1>'; refs.viewContent.innerHTML = `<div class="cards-grid" id="${CARDS_GRID_ID}" role="list"></div>`; refs.partyControl?.setAttribute('aria-hidden','true'); refs.dateInput?.setAttribute('aria-hidden','true'); refs.timeInput?.setAttribute('aria-hidden','true');
-    renderCardsInto(getCardsGrid(), filterBySearchAndParty(state.tables), { light: false });
+    viewHeader.innerHTML = '<h1>All Tables</h1>';
+    viewContent.innerHTML = `<div class="cards-grid" id="cardsGrid" role="list"></div>`;
+    cardsGrid = document.getElementById('cardsGrid');
+    state.filter = 'all';
+    partyControl && partyControl.setAttribute('aria-hidden','true');
+    dateControl && dateControl.setAttribute('aria-hidden','true');
+    timeControl && timeControl.setAttribute('aria-hidden','true');
+    const data = filterBySearchAndParty(tablesData);
+    renderCardsInto(cardsGrid, data, { light: false });
   }
 
   function renderPartyView() {
-    const bucketText = refs.partySelect && refs.partySelect.value !== 'any' ? refs.partySelect.options[refs.partySelect.selectedIndex].text + ' Persons' : 'Any'; const allowText = state.allowLarger ? ' (allowing larger tables)' : '';
-    refs.viewHeader.innerHTML = `<h1>Party Size</h1><div class="view-subtitle">Party Size: <strong>${escapeHtml(bucketText)}</strong>${allowText}</div>`;
-    refs.viewContent.innerHTML = `<div class="cards-grid" id="${CARDS_GRID_ID}" role="list"></div>`; refs.partyControl?.setAttribute('aria-hidden','false'); refs.dateInput?.setAttribute('aria-hidden','true'); refs.timeInput?.setAttribute('aria-hidden','true');
-    const { exact, larger } = computePartyMatches(state.tables, state.partySeats);
-    refs.viewHeader.innerHTML += `<div class="party-counts"><span class="exact-count">Exact: <strong>${exact.length}</strong></span> <span class="larger-count">Larger: <strong>${larger.length}</strong></span></div>`;
-    // banner when no exact but larger exist and allowLarger not enabled
-    if ((!exact || exact.length === 0) && larger.length > 0 && !state.allowLarger && state.partySeats !== 'any') {
-      const banner = createElementFromHTML(`<div class="no-matches-banner" role="status" aria-live="polite">No exact matches. <button class="show-larger-btn">Show larger tables</button></div>`);
-      refs.viewHeader.appendChild(banner);
-      banner.querySelector('.show-larger-btn')?.addEventListener('click', () => { setAllowLarger(true); renderView(); showToast('Showing larger tables'); });
-    }
-    const toRender = state.partySeats === 'any' ? state.tables.slice() : (state.allowLarger ? exact.concat(larger) : exact);
-    renderCardsInto(getCardsGrid(), toRender, { light: true });
+    viewHeader.innerHTML = '<h1>Party Size</h1>';
+    const bucketText = partySelect && partySelect.value !== 'any' ? partySelect.options[partySelect.selectedIndex].text + ' Persons' : 'Any';
+    viewHeader.innerHTML += `<div class="view-subtitle">Party Size: <strong>${bucketText}</strong></div>`;
+    viewContent.innerHTML = `<div class="cards-grid" id="cardsGrid" role="list"></div>`;
+    cardsGrid = document.getElementById('cardsGrid');
+    partyControl && partyControl.setAttribute('aria-hidden','false');
+    dateControl && dateControl.setAttribute('aria-hidden','true');
+    timeControl && timeControl.setAttribute('aria-hidden','true');
+    const data = filterBySearchAndParty(tablesData);
+    renderCardsInto(cardsGrid, data, { light: true });
   }
 
   function renderDateView() {
-    refs.viewHeader.innerHTML = '<h1>Date</h1>'; refs.viewContent.innerHTML = `<div class="date-layout"><div class="calendar" aria-hidden="true"><div class="calendar-box">Calendar<br><small>(placeholder)</small></div></div><div class="side-cards" id="sideCards"></div></div>`;
-    refs.partyControl?.setAttribute('aria-hidden','true'); refs.dateInput?.setAttribute('aria-hidden','false'); refs.timeInput?.setAttribute('aria-hidden','true');
-    const reservations = state.tables.filter(t => t.status !== 'available').slice(0,3); renderCardsInto(document.getElementById('sideCards'), reservations, { light: false });
+    viewHeader.innerHTML = '<h1>Date</h1>';
+    viewContent.innerHTML = `
+      <div class="date-layout">
+        <div class="calendar" aria-hidden="true">
+          <div class="calendar-box">Calendar<br><small>(placeholder)</small></div>
+        </div>
+        <div class="side-cards" id="sideCards"></div>
+      </div>
+    `;
+    partyControl && partyControl.setAttribute('aria-hidden','true');
+    dateControl && dateControl.setAttribute('aria-hidden','false');
+    timeControl && timeControl.setAttribute('aria-hidden','true');
+    const sideCards = document.getElementById('sideCards');
+    const reservations = tablesData.filter(t => t.status !== 'available').slice(0,3);
+    renderCardsInto(sideCards, reservations, { light: false });
   }
 
   function renderTimeView() {
-    refs.viewHeader.innerHTML = '<h1>Time</h1>'; refs.viewContent.innerHTML = `<div class="date-layout"><div class="calendar" aria-hidden="true"><div class="calendar-box">Calendar<br><small>(placeholder)</small></div></div><div class="time-container"><div class="time-grid" id="timeGrid"></div></div></div>`;
-    refs.partyControl?.setAttribute('aria-hidden','true'); refs.dateInput?.setAttribute('aria-hidden','true'); refs.timeInput?.setAttribute('aria-hidden','false');
-    const times = ['4:00 PM','6:00 PM','7:00 PM','9:00 PM','12:00 PM','1:00 PM']; const timeGrid = document.getElementById('timeGrid'); timeGrid.innerHTML = '';
-    times.forEach(t => { const btn = document.createElement('button'); btn.className = 'time-slot'; btn.textContent = t; btn.addEventListener('click', () => { document.querySelectorAll('.time-slot').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }); timeGrid.appendChild(btn); });
+    viewHeader.innerHTML = '<h1>Time</h1>';
+    viewContent.innerHTML = `
+      <div class="date-layout">
+        <div class="calendar" aria-hidden="true">
+          <div class="calendar-box">Calendar<br><small>(placeholder)</small></div>
+        </div>
+        <div class="time-container">
+          <div class="time-grid" id="timeGrid"></div>
+        </div>
+      </div>
+    `;
+    partyControl && partyControl.setAttribute('aria-hidden','true');
+    dateControl && dateControl.setAttribute('aria-hidden','true');
+    timeControl && timeControl.setAttribute('aria-hidden','false');
+    const timeGrid = document.getElementById('timeGrid');
+    const times = ['4:00 PM','6:00 PM','7:00 PM','9:00 PM','12:00 PM','1:00 PM'];
+    timeGrid.innerHTML = '';
+    times.forEach(t => {
+      const btn = document.createElement('button');
+      btn.className = 'time-slot';
+      btn.textContent = t;
+      btn.addEventListener('click', ()=> {
+        document.querySelectorAll('.time-slot').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+      timeGrid.appendChild(btn);
+    });
   }
 
-  function renderView() { switch (state.filter) { case 'party': renderPartyView(); break; case 'date': renderDateView(); break; case 'time': renderTimeView(); break; default: renderAllView(); } updateAvailabilityIfNeeded(); }
+  // Central view router
+  function renderView() {
+    switch(state.filter) {
+      case 'party': renderPartyView(); break;
+      case 'date': renderDateView(); break;
+      case 'time': renderTimeView(); break;
+      default: renderAllView();
+    }
+  }
 
-  /* --------------------------
-     Reservation modal + create flow
-     -------------------------- */
-  // Open a reservation creation modal (used by "New" buttons)
-  // Modal allows: party size, date, time, duration, guest, optional choose table (auto-assigned if none)
-  async function openReservationModal() {
-    // Build modal HTML
-    const overlay = createElementFromHTML('<div class="modal-overlay"></div>');
-    const modalHtml = `
-      <div class="modal" role="dialog" aria-modal="true" aria-label="Create Reservation">
-        <h3>Create Reservation</h3>
-        <div class="form-row"><label for="resParty">Party Size</label><input id="resParty" type="number" min="1" value="${state.partySeats === 'any' ? 2 : state.partySeats}"></div>
-        <div class="form-row"><label for="resDate">Date</label><input id="resDate" type="date" value="${state.date || ''}"></div>
-        <div class="form-row"><label for="resTime">Time</label><input id="resTime" type="time" value="${state.time || ''}"></div>
-        <div class="form-row"><label for="resDuration">Duration (minutes)</label><input id="resDuration" type="number" min="15" step="15" value="${state.duration}"></div>
-        <div class="form-row"><label for="resGuest">Guest Name</label><input id="resGuest" type="text" placeholder="Guest name"></div>
-        <div class="form-row"><label for="resTable">Prefer table (optional)</label>
-          <select id="resTable"><option value="">Auto assign best fit</option></select>
+  // Modal: edit/create table (sends updates to API_UPDATE if available)
+  function openEditModal(table) {
+    // table may be an existing object or a template {id:0,name:'New',...}
+    const isNew = !table || !table.id;
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true" aria-label="${isNew ? 'Create Table' : 'Edit ' + escapeHtml(table.name)}">
+        <h3>${isNew ? 'New Reservation / Table' : 'Edit ' + escapeHtml(table.name)}</h3>
+        <div class="form-row">
+          <label for="modalName">Table Name</label>
+          <input id="modalName" type="text" />
         </div>
-        <div class="modal-actions"><button id="resCancel" class="btn">Cancel</button><button id="resSave" class="btn primary">Create Reservation</button></div>
-      </div>`;
-    const modal = createElementFromHTML(modalHtml);
-    overlay.appendChild(modal);
+        <div class="form-row">
+          <label for="modalStatus">Status</label>
+          <select id="modalStatus">
+            <option value="available">Available</option>
+            <option value="occupied">Occupied</option>
+            <option value="reserved">Reserved</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="modalSeats">Seats</label>
+          <input id="modalSeats" type="number" min="1" max="50" />
+        </div>
+        <div class="form-row">
+          <label for="modalGuest">Guest (leave blank to clear)</label>
+          <input id="modalGuest" type="text" />
+        </div>
+        <div class="modal-actions">
+          <button id="modalCancel" class="btn">Cancel</button>
+          <button id="modalSave" class="btn primary">${isNew ? 'Create' : 'Save'}</button>
+        </div>
+      </div>
+    `;
     document.body.appendChild(overlay);
 
-    // Prefill available tables for the selected party/date/time (best-effort)
-    const resTable = modal.querySelector('#resTable');
-    const resParty = modal.querySelector('#resParty');
-    const resDate = modal.querySelector('#resDate');
-    const resTime = modal.querySelector('#resTime');
-    const resDuration = modal.querySelector('#resDuration');
-    const resGuest = modal.querySelector('#resGuest');
+    const modalName = overlay.querySelector('#modalName');
+    const modalStatus = overlay.querySelector('#modalStatus');
+    const modalSeats = overlay.querySelector('#modalSeats');
+    const modalGuest = overlay.querySelector('#modalGuest');
 
-    // Populate table dropdown using current state.tables filtered by seats >= party
-    function populateTableOptions(partySize) {
-      // clear options
-      resTable.innerHTML = '<option value="">Auto assign best fit</option>';
-      const candidates = state.tables.filter(t => t.seats >= partySize).sort((a,b) => a.seats - b.seats);
-      candidates.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.id;
-        opt.textContent = `${c.name} — ${c.seats} seats (${c.status})`;
-        resTable.appendChild(opt);
-      });
-    }
-    populateTableOptions(Number(resParty.value || 2));
+    modalName.value = table && table.name ? table.name : (table && table.id ? 'Table ' + table.id : 'New Table');
+    modalStatus.value = table && table.status ? table.status : 'reserved';
+    modalSeats.value = table && table.seats ? table.seats : 2;
+    modalGuest.value = table && table.guest ? table.guest : '';
 
-    // If user changes party size update the dropdown
-    resParty.addEventListener('input', () => populateTableOptions(Number(resParty.value || 1)));
+    overlay.querySelector('#modalCancel').addEventListener('click', ()=> overlay.remove());
+    overlay.querySelector('#modalSave').addEventListener('click', async ()=> {
+      const name = modalName.value.trim() || (table && table.name) || 'Table';
+      const status = modalStatus.value;
+      const seats = parseInt(modalSeats.value, 10) || 2;
+      const guest = modalGuest.value.trim();
 
-    // Attempt to show only available tables if date/time provided (call availability)
-    async function refreshAvailableOptions() {
-      const party = Number(resParty.value || 1);
-      const date = resDate.value;
-      const time = resTime.value;
-      const duration = Number(resDuration.value || state.duration);
-      if (date && time) {
-        const availIds = await fetchAvailability({ seats: party, date, time, duration });
-        if (Array.isArray(availIds)) {
-          // mark options not available
-          Array.from(resTable.options).forEach(opt => {
-            if (!opt.value) return;
-            opt.disabled = !availIds.includes(Number(opt.value));
-            opt.style.opacity = opt.disabled ? '0.5' : '';
-          });
-        }
-      }
-    }
-
-    // wire refresh when date/time/party/duration change
-    [resParty, resDate, resTime, resDuration].forEach(el => el.addEventListener('change', refreshAvailableOptions));
-
-    // Cancel
-    modal.querySelector('#resCancel').addEventListener('click', () => overlay.remove());
-
-    // Save: call create_reservation.php
-    modal.querySelector('#resSave').addEventListener('click', async () => {
-      const party = Number(resParty.value || 1);
-      const date = resDate.value;
-      const time = resTime.value;
-      const duration = Number(resDuration.value || state.duration);
-      const guest = resGuest.value.trim();
-      const tableId = resTable.value ? Number(resTable.value) : null;
-
-      if (!date || !time) {
-        alert('Please select date and time for the reservation.');
+      if (isNew) {
+        // create new id locally
+        const newId = (tablesData.reduce((m,t)=> Math.max(m,t.id), 0) || 0) + 1;
+        tablesData.push({ id: newId, name, status, seats, guest });
+        renderView();
+        overlay.remove();
         return;
       }
 
-      const start = `${date} ${time}:00`;
-      const payload = {
-        table_id: tableId,
-        start,
-        duration,
-        party_size: party,
-        guest
-      };
-
-      try {
-        // Call create endpoint
-        const resp = await fetchJson(API_CREATE_RESERVATION, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!resp.success) throw new Error(resp.error || 'Create failed');
-        // Success: reload data and availability
-        await loadTables();
-        await updateAvailabilityIfNeeded();
+      // update via API if available, otherwise update local data
+      if (typeof API_UPDATE !== 'undefined') {
+        try {
+          const payload = { id: table.id, status, seats, guest, name };
+          const res = await fetch(API_UPDATE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const j = await res.json();
+          if (!j.success) throw new Error(j.error || 'Update failed');
+          // reload from API to keep data authoritative
+          await loadTables();
+          overlay.remove();
+        } catch (err) {
+          alert('Failed to update table: ' + err.message);
+          console.error(err);
+        }
+      } else {
+        updateTableData(table.id, { name, status, seats, guest });
+        renderView();
         overlay.remove();
-        showToast(`Reservation created (table ${resp.table_id || 'auto'})`);
-      } catch (err) {
-        alert('Failed to create reservation: ' + (err.message || err));
-        console.error(err);
       }
     });
 
+    // close on overlay click
     overlay.addEventListener('click', (ev) => { if (ev.target === overlay) overlay.remove(); });
 
-    // Focus first field
-    setTimeout(() => resParty.focus(), 50);
-
-    // initial availability marking of options
-    refreshAvailableOptions();
+    // focus first field
+    setTimeout(()=> modalName.focus(), 50);
   }
 
-  /* --------------------------
-     OTHER ACTIONS (quick toggle/clear/create table)
-     -------------------------- */
-  function setSelected(id) { state.selectedId = id; document.querySelectorAll('.table-card').forEach(c => c.classList.toggle('active', c.dataset.id == id)); }
-  function updateLocalTable(id, updates) { const idx = state.tables.findIndex(t => Number(t.id) === Number(id)); if (idx === -1) return false; state.tables[idx] = { ...state.tables[idx], ...updates }; return true; }
-  async function quickToggleStatus(table) { const next = table.status === 'available' ? 'reserved' : table.status === 'reserved' ? 'occupied' : 'available'; const prev = { ...table }; updateLocalTable(table.id, { status: next }); renderView(); try { if (API_UPDATE) { await sendUpdate({ id: table.id, status: next }); await loadTables(); } showToast('Status updated'); } catch (err) { updateLocalTable(table.id, prev); renderView(); showToast('Failed to update status'); console.warn(err); } }
-  async function confirmClear(table) { if (!confirm(`Clear ${table.name}?`)) return; const prev = { ...table }; updateLocalTable(table.id, { status: 'available', guest: '' }); renderView(); try { if (API_UPDATE) { await sendUpdate({ id: table.id, status: 'available', guest: '' }); await loadTables(); } showToast('Table cleared'); } catch (err) { updateLocalTable(table.id, prev); renderView(); showToast('Failed to clear table'); console.warn(err); } }
+  // Quick toggle status cycles available -> reserved -> occupied -> available
+  async function quickToggleStatus(table) {
+    const next = table.status === 'available' ? 'reserved' : table.status === 'reserved' ? 'occupied' : 'available';
 
-  /* --------------------------
-     RENDER & MISC (re-using prior code)
-     -------------------------- */
-  function renderCard(table, opts = {}) {
-    const statusColor = table.status === 'available' ? '#00b256' : table.status === 'reserved' ? '#ffd400' : '#d20000';
-    const card = document.createElement('div'); card.className = 'table-card' + (opts.light ? ' light' : ''); card.tabIndex = 0; card.dataset.id = table.id;
-    if (state.selectedId && Number(state.selectedId) === Number(table.id)) card.classList.add('active');
-    card.innerHTML = `<div class="title">${escapeHtml(table.name)}</div><div class="status-row"><span class="status-dot" style="background:${statusColor}"></span><span class="status-label">${escapeHtml(capitalize(table.status))}</span></div><div class="seats-row"><span style="font-size:18px">👥</span><div>${escapeHtml(String(table.seats))} Seats</div></div>${table.guest ? `<div class="guest">${escapeHtml(table.guest)}</div>` : ''}<div class="card-actions" aria-hidden="false"><button class="icon-btn edit-btn" aria-label="Edit table" title="Edit">✎</button><button class="icon-btn toggle-btn" aria-label="Toggle status" title="Toggle">⟳</button><button class="icon-btn clear-btn" aria-label="Clear table" title="Clear">🗑</button></div>`;
-    card.addEventListener('click', () => setSelected(table.id));
-    card.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setSelected(table.id); }});
-    card.querySelector('.edit-btn')?.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(table); });
-    card.querySelector('.toggle-btn')?.addEventListener('click', (e) => { e.stopPropagation(); quickToggleStatus(table); });
-    card.querySelector('.clear-btn')?.addEventListener('click', (e) => { e.stopPropagation(); confirmClear(table); });
-    return card;
+    // try API update if available
+    if (typeof API_UPDATE !== 'undefined') {
+      try {
+        const res = await fetch(API_UPDATE, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ id: table.id, status: next })
+        });
+        const j = await res.json();
+        if (!j.success) throw new Error(j.error || 'Update failed');
+        await loadTables();
+        return;
+      } catch (err) {
+        console.warn('API toggle failed, falling back to local update:', err);
+      }
+    }
+
+    // fallback local update
+    updateTableData(table.id, { status: next });
+    renderView();
   }
 
-  function renderCardsInto(container, data = [], opts = {}) {
-    container.innerHTML = ''; if (!data || data.length === 0) { container.innerHTML = '<div style="padding:18px; font-weight:700">No tables found</div>'; return; }
-    const frag = document.createDocumentFragment(); data.forEach(t => frag.appendChild(renderCard(t, opts))); container.appendChild(frag); applyAvailabilityHighlights();
+  // Confirm and clear (checkout)
+  async function confirmClear(table) {
+    if (!confirm(`Clear ${table.name}? This will set status to "available" and remove guest.`)) return;
+
+    if (typeof API_UPDATE !== 'undefined') {
+      try {
+        const res = await fetch(API_UPDATE, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ id: table.id, status: 'available', guest: '' })
+        });
+        const j = await res.json();
+        if (!j.success) throw new Error(j.error || 'Update failed');
+        await loadTables();
+        return;
+      } catch (err) {
+        console.warn('API clear failed, falling back to local update:', err);
+      }
+    }
+
+    updateTableData(table.id, { status: 'available', guest: '' });
+    renderView();
   }
 
-  function renderAllView() { refs.viewHeader.innerHTML = '<h1>All Tables</h1>'; refs.viewContent.innerHTML = `<div class="cards-grid" id="${CARDS_GRID_ID}" role="list"></div>`; refs.partyControl?.setAttribute('aria-hidden','true'); refs.dateInput?.setAttribute('aria-hidden','true'); refs.timeInput?.setAttribute('aria-hidden','true'); renderCardsInto(getCardsGrid(), filterBySearchAndParty(state.tables), { light: false }); }
-  function renderPartyView() { const bucketText = refs.partySelect && refs.partySelect.value !== 'any' ? refs.partySelect.options[refs.partySelect.selectedIndex].text + ' Persons' : 'Any'; const allowText = state.allowLarger ? ' (allowing larger tables)' : ''; refs.viewHeader.innerHTML = `<h1>Party Size</h1><div class="view-subtitle">Party Size: <strong>${escapeHtml(bucketText)}</strong>${allowText}</div>`; refs.viewContent.innerHTML = `<div class="cards-grid" id="${CARDS_GRID_ID}" role="list"></div>`; refs.partyControl?.setAttribute('aria-hidden','false'); refs.dateInput?.setAttribute('aria-hidden','true'); refs.timeInput?.setAttribute('aria-hidden','true'); const { exact, larger } = computePartyMatches(state.tables, state.partySeats); refs.viewHeader.innerHTML += `<div class="party-counts"><span class="exact-count">Exact: <strong>${exact.length}</strong></span> <span class="larger-count">Larger: <strong>${larger.length}</strong></span></div>`; if ((!exact || exact.length === 0) && larger.length > 0 && !state.allowLarger && state.partySeats !== 'any') { const banner = createElementFromHTML(`<div class="no-matches-banner" role="status" aria-live="polite">No exact matches. <button class="show-larger-btn">Show larger tables</button></div>`); refs.viewHeader.appendChild(banner); banner.querySelector('.show-larger-btn')?.addEventListener('click', () => { setAllowLarger(true); renderView(); showToast('Showing larger tables'); }); } const toRender = state.partySeats === 'any' ? state.tables.slice() : (state.allowLarger ? exact.concat(larger) : exact); renderCardsInto(getCardsGrid(), toRender, { light: true }); }
-  function renderDateView() { refs.viewHeader.innerHTML = '<h1>Date</h1>'; refs.viewContent.innerHTML = `<div class="date-layout"><div class="calendar" aria-hidden="true"><div class="calendar-box">Calendar<br><small>(placeholder)</small></div></div><div class="side-cards" id="sideCards"></div></div>`; refs.partyControl?.setAttribute('aria-hidden','true'); refs.dateInput?.setAttribute('aria-hidden','false'); refs.timeInput?.setAttribute('aria-hidden','true'); const reservations = state.tables.filter(t => t.status !== 'available').slice(0,3); renderCardsInto(document.getElementById('sideCards'), reservations, { light: false }); }
-  function renderTimeView() { refs.viewHeader.innerHTML = '<h1>Time</h1>'; refs.viewContent.innerHTML = `<div class="date-layout"><div class="calendar" aria-hidden="true"><div class="calendar-box">Calendar<br><small>(placeholder)</small></div></div><div class="time-container"><div class="time-grid" id="timeGrid"></div></div></div>`; refs.partyControl?.setAttribute('aria-hidden','true'); refs.dateInput?.setAttribute('aria-hidden','true'); refs.timeInput?.setAttribute('aria-hidden','false'); const times = ['4:00 PM','6:00 PM','7:00 PM','9:00 PM','12:00 PM','1:00 PM']; const timeGrid = document.getElementById('timeGrid'); timeGrid.innerHTML = ''; times.forEach(t => { const btn = document.createElement('button'); btn.className = 'time-slot'; btn.textContent = t; btn.addEventListener('click', () => { document.querySelectorAll('.time-slot').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }); timeGrid.appendChild(btn); }); }
-  function renderView() { switch (state.filter) { case 'party': renderPartyView(); break; case 'date': renderDateView(); break; case 'time': renderTimeView(); break; default: renderAllView(); } updateAvailabilityIfNeeded(); }
+  // New reservation / create table
+  function openNewReservationModal() {
+    openEditModal({}); // empty object indicates "new"
+  }
 
-  /* --------------------------
-     EVENT WIRING
-     -------------------------- */
-  refs.searchInput?.addEventListener('input', (e) => { state.search = e.target.value; renderView(); });
-  refs.searchClear?.addEventListener('click', () => { if (refs.searchInput) refs.searchInput.value = ''; state.search = ''; renderView(); });
+  // Events
+  if (searchInput) {
+    searchInput.addEventListener('input', (e)=> {
+      state.search = e.target.value;
+      renderView();
+    });
+  }
+  if (searchClear) {
+    searchClear.addEventListener('click', ()=> {
+      if (searchInput) searchInput.value = '';
+      state.search = '';
+      renderView();
+    });
+  }
 
-  refs.filterButtons.forEach(btn => { btn.addEventListener('click', () => { refs.filterButtons.forEach(b => b.classList.remove('active')); btn.classList.add('active'); state.filter = btn.dataset.filter || 'all'; refs.partyControl?.classList.toggle('visible', state.filter === 'party'); renderView(); }); });
+  if (filterButtons && filterButtons.length) {
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.filter = btn.dataset.filter;
+        partyControl && partyControl.classList.toggle('visible', state.filter === 'party');
+        renderView();
+      });
+    });
+  }
 
-  refs.partySelect?.addEventListener('change', (e) => { state.partySeats = e.target.value; renderView(); updateAvailabilityIfNeeded(); });
-  state.partySeats = refs.partySelect?.value || 'any';
-  refs.allowLargerCheckbox?.addEventListener('change', (e) => { state.allowLarger = e.target.checked; localStorage.setItem(LOCALSTORAGE_ALLOW_LARGER, state.allowLarger ? '1' : '0'); renderView(); });
+  if (partySelect) {
+    partySelect.addEventListener('change', (e) => {
+      state.partySeats = e.target.value;
+      renderView();
+    });
+    state.partySeats = partySelect.value || 'any';
+  }
+  if (dateInput) {
+    dateInput.addEventListener('change', (e)=> { state.date = e.target.value; renderView(); });
+  }
+  if (timeInput) {
+    timeInput.addEventListener('change', (e)=> { state.time = e.target.value; renderView(); });
+  }
 
-  refs.partyBuckets?.forEach(btn => { btn.addEventListener('click', () => { refs.partyBuckets.forEach(b => b.classList.remove('active')); btn.classList.add('active'); const seats = btn.dataset.seats || 'any'; if (refs.partySelect) refs.partySelect.value = seats; state.partySeats = seats; state.filter = 'party'; refs.filterButtons.forEach(b => b.classList.remove('active')); document.getElementById('filterParty')?.classList.add('active'); renderView(); updateAvailabilityIfNeeded(); }); });
+  // wire global Add and FAB buttons if present
+  document.getElementById('btnAddReservation')?.addEventListener('click', (e)=> {
+    e.preventDefault();
+    openNewReservationModal();
+  });
+  document.getElementById('fabNew')?.addEventListener('click', (e)=> {
+    e.preventDefault();
+    openNewReservationModal();
+  });
 
-  refs.dateInput?.addEventListener('change', (e) => { state.date = e.target.value; updateAvailabilityIfNeeded(); renderView(); });
-  refs.timeInput?.addEventListener('change', (e) => { state.time = e.target.value; updateAvailabilityIfNeeded(); renderView(); });
+  // inject minimal modal CSS if not already present (keeps modal usable even if table.css not updated)
+  (function injectModalCss(){
+    if (document.getElementById('modal-styles')) return;
+    const css = `
+      .modal-overlay {
+        position: fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.45);
+        display:flex; align-items:center; justify-content:center; z-index:9999;
+      }
+      .modal {
+        background: #fff; padding:18px; border-radius:10px; width:420px; max-width:95%; box-shadow:0 8px 28px rgba(0,0,0,0.4);
+      }
+      .modal h3 { margin:0 0 12px 0; font-size:18px; }
+      .form-row { margin-bottom:10px; display:flex; flex-direction:column; gap:6px; }
+      .form-row label { font-weight:700; font-size:13px; }
+      .form-row input, .form-row select { padding:8px 10px; font-size:14px; border-radius:6px; border:1px solid #ddd; }
+      .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
+      .btn { padding:8px 12px; border-radius:8px; border:1px solid #ccc; background:#f5f5f5; cursor:pointer; }
+      .btn.primary { background:#001b89; color:#fff; border-color:#001b89; }
+    `;
+    const s = document.createElement('style');
+    s.id = 'modal-styles';
+    s.textContent = css;
+    document.head.appendChild(s);
+  })();
 
-  refs.btnAddReservation?.addEventListener('click', (e) => { e.preventDefault(); openReservationModal(); });
-  refs.fabNew?.addEventListener('click', (e) => { e.preventDefault(); openReservationModal(); });
-
-  /* --------------------------
-     BOOT
-     -------------------------- */
+  // initial load: fetch from API (falls back to local sample data if API fails)
   loadTables();
 
-  /* expose for debugging */
-  window._tablesApp = { state, loadTables, renderView, openReservationModal };
+  // expose for debugging
+  window._tablesApp = { data: tablesData, state, renderView, renderCardsInto, openEditModal, quickToggleStatus, confirmClear, loadTables };
 });

@@ -1,24 +1,15 @@
 <?php
-// file: api/get_tables.php
-// Simple endpoint that returns all rows from `tables` as JSON.
-// Make sure api/db.php is configured correctly and the 'tables' table exists.
-
-/*
-  Expected response:
-  { "success": true, "data": [ { "id":1, "name":"Table 1", "status":"occupied", "seats":6, "guest":"" }, ... ] }
-*/
-
+// api/get_tables.php
 header('Content-Type: application/json; charset=utf-8');
 
-// DEV: show PHP errors in response to help debugging (disable in production)
+// DEV: show errors
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-// Load DB connection (adjust path if your structure differs)
+// require the DB helper - make sure this filename matches the file in your api/ folder
 require_once __DIR__ . '/db.php';
 
 try {
-    // Use a simple SELECT. In a real app, you might implement pagination and permissions.
     $stmt = $pdo->query("SELECT id, name, status, seats, IFNULL(guest,'') AS guest, updated_at FROM `tables` ORDER BY id ASC");
     $rows = $stmt->fetchAll();
     echo json_encode(['success' => true, 'data' => $rows]);
