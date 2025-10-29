@@ -24,7 +24,7 @@ body {
 /* ====== CENTER CONTAINER ====== */
 .login-content {
     position: absolute;
-    top: 40%;
+    top: 140%;
     right: 22%;
     transform: translateY(-50%);
     text-align: left;

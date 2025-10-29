@@ -1,8 +1,19 @@
 <?php
-// api/update_table.php
+// file: api/update_table.php
+// Update fields for a table row. Accepts JSON POST body with id and any of: status, seats, guest, name
+// Example request body: {"id":1, "status":"available", "guest":"", "seats":4}
+
+/*
+  Security / production notes:
+  - Add authentication (ensure only staff can call this).
+  - Sanitize and validate inputs server-side (basic checks are included below).
+  - Consider CSRF protection if used from a browser session.
+  - In production, disable display_errors and log errors instead of showing them to clients.
+*/
+
 header('Content-Type: application/json; charset=utf-8');
 
-// DEV: show errors
+// DEV: show PHP errors (disable in production)
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -33,10 +44,13 @@ if ($id <= 0) {
     exit;
 }
 
-$allowedStatuses = ['available','occupied','reserved'];
+// Allowed status values - change if you add more statuses
+$allowedStatuses = ['available', 'occupied', 'reserved'];
+
 $fields = [];
 $params = [':id' => $id];
 
+// Validate and collect update fields
 if ($status !== null) {
     if (!in_array($status, $allowedStatuses, true)) {
         http_response_code(400);
@@ -50,7 +64,7 @@ if ($status !== null) {
 if ($seats !== null) {
     if ($seats < 1 || $seats > 100) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid seats']);
+        echo json_encode(['success' => false, 'error' => 'Invalid seats (1-100)']);
         exit;
     }
     $fields[] = "`seats` = :seats";
@@ -58,6 +72,7 @@ if ($seats !== null) {
 }
 
 if ($guest !== null) {
+    // allow empty string to clear guest
     if (strlen($guest) > 255) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Guest name too long']);
