@@ -23,7 +23,7 @@
               <span class="sidebar-icon"><img src="../assets/home.png" alt="Home icon"></span>
               <span>Home</span>
           </a>
-          <a href="../php/tables.php" class="sidebar-btn active">
+          <a href="tables.php" class="sidebar-btn active">
               <span class="sidebar-icon"><img src="../assets/table.png" alt="Tables icon"></span>
               <span>Tables</span>
           </a>
@@ -51,7 +51,7 @@
     <!-- Fixed Topbar: search only -->
     <div class="topbar" aria-hidden="false">
       <div class="search-wrap" role="search" aria-label="Search tables">
-        <input id="searchInput" type="search" placeholder="Search products" aria-label="Search products">
+        <input id="searchInput" type="search" placeholder="Search tables" aria-label="Search tables">
         <button id="searchClear" title="Clear search" aria-label="Clear search">✕</button>
       </div>
     </div>

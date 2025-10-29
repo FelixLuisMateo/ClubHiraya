@@ -1,11 +1,3 @@
-// ../js/calendar.js
-// Inline calendar + timeslots controller for tables.php
-// - Renders an inline flatpickr calendar
-// - Loads reservations for selected date (api/list_reservations.php)
-// - Renders timeslots; clicking a timeslot fetches availability (api/get_availability.php)
-// - Clicking "Reserve" on an available table pre-fills the modal (date/time/party/table_id) and opens it.
-// - Only shows the calendar panel when Date or Time filter is active (prevents overlap)
-
 (function () {
   const inlineCalendarEl = document.getElementById('inlineCalendar');
   const selectedDateHeader = document.getElementById('selectedDateHeader');
@@ -80,7 +72,6 @@
         hideDatePanel();
       });
     }
-    // If you have other filter buttons, you can add hideDatePanel on their click as needed.
   }
 
   // initialize inline calendar
@@ -129,13 +120,13 @@
     if (!reservationsList) return;
     reservationsList.innerHTML = 'Loading...';
     try {
-      const result = await fetchJsonOrText(`../api/list_reservations.php?date=${encodeURIComponent(date)}`);
+      // NOTE: use singular file name that exists on server (list_reservation.php)
+      const result = await fetchJsonOrText(`../api/list_reservation.php?date=${encodeURIComponent(date)}`);
       if (!result.ok) {
-        reservationsList.innerHTML = `<div class="res-item">Error loading reservations: ${result.text}</div>`;
+        reservationsList.innerHTML = `<div class="res-item">Error loading reservations: ${escapeHtml(result.text)}</div>`;
         return;
       }
       if (!result.json || !result.json.success) {
-        // show server response text or JSON error message
         const err = result.json && result.json.error ? result.json.error : result.text;
         reservationsList.innerHTML = `<div class="res-item">Network error: ${escapeHtml(err)}</div>`;
         return;
@@ -173,6 +164,13 @@
     try {
       const url = `../api/get_availability.php?date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}&duration=${encodeURIComponent(duration)}&seats=${encodeURIComponent(seats)}`;
       const result = await fetchJsonOrText(url);
+
+      // Friendly message if availability API is not yet implemented (404/empty)
+      if (!result.ok && result.text && result.text.indexOf('Not Found') !== -1) {
+        availabilityList.innerHTML = '<div class="avail-item">Availability API not found (get_availability.php). Please implement this endpoint.</div>';
+        return;
+      }
+
       if (!result.ok) {
         availabilityList.innerHTML = `<div class="avail-item">Error: ${escapeHtml(result.text)}</div>`;
         return;
