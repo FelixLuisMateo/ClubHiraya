@@ -7,84 +7,103 @@ body {
     color: #fff;
 }
 
-/* Wrapper splits the screen */
+/* Wrapper contains the full-screen hero area */
 .login-wrapper {
-    display: flex;
     height: 100vh;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
 }
 
-
-/* ====== RIGHT SIDE CONTENT ====== */
+/* ====== HERO / BACKGROUND (WELCOME) ====== */
 .login-center {
     width: 100%;
-    background: url('../assets/login-bg.png') no-repeat center center/cover; 
-    position: relative;
+    height: 100%;
+    background: url('../assets/login-bg.png') no-repeat center center/cover;
+    position: relative; /* IMPORTANT: .login-content is positioned relative to this */
+    display: block;
 }
 
-/* ====== CENTER CONTAINER ====== */
+/* ====== FORM (now positioned relative to .login-center) ====== */
 .login-content {
     position: absolute;
-    top: 140%;
-    right: 22%;
-    transform: translateY(-50%);
+    /* adjust top and right to place the form under the WELCOME text.
+       Tweak these values to match the exact visual position you want. */
+    top: 33%;        /* vertical position (move down/up) */
+    right: 18%;      /* horizontal position from right edge (move left/right) */
+    transform: translateY(0);
     text-align: left;
     width: 340px;
+    background: rgba(0, 0, 0, 0.55); /* subtle background for readability */
+    padding: 24px;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
 }
 
-/* ====== HEADINGS ====== */
-.login-content h2 {
-    font-size: 36px;
-    margin: 0;
-    color: #fff;
-}
-
-.login-content h3 {
-    color: #d4a017;
-    font-weight: 600;
-    margin-bottom: 30px;
-}
-
-/* ====== FORM ====== */
-.login-content form {
-    display: flex;
-    flex-direction: column;
-}
-
+/* ====== HEADINGS inside the form ====== */
 .login-content label {
+    display: block;
     font-size: 12px;
-    color: #bbb;
-    margin-bottom: 5px;
+    color: #d4a017; /* accent color like the welcome heading */
+    margin-bottom: 12px;
+    font-weight: 600;
 }
 
+/* ====== FORM FIELDS ====== */
 .login-content input[type="email"],
 .login-content input[type="password"] {
     padding: 10px;
-    margin-bottom: 25px;
+    margin-bottom: 18px;
     border: none;
     border-radius: 5px;
     outline: none;
     width: 100%;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.08);
     color: #fff;
-    width: 320px;
 }
 
 .login-content input::placeholder {
-    color: #aaa;
+    color: #ccc;
 }
 
+/* ====== BUTTON ====== */
 .login-content button {
-    padding: 16px 4px 15px 14px;
-    background: #111;
-    border: 1px solid #444;
-    color: #fff;
-    border-radius: 10px;
+    width: 100%;
+    padding: 12px;
+    background: #d4a017;
+    color: #000;
+    border: none;
+    border-radius: 8px;
     cursor: pointer;
-    transition: 0.3s;
+    font-weight: 600;
+    transition: background 0.2s ease, transform 0.08s ease;
 }
 
 .login-content button:hover {
-    background: #d4a017;
-    border-color: #d4a017;
-    color: #000;
+    background: #b98f0f;
+    transform: translateY(-1px);
+}
+
+/* ====== Responsive tweaks ====== */
+@media (max-width: 1024px) {
+    .login-content {
+        top: 45%;
+        right: 10%;
+        width: 300px;
+        padding: 18px;
+    }
+}
+
+@media (max-width: 700px) {
+    /* on small screens, move the form near the bottom and center it */
+    .login-content {
+        position: static;
+        margin: 24px auto;
+        width: calc(100% - 48px);
+        background: rgba(0,0,0,0.6);
+        transform: none;
+        top: auto;
+        right: auto;
+        left: auto;
+    }
 }
