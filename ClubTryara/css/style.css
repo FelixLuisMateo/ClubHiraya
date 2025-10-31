@@ -3,7 +3,9 @@
    - Compact category buttons (flex: 0 0 auto) so tabs don't expand layout
    - Smooth scroll, scroll-snap for better keyboard/trackpad UX
    - Minor spacing adjustments to fit more content horizontally
+   - Darkmode
 */
+
 
 /* Base */
 body {
@@ -708,3 +710,52 @@ body {
     padding-top: calc(var(--topbar-height) + var(--category-height) + 18px);
   }
 }
+:root {
+  --bg-color: #eee;
+  --main-bg: #ccc;
+  --text-color: #222;
+}
+
+body {
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+
+.main-content {
+  background: var(--main-bg);
+  transition: background 0.25s;
+}
+
+/* Dark mode overrides */
+body.dark-mode {
+  background: #222;
+  color: #fff;
+}
+body.dark-mode .main-content {
+  background: #222;
+  color: #fff;
+}
+body.dark-mode .foods-grid {
+  background: #222;
+  color: #fff;
+}
+body.dark-mode .order-section{
+  background: #222;
+  color: #fff;
+}
+/* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */
+
+/* Dark mode overrides */
+/* Dark mode overrides *//* Dark mode overrides */
+/* Dark mode overrides *//* Dark mode overrides */
+
+
+
+/* Dark mode overrides *//* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */

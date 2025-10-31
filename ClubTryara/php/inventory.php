@@ -41,6 +41,7 @@ if ($search !== '') {
     if ($res) $items = $res->fetch_all(MYSQLI_ASSOC);
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -58,7 +59,8 @@ if ($search !== '') {
     }
   </style>
 </head>
-<body>
+<body<?php if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"'; ?>> <!-- Need this also -->
+
   <!-- Sidebar -->
   <aside class="sidebar" role="complementary" aria-label="Sidebar">
       <div class="sidebar-header">

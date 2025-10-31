@@ -1,17 +1,15 @@
+<?php session_start(); ?>     <!-- This needed every php file -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Club Tryara</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <!-- Styles -->
     <link rel="stylesheet" href="css/style.css">
-
-    <!-- Load the app.js file that requests products from php/get_products.php -->
     <script defer src="js/app.js"></script>
 </head>
-<body>
+<body<?php if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"'; ?>> <!-- Need this also -->
+
     <noscript>
         <div class="noscript-warning">This app requires JavaScript to function correctly. Please enable JavaScript.</div>
     </noscript>
@@ -39,7 +37,7 @@
                 <span class="sidebar-icon"><img src="assets/sales.png" alt="Sales report icon"></span>
                 <span>Sales Report</span>
             </a>
-            <a href="php/settings.php" class="sidebar-btn">
+            <a href="../clubtryara/settings/settings.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="assets/setting.png" alt="Settings icon"></span>
                 <span>Settings</span>
             </a>

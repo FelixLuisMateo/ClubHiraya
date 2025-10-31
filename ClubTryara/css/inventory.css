@@ -404,3 +404,55 @@ body {
   .topbar { left: 0; right: 0; }
   .inventory-container { padding-bottom: calc(48vh + 18px); }
 }
+
+
+
+:root {
+  --bg-color: #eee;
+  --main-bg: #ccc;
+  --text-color: #222;
+}
+
+body {
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+
+.main-content {
+  background: var(--main-bg);
+  transition: background 0.25s;
+}
+
+/* Dark mode overrides */
+body.dark-mode {
+  background: #222;
+  color: #fff;
+}
+body.dark-mode .main-content {
+  background: #222;
+  color: #fff;
+}
+body.dark-mode .foods-grid {
+  background: #222;
+  color: #fff;
+}
+body.dark-mode .order-section{
+  background: #222;
+  color: #fff;
+}
+/* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */
+
+/* Dark mode overrides */
+/* Dark mode overrides *//* Dark mode overrides */
+/* Dark mode overrides *//* Dark mode overrides */
+
+
+
+/* Dark mode overrides *//* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */
