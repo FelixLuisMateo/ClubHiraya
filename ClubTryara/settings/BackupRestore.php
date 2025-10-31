@@ -1,7 +1,7 @@
 <?php
 function renderBackupRestore() {
     echo '
-    <div>
+    <div class="backup">
         <button disabled>Backup</button>
         <button disabled>Restore</button>
     </div>

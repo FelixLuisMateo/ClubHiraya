@@ -175,3 +175,199 @@ button, input[type="number"], select {
     border-radius: 10px;
     padding: 15px;
 }
+/* Toggle Switch Styles */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 70px;
+  height: 32px;
+}
+
+.switch input[type="checkbox"] {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #eee;
+  border-radius: 32px;
+  transition: background 0.3s;
+  cursor: pointer;
+}
+
+.switch-on, .switch-off {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  font-weight: bold;
+  z-index: 2;
+  transition: color 0.3s;
+  pointer-events: none;
+}
+
+.switch-on {
+  left: 12px;
+  color: #999;
+}
+
+.switch-off {
+  right: 12px;
+  color: #999;
+}
+
+.switch input:checked + .slider {
+  background: #27c93f;
+}
+
+.switch input:checked + .slider .switch-on {
+  color: #fff;
+}
+
+.switch input:checked + .slider .switch-off {
+  color: #eee;
+}
+
+.slider:before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 26px;
+  height: 26px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.3s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.16);
+}
+
+.switch input:checked + .slider:before {
+  transform: translateX(38px);
+}
+.theme-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.theme-label {
+  font-weight: bold;
+  font-size: 16.5px;
+  margin-right: 8px;
+  min-width: 90px;
+  text-align: right;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 80px;
+  height: 36px;
+  vertical-align: middle;
+}
+
+.switch input[type="checkbox"] {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #eee;
+  border-radius: 32px;
+  transition: background 0.3s;
+  cursor: pointer;
+  box-sizing: border-box;
+  top: -50%;
+}
+
+.switch-on, .switch-off {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  font-weight: 900;
+  z-index: 2;
+  transition: color 0.3s;
+  pointer-events: none;
+  width: 36px;
+  text-align: center;
+  user-select: none;
+  letter-spacing: 0.5px;
+}
+
+.switch-on {
+  left: 8px;
+  color: #fff;
+  opacity: 0;
+}
+
+.switch-off {
+  right: 8px;
+  color: #999;
+  opacity: 1;
+}
+
+/* When checked: show ON, hide OFF, green bg */
+.switch input:checked + .slider {
+  background: #27c93f;
+}
+
+.switch input:checked + .slider .switch-on {
+  color: #fff;
+  opacity: 1;
+}
+
+.switch input:checked + .slider .switch-off {
+  color: #eee;
+  opacity: 0;
+}
+
+.slider:before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 3px;
+  width: 30px;
+  height: 30px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.3s;
+  z-index: 3;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.16);
+}
+
+.switch input:checked + .slider:before {
+  transform: translateX(40px);
+}
+
+/* Make switch look even better on smaller screens */
+@media (max-width: 700px) {
+  .theme-switch-row { gap: 10px; }
+  .theme-label { min-width: 70px; font-size: 15px; }
+  .switch { width: 60px; height: 28px; }
+  .switch-on, .switch-off { font-size: 13px; width: 28px;}
+  .slider:before { width: 22px; height: 22px; }
+}
+
+body.dark-mode {
+  background: #222;
+  color: #fff;
+}
+body.dark-mode .settings-container,
+body.dark-mode .settings-box,
+body.dark-mode .change-password-section,
+body.dark-mode .backup{
+  background: #333;
+  color: #fff;
+}

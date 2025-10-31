@@ -84,7 +84,7 @@ if ($search !== '') {
               <span class="sidebar-icon"><img src="../assets/sales.png" alt="Sales report icon"></span>
               <span>Sales Report</span>
           </a>
-          <a href="settings.php" class="sidebar-btn">
+          <a href="../settings/settings.php" class="sidebar-btn">
               <span class="sidebar-icon"><img src="../assets/setting.png" alt="Settings icon"></span>
               <span>Settings</span>
           </a>

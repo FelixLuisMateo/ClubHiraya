@@ -233,11 +233,9 @@ body {
 .table-icon img { width: 15px; margin-left: 7px; position: relative; top: 1px; }
 
 /* Layout */
-/*.content-area {*/
-/*    display: flex;*/
-/*    gap: 15px;*/
-/*    padding: 17px 10px 0 50px;*/
-/*}*/
+.content-area{
+  background-color: #222;
+}
 
 /* Products area */
 .products-section {
@@ -556,7 +554,7 @@ body {
     cursor: pointer;
     transition: background 0.2s;
 }
-.hold-btn { background: #222; color: #fff; }
+.hold-btn { background: #000000; color: #fff; }
 .proceed-btn { background: #d51ecb; color: #fff; }
 .hold-btn:hover { background: #444; }
 .proceed-btn:hover { background: #ac199b; }
@@ -731,18 +729,30 @@ body.dark-mode {
   background: #222;
   color: #fff;
 }
-body.dark-mode .main-content {
-  background: #222;
-  color: #fff;
-}
-body.dark-mode .foods-grid {
-  background: #222;
-  color: #fff;
-}
+body.dark-mode .main-content,
+body.dark-mode .foods-grid,
+body.dark-mode .food-label,
+body.dark-mode .products-section,
 body.dark-mode .order-section{
   background: #222;
   color: #fff;
 }
+
+body.dark-mode .order-item,
+body.dark-mode .food-label,
+body.dark-mode .order-list,
+body.dark-mode .food-price,
+body.dark-mode .order-compute,
+body.dark-mode .food-card{
+  background: #363636;
+  color: #fff;
+}
+
+body.dark-mode .compute-row{
+background: #fff;
+  color: #fff;
+}
+
 /* Dark mode overrides */
 /* Dark mode overrides */
 /* Dark mode overrides */

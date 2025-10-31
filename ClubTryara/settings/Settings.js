@@ -141,16 +141,6 @@ export {
   CURRENCY_SYMBOLS,
 };
 
-// Add this in a JS file that's loaded in index.php (after style.css)
-function setTheme(mode) {
-  if (mode === 'dark') {
-    document.body.classList.add('dark-mode');
-    localStorage.setItem('theme', 'dark');
-  } else {
-    document.body.classList.remove('dark-mode');
-    localStorage.setItem('theme', 'light');
-  }
-}
 
 // On page load, apply saved theme:
 document.addEventListener('DOMContentLoaded', function() {
