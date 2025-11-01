@@ -134,8 +134,8 @@ if ($search !== '') {
               <div>Name</div>
               <div>Price</div>
               <div>Category</div>
-              <div>Stock</div>
-              <div class="col-image" aria-hidden="true">Image</div>
+              <div></div>
+              <div class="col-image" aria-hidden="true">File Name</div>
               <div class="header-actions">
                 <!-- Toggle button to show/hide Image column -->
                 <button id="toggleImageBtn" class="btn-toggle" type="button" aria-pressed="false">Show File Name</button>
@@ -164,7 +164,8 @@ if ($search !== '') {
                       <div><?php echo htmlspecialchars($item['name']); ?></div>
                       <div>₱<?php echo number_format($item['price'], 2); ?></div>
                       <div><?php echo htmlspecialchars($item['category']); ?></div>
-                      <div><?php echo htmlspecialchars($item['stock']); ?></div>
+                      <div></div>
+
 
                       <!-- Image filename cell (hidden by default) -->
                       <div class="col-image"><?php echo htmlspecialchars($item['image']); ?></div>

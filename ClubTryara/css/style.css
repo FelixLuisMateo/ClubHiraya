@@ -748,8 +748,20 @@ body.dark-mode .food-card{
   color: #fff;
 }
 
-body.dark-mode .compute-row{
-background: #fff;
+body.dark-mode .sidebar-btn.active{
+  background: #001B89;
+  color: #fff;
+}
+
+body.dark-mode .sidebar-btn{
+  background: #555555;
+  color: #fff;
+}
+
+
+body.dark-mode .compute-row .label,
+body.dark-mode .compute-row .value{
+background: #363636;
   color: #fff;
 }
 
