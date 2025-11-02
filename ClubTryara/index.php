@@ -25,7 +25,7 @@
                 <span class="sidebar-icon"><img src="../clubtryara/assets/logos/home.png" alt="Home icon"></span>
                 <span>Home</span>
             </a>
-            <a href="php/tables.php" class="sidebar-btn">
+            <a href="../ClubTryara/tables/tables.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="../clubtryara/assets/logos/table.png" alt="Tables icon"></span>
                 <span>Tables</span>
             </a>
