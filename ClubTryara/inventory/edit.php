@@ -31,7 +31,10 @@ $categories = [
     'Seafoods',
     'Pasta & Noodles',
     'Sides',
-    'Drinks'
+    'Pizza',
+    'Drinks',
+    'Alcohol',
+    'Cocktails'
 ];
 
 // CSRF token
@@ -117,14 +120,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <!-- Sidebar -->
   <aside class="sidebar" role="complementary" aria-label="Sidebar">
       <div class="sidebar-header">
-          <img src="../assets/logo1.png" alt="Club Hiraya logo" class="sidebar-header-img">
+          <img src="../../clubtryara/assets/logos/logo1.png" alt="Club Hiraya logo" class="sidebar-header-img">
       </div>
       <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
-          <a href="../index.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/home.png" alt="Home"></span><span>Home</span></a>
-          <a href="tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/table.png" alt="Tables"></span><span>Tables</span></a>
-          <a href="inventory.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../assets/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
-          <a href="sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/sales.png" alt="Sales"></span><span>Sales Report</span></a>
-          <a href="settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/setting.png" alt="Settings"></span><span>Settings</span></a>
+          <a href="../index.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/home.png" alt="Home"></span><span>Home</span></a>
+          <a href="tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/table.png" alt="Tables"></span><span>Tables</span></a>
+          <a href="inventory.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
+          <a href="sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/sales.png" alt="Sales"></span><span>Sales Report</span></a>
+          <a href="settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/setting.png" alt="Settings"></span><span>Settings</span></a>
       </nav>
       <div style="flex:1" aria-hidden="true"></div>
       <button class="sidebar-logout" type="button" aria-label="Logout">Logout</button>
