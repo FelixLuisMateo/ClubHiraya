@@ -91,14 +91,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // ---------- PRODUCT LOADING ----------
   async function loadProducts() {
     try {
-      const res = await fetch('php/get_products.php', { cache: 'no-store' });
+      const res = await fetch('php/foodandinventory/get_products.php', { cache: 'no-store' });
       if (!res.ok) throw new Error('Server returned ' + res.status);
       const data = await res.json();
       if (Array.isArray(data)) products = data;
       else if (Array.isArray(data.foods)) products = data.foods;
       else products = [];
     } catch (err) {
-      console.warn('Failed to load php/get_products.php — using sample data', err);
+      console.warn('Failed to load php/foodandinventory/get_products.php — using sample data', err);
       products = [
         { id: 1, name: 'Lechon Baka', price: 420, category: 'Main Course', image: 'assets/lechon_baka.jpg', description: '' },
         { id: 2, name: 'Hoisin BBQ Pork Ribs', price: 599, category: 'Main Course', image: 'assets/ribs.jpg', description: '' },
