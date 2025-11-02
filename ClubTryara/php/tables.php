@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
   <link rel="stylesheet" href="../css/table.css">
+
+  <!-- flatpickr for inline calendar (required by calendar.js) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 </head>
 <body>
     <noscript>
@@ -100,7 +103,11 @@
       </div>
     </main>
 
+  <!-- Load scripts: table.js first (renders views), then flatpickr, then calendar.js so it can initialize calendars. -->
   <script src="../js/table.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
+  <script src="../js/calendar.js" defer></script>
+
 <button id="fabNew" class="fab" aria-label="New reservation" title="New reservation">＋</button>
 </body>
 </html>

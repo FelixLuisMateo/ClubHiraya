@@ -2,11 +2,17 @@
 // Render table cards and switch between All / Party / Date / Time views.
 // Wired to a simple API: loads tables from API_GET and updates via API_UPDATE.
 // Falls back to local sample data if the API is unavailable.
+//
+// This version includes:
+// - per-card Delete button (wired to API_DELETE with local fallback)
+// - Create flow posts to API_CREATE (with local fallback) so new tables persist to DB
 
 document.addEventListener('DOMContentLoaded', () => {
   // API endpoints
   const API_GET = '../api/get_tables.php';
   const API_UPDATE = '../api/update_table.php';
+  const API_DELETE = '../api/delete_table.php'; // delete endpoint (optional)
+  const API_CREATE = '../api/create_table.php'; // new create endpoint
 
   // Data
   let tablesData = [];
@@ -88,6 +94,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return true;
   }
 
+  // Remove table from local data helper
+  function removeTableData(id) {
+    const idx = tablesData.findIndex(t => t.id === Number(id));
+    if (idx === -1) return false;
+    tablesData.splice(idx, 1);
+    return true;
+  }
+
   // Render cards into a container
   function renderCardsInto(container, data, opts = {}) {
     container.innerHTML = '';
@@ -119,6 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <button class="icon-btn edit-btn" aria-label="Edit table" title="Edit">✎</button>
           <button class="icon-btn toggle-btn" aria-label="Toggle status" title="Toggle">⟳</button>
           <button class="icon-btn clear-btn" aria-label="Clear table" title="Clear">🗑</button>
+          <button class="icon-btn delete-btn" aria-label="Delete table" title="Delete">✖</button>
         </div>
       `;
 
@@ -132,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const editBtn = card.querySelector('.edit-btn');
       const toggleBtn = card.querySelector('.toggle-btn');
       const clearBtn = card.querySelector('.clear-btn');
+      const deleteBtn = card.querySelector('.delete-btn');
 
       if (editBtn) {
         editBtn.addEventListener('click', e => { e.stopPropagation(); openEditModal(tbl); });
@@ -141,6 +157,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (clearBtn) {
         clearBtn.addEventListener('click', e => { e.stopPropagation(); confirmClear(tbl); });
+      }
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', e => { e.stopPropagation(); confirmDelete(tbl); });
       }
 
       container.appendChild(card);
@@ -329,6 +348,8 @@ document.addEventListener('DOMContentLoaded', () => {
     modalGuest.value = table && table.guest ? table.guest : '';
 
     overlay.querySelector('#modalCancel').addEventListener('click', () => overlay.remove());
+
+    // ---- START: updated save handler (handles create via API_CREATE + fallback) ----
     overlay.querySelector('#modalSave').addEventListener('click', async () => {
       const name = modalName.value.trim() || (table && table.name) || 'Table';
       const status = modalStatus.value;
@@ -336,6 +357,27 @@ document.addEventListener('DOMContentLoaded', () => {
       const guest = modalGuest.value.trim();
 
       if (isNew) {
+        // Try to create on server first
+        if (typeof API_CREATE !== 'undefined') {
+          try {
+            const res = await fetch(API_CREATE, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name, status, seats, guest })
+            });
+            const j = await res.json();
+            if (!j.success) throw new Error(j.error || 'Create failed');
+            // reload authoritative data from server
+            await loadTables();
+            overlay.remove();
+            return;
+          } catch (err) {
+            console.warn('API create failed, falling back to local creation:', err);
+            // fallthrough to local creation
+          }
+        }
+
+        // Fallback: local-only creation (useful for dev when API not present)
         const newId = (tablesData.reduce((m, t) => Math.max(m, t.id), 0) || 0) + 1;
         tablesData.push({ id: newId, name, status, seats, guest });
         renderView();
@@ -343,7 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Update via API if available
+      // Existing update flow for edits (unchanged)
       if (typeof API_UPDATE !== 'undefined') {
         try {
           const payload = { id: table.id, status, seats, guest, name };
@@ -366,6 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.remove();
       }
     });
+    // ---- END: updated save handler ----
 
     overlay.addEventListener('click', ev => { if (ev.target === overlay) overlay.remove(); });
     setTimeout(() => modalName.focus(), 50);
@@ -417,6 +460,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateTableData(table.id, { status: 'available', guest: '' });
     renderView();
+  }
+
+  // Confirm delete (permanent removal)
+  async function confirmDelete(table) {
+    if (!confirm(`Delete ${table.name}? This action cannot be undone.`)) return;
+
+    // Try server-side delete first
+    if (typeof API_DELETE !== 'undefined') {
+      try {
+        const res = await fetch(API_DELETE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: table.id })
+        });
+        const j = await res.json();
+        if (!j.success) throw new Error(j.error || 'Delete failed');
+        // reload data from server to reflect deletion
+        await loadTables();
+        return;
+      } catch (err) {
+        console.warn('API delete failed, falling back to local removal:', err);
+        // fall-through to local removal
+      }
+    }
+
+    // Fallback: remove from local dataset and re-render
+    const removed = removeTableData(table.id);
+    if (removed) {
+      renderView();
+    } else {
+      alert('Failed to delete table locally.');
+    }
   }
 
   // New reservation

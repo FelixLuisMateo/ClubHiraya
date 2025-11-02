@@ -1,17 +1,18 @@
+// Updated calendar.js — ensures date is encoded and logs attempted URLs
 (function () {
-  const inlineCalendarEl = document.getElementById('inlineCalendar');
-  const selectedDateHeader = document.getElementById('selectedDateHeader');
-  const reservationsList = document.getElementById('reservationsList');
-  const timesGrid = document.getElementById('timesGrid');
-  const availabilityList = document.getElementById('availabilityList');
-  const dateTimePanel = document.querySelector('.date-time-panel');
+  const inlineCalendarEl = () => document.getElementById('inlineCalendar');
+  const selectedDateHeader = () => document.getElementById('selectedDateHeader');
+  const reservationsList = () => document.getElementById('reservationsList');
+  const timesGrid = () => document.getElementById('timesGrid');
+  const availabilityList = () => document.getElementById('availabilityList');
+  const dateTimePanel = () => document.querySelector('.date-time-panel');
+  const filterDateInput = () => document.getElementById('filterDateInput');
 
   // Filter buttons
   const filterDateBtn = document.getElementById('filterDate');
   const filterTimeBtn = document.getElementById('filterTime');
   const filterAllBtn = document.getElementById('filterAll'); // used to hide panel again
 
-  // Common timeslots (customize as needed)
   const TIMES = [
     '10:00','11:00','12:00','13:00','14:00',
     '15:00','16:00','17:00','18:00','19:00',
@@ -20,13 +21,14 @@
 
   let selectedDate = null;
   let selectedTimeBtn = null;
+  let fpInstance = null; // flatpickr instance
 
-  // hide date-time panel initially (so calendar won't always show)
-  if (dateTimePanel) dateTimePanel.style.display = 'none';
+  if (dateTimePanel()) dateTimePanel().style.display = 'none';
 
   function renderTimes() {
-    if (!timesGrid) return;
-    timesGrid.innerHTML = '';
+    const tg = timesGrid();
+    if (!tg) return;
+    tg.innerHTML = '';
     TIMES.forEach(t => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -35,75 +37,81 @@
       btn.dataset.time = t;
       btn.addEventListener('click', () => {
         if (!selectedDate) return;
-        // mark selected
         if (selectedTimeBtn) selectedTimeBtn.classList.remove('selected');
         btn.classList.add('selected');
         selectedTimeBtn = btn;
         fetchAvailability(selectedDate, t);
       });
-      timesGrid.appendChild(btn);
+      tg.appendChild(btn);
     });
   }
 
-  // Show/hide panel when user selects filters
-  function showDatePanel() {
-    if (!dateTimePanel) return;
-    dateTimePanel.style.display = 'flex';
-  }
-  function hideDatePanel() {
-    if (!dateTimePanel) return;
-    dateTimePanel.style.display = 'none';
-  }
+  function showDatePanel() { if (!dateTimePanel()) return; dateTimePanel().style.display = 'flex'; }
+  function hideDatePanel() { if (!dateTimePanel()) return; dateTimePanel().style.display = 'none'; }
 
-  // Initialize filter button wiring (simple toggles)
   function initFilterButtons() {
-    if (filterDateBtn) {
-      filterDateBtn.addEventListener('click', () => {
-        showDatePanel();
-      });
-    }
-    if (filterTimeBtn) {
-      filterTimeBtn.addEventListener('click', () => {
-        showDatePanel();
-      });
-    }
-    if (filterAllBtn) {
-      filterAllBtn.addEventListener('click', () => {
-        hideDatePanel();
-      });
-    }
+    if (filterDateBtn) filterDateBtn.addEventListener('click', showDatePanel);
+    if (filterTimeBtn) filterTimeBtn.addEventListener('click', showDatePanel);
+    if (filterAllBtn) filterAllBtn.addEventListener('click', hideDatePanel);
   }
 
-  // initialize inline calendar
   function initCalendar() {
-    if (!inlineCalendarEl || !window.flatpickr) return;
-    // create inline calendar inside the inlineCalendar element
-    flatpickr(inlineCalendarEl, {
+    const calEl = inlineCalendarEl();
+    if (!calEl || !window.flatpickr) return;
+    if (fpInstance && typeof fpInstance.destroy === 'function') {
+      try { fpInstance.destroy(); } catch (e) { /* ignore */ }
+      fpInstance = null;
+    }
+
+    fpInstance = flatpickr(calEl, {
       inline: true,
       dateFormat: 'Y-m-d',
       defaultDate: new Date(),
       minDate: 'today',
       onChange: function (selectedDates, dateStr) {
         selectedDate = dateStr;
-        if (selectedDateHeader) selectedDateHeader.textContent = `Date: ${dateStr}`;
-        // reset selections
+        const hdr = selectedDateHeader();
+        if (hdr) hdr.textContent = `Date: ${dateStr}`;
+        const fdi = filterDateInput();
+        if (fdi) fdi.value = dateStr;
         if (selectedTimeBtn) selectedTimeBtn.classList.remove('selected');
         selectedTimeBtn = null;
-        if (availabilityList) availabilityList.innerHTML = 'Pick a time to see availability';
-        // load reservations for the date
+        const avail = availabilityList();
+        if (avail) avail.innerHTML = 'Pick a time to see availability';
         fetchReservations(dateStr);
       }
     });
 
-    // Set initial date and render times (but panel is hidden by default)
     const todayStr = (new Date()).toISOString().slice(0,10);
     selectedDate = todayStr;
-    if (selectedDateHeader) selectedDateHeader.textContent = `Date: ${todayStr}`;
+    const hdr = selectedDateHeader();
+    if (hdr) hdr.textContent = `Date: ${todayStr}`;
+    const fdi = filterDateInput();
+    if (fdi) fdi.value = todayStr;
     renderTimes();
     fetchReservations(todayStr);
+
+    if (fdi) {
+      fdi.removeEventListener('change', onFilterDateInputChange);
+      fdi.addEventListener('change', onFilterDateInputChange);
+    }
   }
 
-  // Helper to parse JSON but show raw error text on failure
+  function onFilterDateInputChange() {
+    const fdi = filterDateInput();
+    if (!fdi) return;
+    const val = fdi.value;
+    if (!val) return;
+    if (fpInstance && typeof fpInstance.setDate === 'function') {
+      try { fpInstance.setDate(val, true); } catch (err) { console.warn('invalid date', val, err); }
+    } else {
+      selectedDate = val;
+      const hdr = selectedDateHeader();
+      if (hdr) hdr.textContent = `Date: ${val}`;
+      fetchReservations(val);
+    }
+  }
+
   async function fetchJsonOrText(url) {
     const res = await fetch(url);
     const text = await res.text();
@@ -115,48 +123,73 @@
     }
   }
 
-  // fetch reservations for a date
-  async function fetchReservations(date) {
-    if (!reservationsList) return;
-    reservationsList.innerHTML = 'Loading...';
+  // Try several candidate URLs — always encode the date parameter
+async function tryFetchReservations(date) {
+  const encoded = encodeURIComponent(date);
+  // Update these to match your project path on localhost
+  const base = '/ClubHiraya/ClubTryara/api';
+  const candidates = [
+    `${base}/list_reservations.php?date=${encoded}`,
+    `${base}/list_reservation.php?date=${encoded}`,
+    `../api/list_reservations.php?date=${encoded}`,
+    `../api/list_reservation.php?date=${encoded}`
+  ];
+  console.debug('fetchReservations: trying candidate URLs', candidates);
+
+  for (const u of candidates) {
     try {
-      // NOTE: use singular file name that exists on server (list_reservation.php)
-      const result = await fetchJsonOrText(`../api/list_reservation.php?date=${encodeURIComponent(date)}`);
-      if (!result.ok) {
-        reservationsList.innerHTML = `<div class="res-item">Error loading reservations: ${escapeHtml(result.text)}</div>`;
-        return;
-      }
-      if (!result.json || !result.json.success) {
-        const err = result.json && result.json.error ? result.json.error : result.text;
-        reservationsList.innerHTML = `<div class="res-item">Network error: ${escapeHtml(err)}</div>`;
-        return;
-      }
-      const rows = result.json.data;
-      if (!rows || rows.length === 0) {
-        reservationsList.innerHTML = '<div class="res-item">No reservations for this date.</div>';
-        return;
-      }
-      reservationsList.innerHTML = '';
-      rows.forEach(r => {
-        const item = document.createElement('div');
-        item.className = 'res-item';
-        const start = r.start ? r.start.replace(' ', ' at ') : '';
-        item.innerHTML = `<strong>${escapeHtml(r.table_name || ('Table ' + (r.table_id||'')))}</strong>
-                          <div>${escapeHtml(String(r.party_size || ''))} seat(s) — ${escapeHtml(r.guest || 'Guest')}</div>
-                          <div style="font-size:13px;color:#666">${escapeHtml(start)} — status: ${escapeHtml(r.status)}</div>`;
-        reservationsList.appendChild(item);
-      });
+      const result = await fetchJsonOrText(u);
+      if (result.ok && result.json && result.json.success) return { ok: true, json: result.json, url: u };
+      if (result.json && result.json.success === false) return { ok: false, json: result.json, url: u, text: result.text };
     } catch (err) {
-      reservationsList.innerHTML = `<div class="res-item">Network error: ${escapeHtml(err.message || err)}</div>`;
+      // try next
+    }
+  }
+  return { ok: false, json: null, url: candidates[0] };
+}
+
+  async function fetchReservations(date) {
+    const listEl = reservationsList() || document.getElementById('reservationsList');
+    if (!listEl) return;
+    listEl.innerHTML = 'Loading...';
+
+    try {
+      const attempt = await tryFetchReservations(date);
+
+      if (attempt.ok && attempt.json) {
+        const rows = attempt.json.data || [];
+        if (!rows.length) {
+          listEl.innerHTML = '<div class="res-item">No reservations for this date.</div>';
+          return;
+        }
+        listEl.innerHTML = '';
+        rows.forEach(r => {
+          const item = document.createElement('div');
+          item.className = 'res-item';
+          const start = r.start ? r.start.replace(' ', ' at ') : '';
+          item.innerHTML = `<strong>${escapeHtml(r.table_name || ('Table ' + (r.table_id||'')))}</strong>
+                            <div>${escapeHtml(String(r.party_size || ''))} seat(s) — ${escapeHtml(r.guest || 'Guest')}</div>
+                            <div style="font-size:13px;color:#666">${escapeHtml(start)} — status: ${escapeHtml(r.status)}</div>`;
+          listEl.appendChild(item);
+        });
+        return;
+      }
+
+      // Get raw text of primary candidate to show helpful error (truncated)
+      const primary = `../api/list_reservations.php?date=${encodeURIComponent(date)}`;
+      const raw = await fetch(primary).then(r => r.text()).catch(e => e.message || String(e));
+      const short = String(raw).slice(0,300);
+      listEl.innerHTML = `<div class="res-item">Error loading reservations: ${escapeHtml(short)}${String(raw).length>300?'...':''}</div>`;
+    } catch (err) {
+      listEl.innerHTML = `<div class="res-item">Network error: ${escapeHtml(err.message || err)}</div>`;
     }
   }
 
-  // fetch availability for selected date/time
   async function fetchAvailability(date, time) {
-    if (!availabilityList) return;
-    availabilityList.innerHTML = 'Loading availability...';
-    // read desired seats/party size from reservation modal input if present
-    const partyInput = document.getElementById('resParty');
+    const availEl = availabilityList() || document.getElementById('availabilityList');
+    if (!availEl) return;
+    availEl.innerHTML = 'Loading availability...';
+    const partyInput = document.getElementById('resParty') || document.getElementById('partySelect');
     const seats = partyInput ? Number(partyInput.value) || 1 : 1;
     const durationInput = document.getElementById('resDuration');
     const duration = durationInput ? Number(durationInput.value) || 90 : 90;
@@ -165,28 +198,27 @@
       const url = `../api/get_availability.php?date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}&duration=${encodeURIComponent(duration)}&seats=${encodeURIComponent(seats)}`;
       const result = await fetchJsonOrText(url);
 
-      // Friendly message if availability API is not yet implemented (404/empty)
       if (!result.ok && result.text && result.text.indexOf('Not Found') !== -1) {
-        availabilityList.innerHTML = '<div class="avail-item">Availability API not found (get_availability.php). Please implement this endpoint.</div>';
+        availEl.innerHTML = '<div class="avail-item">Availability API not found (get_availability.php). Please implement this endpoint.</div>';
         return;
       }
 
       if (!result.ok) {
-        availabilityList.innerHTML = `<div class="avail-item">Error: ${escapeHtml(result.text)}</div>`;
+        availEl.innerHTML = `<div class="avail-item">Error: ${escapeHtml(result.text)}</div>`;
         return;
       }
       if (!result.json || !result.json.success) {
         const err = result.json && result.json.error ? result.json.error : result.text;
-        availabilityList.innerHTML = `<div class="avail-item">Network error: ${escapeHtml(err)}</div>`;
+        availEl.innerHTML = `<div class="avail-item">Network error: ${escapeHtml(err)}</div>`;
         return;
       }
       const rows = result.json.data;
       if (!rows || rows.length === 0) {
-        availabilityList.innerHTML = '<div class="avail-item">No available tables for this time.</div>';
+        availEl.innerHTML = '<div class="avail-item">No available tables for this time.</div>';
         return;
       }
 
-      availabilityList.innerHTML = '';
+      availEl.innerHTML = '';
       rows.forEach(t => {
         const el = document.createElement('div');
         el.className = 'avail-item';
@@ -197,21 +229,18 @@
                         <div>
                           <button type="button" class="btn ghost" data-table-id="${t.id}">Reserve</button>
                         </div>`;
-        // wire reserve button
         const btn = el.querySelector('button');
         btn.addEventListener('click', () => {
           openReservationModalWith(t.id, date, time, seats, duration);
         });
-        availabilityList.appendChild(el);
+        availEl.appendChild(el);
       });
     } catch (err) {
-      availabilityList.innerHTML = `<div class="avail-item">Network error: ${escapeHtml(err.message || err)}</div>`;
+      availEl.innerHTML = `<div class="avail-item">Network error: ${escapeHtml(err.message || err)}</div>`;
     }
   }
 
-  // prefill reservation modal fields and open it
   function openReservationModalWith(tableId, date, time, party_size, duration) {
-    // set hidden table id
     const resTableId = document.getElementById('resTableId');
     const resDate = document.getElementById('resDate');
     const resTime = document.getElementById('resTime');
@@ -224,11 +253,9 @@
     if (resParty) resParty.value = party_size || 1;
     if (resDuration) resDuration.value = duration || 90;
 
-    // ensure the modal open button exists and trigger it. reservation.js listens to this click.
     const openBtn = document.getElementById('btnAddReservation') || document.getElementById('fabNew');
     if (openBtn) {
       openBtn.click();
-      // focus modal submit after short delay (modal open animation)
       setTimeout(() => {
         const submit = document.getElementById('resSubmit');
         if (submit) submit.focus();
@@ -248,10 +275,18 @@
       .replace(/'/g, '&#039;');
   }
 
-  // start
   function start() {
     initFilterButtons();
     initCalendar();
+    if (!inlineCalendarEl() || !window.flatpickr) {
+      const mo = new MutationObserver((mutations, observer) => {
+        if (inlineCalendarEl() && window.flatpickr) {
+          observer.disconnect();
+          initCalendar();
+        }
+      });
+      mo.observe(document.body, { childList: true, subtree: true });
+    }
   }
 
   if (document.readyState === 'loading') {
