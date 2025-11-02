@@ -371,3 +371,137 @@ body.dark-mode .backup{
   background: #333;
   color: #fff;
 }
+
+/* Settings/Theme UI additions
+   Includes: improved switch styles, accent swatches, and variables for sidebar accent gradient.
+*/
+
+/* CSS variables for accent gradients (default values) */
+:root {
+  --accent-start: #d33fd3;
+  --accent-end: #a2058f;
+  --sidebar-width: 150px;
+}
+
+/* Sidebar gradient uses CSS variables */
+.sidebar {
+  background: linear-gradient(180deg, var(--accent-start) 0%, var(--accent-end) 100%);
+}
+
+/* Accent swatches used in ThemeSettings form */
+.accent-swatch {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display:inline-block;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  border: 2px solid rgba(0,0,0,0.06);
+  cursor: pointer;
+}
+
+.swatch-pink { background: linear-gradient(180deg,#d33fd3 0%, #a2058f 100%); }
+.swatch-blue { background: linear-gradient(180deg,#4b4bff 0%, #001b89 100%); }
+.swatch-gray { background: linear-gradient(180deg,#bdbdbd 0%, #7a7a7a 100%); }
+
+/* --- SWITCH STYLES (used by ThemeSettings and Notifications) --- */
+.theme-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 10px;
+}
+
+.theme-label {
+  font-weight: bold;
+  font-size: 16.5px;
+  min-width: 96px;
+  text-align: right;
+  display: inline-block;
+}
+
+/* General switch container */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 84px;
+  height: 40px;
+  vertical-align: middle;
+}
+
+/* hide native checkbox */
+.switch input[type="checkbox"] {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* slider track */
+.slider {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #f0f0f0;
+  border-radius: 999px;
+  transition: background 0.25s ease;
+  cursor: pointer;
+  box-sizing: border-box;
+  padding: 4px;
+}
+
+/* ON / OFF labels inside the track */
+.switch-on, .switch-off {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  font-weight: 800;
+  z-index: 2;
+  transition: opacity 0.18s ease, color 0.18s ease;
+  pointer-events: none;
+  width: 36px;
+  text-align: center;
+  user-select: none;
+}
+
+.switch-on { left: 10px; color: #ffffff; opacity: 0; }
+.switch-off { right: 10px; color: #999; opacity: 1; }
+
+/* knob */
+.slider:before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 28px;
+  height: 28px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  transition: transform 0.25s cubic-bezier(.2,.9,.2,1);
+  z-index: 3;
+}
+
+/* checked state styles */
+.switch input:checked + .slider {
+  background: linear-gradient(180deg, #27c93f 0%, #18a83a 100%);
+}
+.switch input:checked + .slider .switch-on { opacity: 1; color: #fff; }
+.switch input:checked + .slider .switch-off { opacity: 0; color: rgba(255,255,255,0.6); }
+.switch input:checked + .slider:before { transform: translateX(44px); }
+
+/* compact layout used in notification rows */
+.notifications-form > div {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+/* small screens */
+@media (max-width:700px) {
+  .theme-label { min-width: 72px; text-align: left; }
+  .switch { width: 64px; height: 30px; }
+  .slider:before { width: 22px; height: 22px; left: 4px; top: 4px; }
+  .switch input:checked + .slider:before { transform: translateX(34px); }
+}

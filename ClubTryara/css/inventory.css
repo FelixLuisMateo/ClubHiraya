@@ -1,4 +1,4 @@
-/* inventory.css - updated club theme tweaks (colors, spacing, buttons)
+/* inventory.css - updated club theme tweaks (colors, sglepacing, buttons)
    Adjusted to allow full image filenames to wrap/show when Image column is toggled on.
 */
 
@@ -260,7 +260,7 @@ body {
   white-space: normal;           /* allow wrapping */
   word-break: break-word;       /* break long words if necessary */
   overflow-wrap: anywhere;      /* wrap anywhere to avoid overflow */
-  color: #444;
+  color: #333;
   font-weight: 600;
   font-size: 14px;
   line-height: 1.35;
@@ -288,7 +288,7 @@ body {
 .btn-toggle {
   background: transparent;
   border: 2px solid rgba(255, 43, 244, 0.425);
-  color: #fff;
+  color: #000000;
   padding: 8px 12px;
   border-radius: 8px;
   font-weight: 700;
