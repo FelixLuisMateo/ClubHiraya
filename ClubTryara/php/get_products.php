@@ -61,8 +61,8 @@ $result = $stmt->get_result();
 $foods = [];
 $categories_set = [];
 
-// Path to the assets folder on disk (one level up from php/)
-$assets_dir = realpath(__DIR__ . '/../assets');
+// Path to the assets/foods folder on disk (one level up from php/)
+$assets_dir = realpath(__DIR__ . '/../assets/foods');
 $placeholder_filename = 'placeholder.png';
 
 while ($row = $result->fetch_assoc()) {
@@ -86,11 +86,12 @@ while ($row = $result->fetch_assoc()) {
 
         if (!empty($assets_dir) && file_exists($fsPath)) {
             // Return a URL path that is correct when used from ClubTryara/index.php:
-            // index.php references images as "assets/...", so return that.
+            // index.php references images as "assets/foods/...", so return that.
             // URL-encode the filename to handle spaces/symbols.
-            $imgUrl = 'assets/' . rawurlencode($basename);
+            $imgUrl = 'assets/foods/' . rawurlencode($basename);
         } else {
             // fallback to placeholder (ensure placeholder exists or still return placeholder path)
+            // Placeholder assumed to be directly inside assets/
             $imgUrl = 'assets/' . rawurlencode($placeholder_filename);
         }
     }
