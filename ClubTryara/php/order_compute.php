@@ -1,4 +1,5 @@
 <?php
+session_start();
 require_once "db_connect.php";
 require_once "order.php";
 
@@ -16,7 +17,12 @@ $result = $conn->query($sql);
 while ($row = $result->fetch_assoc()) {
     $items[] = ['name'=>$row['name'], 'price'=>$row['price'], 'qty'=>$row['qty']];
 }
-$totals = compute_order($items, $discount);
+
+// Use session values for service & tax (session holds percentages like 10, 12)
+$service_rate = isset($_SESSION['service_charge']) ? (floatval($_SESSION['service_charge']) / 100.0) : 0.10;
+$tax_rate = isset($_SESSION['tax']) ? (floatval($_SESSION['tax']) / 100.0) : 0.12;
+
+$totals = compute_order($items, $discount, $service_rate, $tax_rate);
 ?>
 
 <div class="compute-actions">

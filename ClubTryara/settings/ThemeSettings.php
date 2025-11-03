@@ -4,8 +4,8 @@ function renderThemeSettings() {
     $isDark = isset($_SESSION['dark_mode']) ? $_SESSION['dark_mode'] : false;
     $accent = isset($_SESSION['accent_color']) ? $_SESSION['accent_color'] : '#d33fd3'; // default pink/purple gradient key
 
-    // Handle POST (POST-Redirect-GET)
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Handle POST (POST-Redirect-GET) - only when the theme form is submitted
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form']) && $_POST['form'] === 'theme') {
         // dark_mode checkbox
         $_SESSION['dark_mode'] = isset($_POST['dark_mode']);
 
@@ -24,11 +24,12 @@ function renderThemeSettings() {
     $blueChecked = $accent === '#4b4bff' ? 'checked' : '';
     $grayChecked = $accent === '#bdbdbd' ? 'checked' : '';
 
-    // Output form HTML (note: use concatenation for dynamic attributes)
+    // Output form HTML
     echo '
     <div>
         <h2>Theme Settings</h2>
         <form method="POST" class="theme-form" style="display:flex;flex-direction:column;gap:16px;">
+            <input type="hidden" name="form" value="theme">
             <div class="theme-switch-row">
                 <span class="theme-label">Dark Mode</span>
                 <label class="switch">
@@ -41,7 +42,7 @@ function renderThemeSettings() {
             </div>
 
             <div>
-                <label style="font-weight:bold;display:block;margin-bottom:8px;">Accent Colors</label>
+                <label style="font-weight:bold;display:block;margin-bottom:8px;">Sidebar Color</label>
                 <div style="display:flex;align-items:center;gap:12px;">
                     <label title="Pink / Purple">
                         <input type="radio" name="accent_color" value="#d33fd3" '.$pinkChecked.' onchange="this.form.submit()" style="display:none;">
@@ -63,23 +64,29 @@ function renderThemeSettings() {
     </div>
     ';
 
-    // Immediately apply the accent color for this settings page (so sidebar updates immediately).
-    // Other pages will need the same snippet (or a central header include) to apply session accent on page load.
+    // Immediately apply the accent color for this settings page and sync server theme to localStorage.
     $accentValue = htmlspecialchars($accent, ENT_QUOTES);
+    $themeValue = $isDark ? 'dark' : 'light';
+
     echo '
     <script>
       (function(){
         try {
           var accent = "'.$accentValue.'";
-          // map accent color to a gradient start/end pair
           var gradientMap = {
-            "#d33fd3": ["#d33fd3", "#a2058f"], // pink/purple
-            "#4b4bff": ["#4b4bff", "#001b89"], // blue
-            "#bdbdbd": ["#bdbdbd", "#7a7a7a"]  // gray
+            "#d33fd3": ["#d33fd3", "#a2058f"],
+            "#4b4bff": ["#4b4bff", "#001b89"],
+            "#bdbdbd": ["#bdbdbd", "#7a7a7a"]
           };
           var g = gradientMap[accent] || gradientMap["#d33fd3"];
           document.documentElement.style.setProperty("--accent-start", g[0]);
           document.documentElement.style.setProperty("--accent-end", g[1]);
+
+          // Persist the server-selected theme to localStorage so client JS will remain in sync.
+          try {
+            localStorage.setItem("theme", "'.$themeValue.'");
+            window.SERVER_THEME = "'.$themeValue.'";
+          } catch(e) { /* ignore localStorage errors */ }
         } catch(e) { console.error(e) }
       })();
     </script>

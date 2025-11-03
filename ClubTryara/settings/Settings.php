@@ -1,6 +1,35 @@
 <?php
+// Settings page - centralized POST handling to avoid "headers already sent" warnings.
+// Start session and process form POSTs BEFORE any output so header() redirects work.
 session_start();
 
+// Centralized POST handling (POST-Redirect-GET)
+// Each settings form includes a hidden input `form` with values: theme, system, notifications
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form'])) {
+    $form = $_POST['form'];
+
+    if ($form === 'theme') {
+        // Dark mode checkbox and accent color
+        $_SESSION['dark_mode'] = isset($_POST['dark_mode']);
+        if (isset($_POST['accent_color'])) {
+            $_SESSION['accent_color'] = $_POST['accent_color'];
+        }
+    } elseif ($form === 'system') {
+        if (isset($_POST['currency'])) $_SESSION['currency'] = $_POST['currency'];
+        if (isset($_POST['tax'])) $_SESSION['tax'] = $_POST['tax'];
+        if (isset($_POST['service_charge'])) $_SESSION['service_charge'] = $_POST['service_charge'];
+    } elseif ($form === 'notifications') {
+        $_SESSION['notify_sound'] = isset($_POST['notify_sound']);
+        $_SESSION['notify_order'] = isset($_POST['notify_order']);
+        $_SESSION['notify_low_stock'] = isset($_POST['notify_low_stock']);
+    }
+
+    // PRG: redirect back to this page to avoid form re-submissions and ensure subsequent output is fresh
+    header("Location: " . $_SERVER['REQUEST_URI']);
+    exit();
+}
+
+// Include render functions (these should only output HTML — POSTs handled above)
 include 'ThemeSettings.php';
 include 'SystemSettings.php';
 include 'NotificationsSettings.php';
@@ -16,10 +45,12 @@ include 'ChangePassword.php';
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css">
+    <!-- settings/ is one level down from ClubTryara/, so go up one level to reach the shared css -->
+    <link rel="stylesheet" href="../css/style.css">
 
-    <!-- Load the app.js file that requests products from php/get_products.php -->
-    <script defer src="js/app.js"></script>
+    <!-- Load only the small settings-sync script here (it will sync server session -> client).
+         Do NOT load the full POS app.js on this page. -->
+    <script defer src="../js/settings-sync.js"></script>
 </head>
 <body<?php if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"'; ?>>
     <noscript>
@@ -81,3 +112,6 @@ include 'ChangePassword.php';
         <div class="settings-box"><?php renderBackupRestore(); ?></div>
     </div>
 </div>
+</main>
+</body>
+</html>

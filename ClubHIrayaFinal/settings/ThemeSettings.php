@@ -41,7 +41,7 @@ function renderThemeSettings() {
             </div>
 
             <div>
-                <label style="font-weight:bold;display:block;margin-bottom:8px;">Accent Colors</label>
+                <label style="font-weight:bold;display:block;margin-bottom:8px;">Sidebar Color</label>
                 <div style="display:flex;align-items:center;gap:12px;">
                     <label title="Pink / Purple">
                         <input type="radio" name="accent_color" value="#d33fd3" '.$pinkChecked.' onchange="this.form.submit()" style="display:none;">

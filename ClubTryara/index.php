@@ -6,6 +6,9 @@
     <title>Club Tryara</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="css/style.css">
+
+    <!-- Run settings-sync BEFORE the main app so theme and notification flags from the server are applied first -->
+    <script defer src="js/settings-sync.js"></script>
     <script defer src="js/app.js"></script>
 </head>
 <body<?php if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"'; ?>> <!-- Need this also -->

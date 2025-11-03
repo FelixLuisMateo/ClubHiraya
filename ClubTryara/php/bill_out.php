@@ -1,4 +1,5 @@
 <?php
+session_start();
 require_once "db_connect.php";
 
 $order_id = isset($_GET['order_id']) ? intval($_GET['order_id']) : 0;
@@ -96,15 +97,19 @@ $subtotal = 0;
     </table>
 
     <?php
-    $service = $subtotal * 0.10;
-    $tax = $subtotal * 0.12;
+    // read service & tax from session (percent values like 10,12)
+    $service_percent = isset($_SESSION['service_charge']) ? floatval($_SESSION['service_charge']) : 10.0;
+    $tax_percent = isset($_SESSION['tax']) ? floatval($_SESSION['tax']) : 12.0;
+
+    $service = $subtotal * ($service_percent / 100.0);
+    $tax = $subtotal * ($tax_percent / 100.0);
     $discount = $order['discount'] * ($subtotal + $service + $tax);
     $total = $subtotal + $service + $tax - $discount;
     ?>
 
     <p>Subtotal: ₱<?= number_format($subtotal, 2) ?></p>
-    <p>Service Charge (10%): ₱<?= number_format($service, 2) ?></p>
-    <p>Tax (12%): ₱<?= number_format($tax, 2) ?></p>
+    <p>Service Charge (<?= number_format($service_percent, 2) ?>%): ₱<?= number_format($service, 2) ?></p>
+    <p>Tax (<?= number_format($tax_percent, 2) ?>%): ₱<?= number_format($tax, 2) ?></p>
     <p>Discount: ₱<?= number_format($discount, 2) ?></p>
     <h3>Total: ₱<?= number_format($total, 2) ?></h3>
 
