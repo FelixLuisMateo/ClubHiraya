@@ -61,41 +61,41 @@ if ($search !== '') {
 </head>
 <body<?php if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"'; ?>> <!-- Need this also -->
 
-  <!-- Sidebar -->
-  <aside class="sidebar" role="complementary" aria-label="Sidebar">
-      <div class="sidebar-header">
-          <img src="../../clubtryara/assets/logos/logo1.png" alt="Club Hiraya logo" class="sidebar-header-img">
-      </div>
+<!-- Sidebar -->
+    <aside class="sidebar" role="complementary" aria-label="Sidebar">
+        <div class="sidebar-header">
+            <img src="../ClubHirayaFinal/assets/foods/logos/logo1.png" alt="Club Hiraya logo" class="sidebar-header-img">
+        </div>
 
-      <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
-          <a href="../index.php" class="sidebar-btn" aria-current="page">
-              <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/home.png" alt="Home icon"></span>
-              <span>Home</span>
-          </a>
-          <a href="../../ClubTryara/tables/tables.php" class="sidebar-btn">
-              <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/table.png" alt="Tables icon"></span>
-              <span>Tables</span>
-          </a>
-          <a href="inventory.php" class="sidebar-btn active">
-              <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/inventory.png" alt="Inventory icon"></span>
-              <span>Inventory</span>
-          </a>
-          <a href="sales_report.php" class="sidebar-btn">
-              <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/sales.png" alt="Sales report icon"></span>
-              <span>Sales Report</span>
-          </a>
-          <a href="../settings/settings.php" class="sidebar-btn">
-              <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/setting.png" alt="Settings icon"></span>
-              <span>Settings</span>
-          </a>
-      </nav>
+        <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
+            <a href="../ClubHirayaFinal /admin_dashboard.php" class="sidebar-btn active" aria-current="page">
+                <span class="sidebar-icon"><img src="../ClubHirayaFinal/assets/foods/logos/home.png" alt="Home icon"></span>
+                <span>Home</span>
+            </a>
+            <a href="../ClubHirayaFinal/tables/tables.php" class="sidebar-btn">
+                <span class="sidebar-icon"><img src="../ClubHirayaFinal/assets/foods/logos/table.png" alt="Tables icon"></span>
+                <span>Tables</span>
+            </a>
+            <a href="../ClubHirayaFinal/inventory/inventory.php" class="sidebar-btn">
+                <span class="sidebar-icon"><img src="../ClubHirayaFinal/assets/foods/logos/inventory.png" alt="Inventory icon"></span>
+                <span>Inventory</span>
+            </a>
+            <a href="php/sales_report.php" class="sidebar-btn">
+                <span class="sidebar-icon"><img src="../ClubHirayaFinal/assets/foods/logos/sales.png" alt="Sales report icon"></span>
+                <span>Sales Report</span>
+            </a>
+            <a href="../ClubHirayaFinal/settings/settings.php" class="sidebar-btn">
+                <span class="sidebar-icon"><img src="../ClubHirayaFinal/assets/foods/logos/setting.png" alt="Settings icon"></span>
+                <span>Settings</span>
+            </a>
+        </nav>
 
-      <div style="flex:1" aria-hidden="true"></div>
+        <div style="flex:1" aria-hidden="true"></div>
 
-      <button class="sidebar-logout" type="button" aria-label="Logout">
-          <span>Logout</span>
-      </button>
-  </aside>
+        <button class="sidebar-logout" type="button" aria-label="Logout">
+            <span>Logout</span>
+        </button>
+    </aside>
 
   <!-- Main Content -->
   <main class="main-content" role="main" aria-label="Main content">
