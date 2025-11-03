@@ -7,7 +7,7 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 $DB_HOST = '127.0.0.1';
-$DB_NAME = 'restaurant'; // make sure this DB exists
+$DB_NAME = 'clubhiraya'; // make sure this DB exists
 $DB_USER = 'root';
 $DB_PASS = ''; // default for XAMPP; change if you set a password
 $DB_CHAR = 'utf8mb4';

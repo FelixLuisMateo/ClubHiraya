@@ -2,7 +2,7 @@
 $servername = "localhost";
 $username = "root";      // or your phpMyAdmin username
 $password = "";          // or your phpMyAdmin password
-$dbname = "restaurant"; // change this to your actual DB name
+$dbname = "clubhiraya"; // change this to your actual DB name
 
 $conn = new mysqli($servername, $username, $password, $dbname);
 

@@ -3,7 +3,7 @@ session_start();
 
 // Database configuration
 $host = 'localhost';
-$dbname = 'restaurant';
+$dbname = 'clubhiraya';
 $username = 'root';
 $password = '';
 

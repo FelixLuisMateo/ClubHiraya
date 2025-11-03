@@ -23,7 +23,7 @@ if (count($items) === 0) {
 
 // DB config - set your real credentials
 $dbHost = 'localhost';
-$dbName = 'restaurant';      // update if different
+$dbName = 'clubhiraya';      // update if different
 $dbUser = 'root';    // <-- REPLACE
 $dbPass = '';// <-- REPLACE
 $dsn = "mysql:host=$dbHost;dbname=$dbName;charset=utf8mb4";

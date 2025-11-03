@@ -4,7 +4,7 @@ session_start();
 
 // PDO connection (match edit.php approach)
 $host = 'localhost';
-$dbname = 'restaurant';
+$dbname = 'clubhiraya';
 $username = 'root';
 $password = '';
 

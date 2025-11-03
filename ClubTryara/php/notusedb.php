@@ -3,7 +3,7 @@
 $DB_HOST = 'localhost';
 $DB_USER = 'root';
 $DB_PASS = ''; // default for local installations like XAMPP; change if needed
-$DB_NAME = 'restaurant';
+$DB_NAME = 'clubhiraya';
 
 $mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME);
 

@@ -4,7 +4,7 @@
 // Make sure this script has access to the same DB used by your app.
 
 $host = 'localhost';
-$dbname = 'restaurant';
+$dbname = 'clubhiraya';
 $user = 'root';
 $pass = '';
 

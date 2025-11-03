@@ -243,7 +243,7 @@ body {
   border-radius: 12px;
   padding: 22px; /* increased padding for larger cards */
   box-shadow: 0 6px 20px rgba(0,0,0,0.18);
-  max-height: 72vh;
+  height: 1000px;
   overflow-y: auto;
   box-sizing: border-box;
 }
@@ -491,4 +491,17 @@ body {
   .content-wrap { margin-left: 150px; padding-top: 120px; }
   .search-wrap { width: 250px; }
 
+}
+body.dark-mode .filters-row,
+body.dark-mode .filters,
+body.dark-mode .cards-backdrop,
+body.dark-mode .cards-grid ,
+body.dark-mode .content-wrap,
+body.dark-mode .table-card{
+  background: #363636;
+  color: #fff;
+}
+body.dark-mode .table-card{
+  background: #adadad;
+  color: #fff;
 }

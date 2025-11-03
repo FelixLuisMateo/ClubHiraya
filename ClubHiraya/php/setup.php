@@ -1,5 +1,5 @@
 <?php
-// One-time setup script to create 'restaurant' DB, users table, and seed an admin + employee.
+// One-time setup script to create 'clubhiraya' DB, users table, and seed an admin + employee.
 // Run once and then remove or protect this file.
 
 $servername = "localhost";
@@ -13,7 +13,7 @@ if ($conn->connect_error) {
 }
 
 // Create database if not exists
-$dbname = "restaurant";
+$dbname = "clubhiraya";
 $sql = "CREATE DATABASE IF NOT EXISTS `$dbname` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
 if ($conn->query($sql) === FALSE) {
     die("Error creating database: " . $conn->error);

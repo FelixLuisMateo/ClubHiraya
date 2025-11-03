@@ -369,7 +369,7 @@ body {
     background: #fff;
     border-radius: 15px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    padding: 12px;
+    padding-right: 12px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -410,8 +410,8 @@ body {
 
 /* Order list (center area) */
 .order-list {
-    min-height: 200px;
-    max-height: 420px; /* reduced to leave space for compute section */
+    min-height: 400px;
+    max-height: 620px; /* reduced to leave space for compute section */
     overflow-y: auto;
     border-radius: 10px;
     border: 1.2px solid #e5e5e5;
@@ -658,7 +658,7 @@ body {
   right: 0;
   top: var(--topbar-height);
   width: var(--order-width);
-  height: calc(100vh - var(--topbar-height));
+  height: calc(95vh - var(--topbar-height));
   overflow: hidden; /* inner .order-list will scroll */
   z-index: 1190;
   display: flex;

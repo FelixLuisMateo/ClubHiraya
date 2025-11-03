@@ -645,7 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const w = window.open('', '_blank', 'width=800,height=900');
     if (!w) { alert('Please allow popups for printing.'); return; }
     const form = document.createElement('form');
-    form.method = 'POST'; form.action = '../print_receipt.php'; form.target = w.name;
+    form.method = 'POST'; form.action = '../clubtryara/php/print_receipt.php'; form.target = w.name;
     const input = document.createElement('input'); input.type = 'hidden'; input.name = 'cart'; input.value = JSON.stringify(order); form.appendChild(input);
     const totals = computeNumbers();
     const totalsInput = document.createElement('input');

@@ -1,3 +1,5 @@
+<?php session_start(); ?>     <!-- This needed every php file -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,7 +12,8 @@
   <!-- flatpickr for inline calendar (required by calendar.js) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 </head>
-<body>
+<body<?php if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"'; ?>> <!-- Need this also -->
+
     <noscript>
         <div class="noscript-warning">This app requires JavaScript to function correctly. Please enable JavaScript.</div>
     </noscript>
