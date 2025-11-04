@@ -5,6 +5,10 @@
  * - click any price to toggle between PHP and the selected currency
  *
  * Replace your app.js with this file and hard-refresh (Ctrl+F5).
+ *
+ * Change: renderOrder now temporarily preserves any existing .reserved-table-block DOM node
+ * while it rebuilds the compute area so the Clear/summary UI won't be removed by a full innerHTML reset.
+ * Also keeps the reserved-price-changed listener that triggers immediate recompute.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -407,20 +411,25 @@ document.addEventListener('DOMContentLoaded', () => {
     function roundCurrency(n) {
       return Math.round((n + Number.EPSILON) * 100) / 100;
     }
-    function computeNumbers() {
-      const subtotal = order.reduce((s, i) => s + (i.price * i.qty), 0);
-      const serviceCharge = subtotal * SERVICE_RATE;
-      const tax = subtotal * TAX_RATE;
-      const discountAmount = subtotal * (discountRate || 0);
-      const payable = subtotal + serviceCharge + tax - discountAmount;
-      return {
-        subtotal: roundCurrency(subtotal),
-        serviceCharge: roundCurrency(serviceCharge),
-        tax: roundCurrency(tax),
-        discountAmount: roundCurrency(discountAmount),
-        payable: roundCurrency(payable)
-      };
-    }
+   function computeNumbers() {
+    const subtotal = order.reduce((s, i) => s + (i.price * i.qty), 0);
+    const serviceCharge = subtotal * SERVICE_RATE;
+    const tax = subtotal * TAX_RATE;
+    const discountAmount = subtotal * (discountRate || 0);
+    
+    // Add reserved table price if selected
+    const tablePrice = parseFloat(document.body.dataset.reservedTablePrice) || 0;
+    const payable = subtotal + serviceCharge + tax - discountAmount + tablePrice;
+    
+    return {
+      subtotal: roundCurrency(subtotal),
+      serviceCharge: roundCurrency(serviceCharge),
+      tax: roundCurrency(tax),
+      discountAmount: roundCurrency(discountAmount),
+      tablePrice: roundCurrency(tablePrice),
+      payable: roundCurrency(payable)
+    };
+  }
 
     // ---------- RENDER ORDER + COMPUTE UI ----------
     function renderOrder() {
@@ -496,7 +505,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // compute and show in orderCompute area
       const nums = computeNumbers();
+
+      // Preserve any existing reserved-block so it isn't removed by innerHTML=''
+      const existingReserved = orderCompute.querySelector('.reserved-table-block');
+      // If the reserved block is outside orderCompute (some builds place it in .order-section),
+      // also attempt to find it globally.
+      const reservedNode = existingReserved || document.querySelector('.reserved-table-block');
+
+      // Clear compute area
       orderCompute.innerHTML = '';
+
+      // If we preserved a reserved node, re-append it (move the node into orderCompute)
+      // and ensure it's placed before compute-actions (we'll insert compute-actions after this)
+      if (reservedNode) {
+        // If node is already in DOM elsewhere, this will move it
+        orderCompute.appendChild(reservedNode);
+      }
 
       // compute actions (Discount choices & Note)
       const actions = document.createElement('div');
@@ -584,6 +608,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return r;
       }
 
+      // Insert Reserved Table line ABOVE Subtotal if present (we still show a numeric line)
+      if (parseFloat(nums.tablePrice) > 0) {
+        // If reservedNode exists then the summary UI already shows price; still show a numeric row for totals,
+        // placing it after summary (summary was appended earlier).
+        orderCompute.appendChild(makeRow('Reserved Table', nums.tablePrice));
+      }
+
       orderCompute.appendChild(makeRow('Subtotal', nums.subtotal));
       orderCompute.appendChild(makeRow('Service Charge', nums.serviceCharge));
       orderCompute.appendChild(makeRow('Tax', nums.tax));
@@ -613,6 +644,13 @@ document.addEventListener('DOMContentLoaded', () => {
         orderCompute.appendChild(fallback);
       }
     }
+
+    // Listen for reserved-price-changed dispatched by tables-select so we re-render immediately
+    window.addEventListener('reserved-price-changed', () => {
+      setTimeout(() => {
+        try { renderOrder(); } catch (err) { console.warn('reserved-price-changed handler error', err); }
+      }, 0);
+    });
 
     // ---------- DRAFTS ----------
     function getLocalDrafts() {
@@ -810,6 +848,24 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(to);
         to = setTimeout(() => { renderProducts(); }, 180);
       });
+    }
+
+    // ---------- Ensure persisted reserved price applied before initial render ----------
+    try {
+      const persistedRaw = sessionStorage.getItem('clubtryara:selected_table_v1');
+      if (persistedRaw) {
+        const parsed = JSON.parse(persistedRaw);
+        if (parsed && typeof parsed.price !== 'undefined') {
+          document.body.dataset.reservedTablePrice = (parseFloat(parsed.price) || 0);
+          // ensure any reserved UI inserted later will reflect this price; also render now so totals include it
+          // renderOrder will be called by loadProducts below, but call once here to be safe
+          // (it will gracefully return if orderCompute not yet present)
+          renderOrder();
+        }
+      }
+    } catch (e) {
+      // ignore parse errors
+      console.warn('failed to read persisted reserved table on init', e);
     }
 
     // initial load
