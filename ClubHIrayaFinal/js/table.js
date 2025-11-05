@@ -1,6 +1,7 @@
-// Improved All/Party/Date Table Logic with Sorting and Guest field in modal
-// Added: status change button (cycles available -> reserved -> occupied -> available)
-// Uses existing api/update_table.php to persist status changes.
+// ../js/table.js
+// Tables UI: list, party/date views, availability, reservations + status change button
+// Requirements: expects API endpoints under ../api/ (get_tables.php, create_table.php,
+// update_table.php, delete_table.php, get_table_status_by_date.php, get_availability.php, create_reservation.php)
 
 document.addEventListener('DOMContentLoaded', () => {
   // API endpoints
@@ -24,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const partySortControl = document.getElementById('partySortControl');
   const partySortSelect = document.getElementById('partySortSelect');
 
-  // State
+  // State - include time so date/time view doesn't read undefined
   const state = {
     filter: 'all',
     search: '',
@@ -35,10 +36,38 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedId: null,
   };
 
+  // Ensure default date/time on initial load (today & current time)
+  (function ensureDefaultDateTime() {
+    if (!state.date) {
+      const now = new Date();
+      state.date = now.toISOString().slice(0, 10);
+    }
+    if (!state.time) {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      state.time = `${hh}:${mm}`;
+    }
+  })();
+
   // Helpers
   function capitalize(s) { return s && s.length ? s[0].toUpperCase() + s.slice(1) : ''; }
   function escapeHtml(text = '') {
     return String(text).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+  }
+
+  // Friendly formatted subtitle for date/time display
+  function formatDateForHeader(dateIso, timeStr) {
+    try {
+      if (!dateIso) return '';
+      const dt = new Date(dateIso + 'T' + (timeStr || '00:00'));
+      const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+      const datePart = dt.toLocaleDateString(undefined, options);
+      const timePart = timeStr ? dt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
+      return `${datePart}${timePart ? ' • ' + timePart : ''}`;
+    } catch (e) {
+      return `${dateIso} ${timeStr || ''}`;
+    }
   }
 
   // Status utilities
@@ -96,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Render helpers
+  // Renders a list of table cards into a container
   function renderCardsInto(container, data) {
     container.innerHTML = '';
     if (!data.length) {
@@ -131,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <button class="icon-btn delete-btn" aria-label="Delete table" title="Delete">✖</button>
         </div>
       `;
+
       // Interaction bindings
       card.addEventListener('click', () => setSelected(tbl.id));
       card.addEventListener('keydown', ev => {
@@ -223,7 +253,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Date view (single authoritative definition)
   function renderDateView() {
-    viewHeader.innerHTML = '<h1>Date</h1>';
+    // header with subtitle showing the currently selected date/time
+    const subtitle = formatDateForHeader(state.date, state.time);
+    viewHeader.innerHTML = `<h1>Date</h1>${subtitle ? `<div class="view-subtitle">${escapeHtml(subtitle)}</div>` : ''}`;
+
     if (partyControl) {
       partyControl.setAttribute('aria-hidden', 'true');
       partyControl.classList.remove('visible');
@@ -233,37 +266,75 @@ document.addEventListener('DOMContentLoaded', () => {
       partySortControl.setAttribute('aria-hidden', 'true');
       partySortControl.style.display = 'none';
     }
+
+    // Render the date-controls markup that matches the CSS
     viewContent.innerHTML = `
-      <div style="margin-bottom:10px">
-        <input type="date" id="viewDatePicker" value="${state.date || ''}" aria-label="Pick a date">
-        <input type="time" id="viewTimePicker" value="${state.time || ''}" aria-label="Pick a time">
-        <button id="btnSearchSlot">Show Availability</button>
-        <button id="btnAddReservationSlot">+ New Reservation</button>
+      <div class="date-controls" role="region" aria-label="Date and time controls">
+        <div class="picker-wrap" aria-hidden="false">
+          <label class="label" for="viewDatePicker" style="display:none">Date</label>
+          <input type="date" id="viewDatePicker" value="${state.date || ''}" aria-label="Pick a date" />
+          <span class="divider" aria-hidden="true"></span>
+          <label class="label" for="viewTimePicker" style="display:none">Time</label>
+          <input type="time" id="viewTimePicker" value="${state.time || ''}" aria-label="Pick a time" />
+          <button id="btnClearDateTime" class="btn" title="Clear date/time" aria-label="Clear date/time">Clear</button>
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button id="btnSearchSlot" class="btn primary" title="Show availability for chosen date/time">Show Availability</button>
+          <button id="btnAddReservationSlot" class="btn add" title="Create a new reservation">+ New Reservation</button>
+        </div>
       </div>
+
       <div id="tableStatusGrid" class="cards-grid"></div>
     `;
+
+    // Wire up inputs and buttons
     const datePicker = document.getElementById('viewDatePicker');
     if (datePicker) {
+      datePicker.value = state.date || '';
       datePicker.addEventListener('change', e => {
         state.date = e.target.value;
+        // update header subtitle immediately
+        const vs = viewHeader.querySelector('.view-subtitle');
+        if (vs) vs.textContent = formatDateForHeader(state.date, state.time);
         loadTableStatusForDate(state.date);
       });
       if (state.date) loadTableStatusForDate(state.date);
     }
 
-    // wire up time picker and buttons
     const timePicker = document.getElementById('viewTimePicker');
     if (timePicker) {
-      timePicker.addEventListener('change', e => { state.time = e.target.value; });
+      timePicker.value = state.time || '';
+      timePicker.addEventListener('change', e => {
+        state.time = e.target.value;
+        const vs = viewHeader.querySelector('.view-subtitle');
+        if (vs) vs.textContent = formatDateForHeader(state.date, state.time);
+      });
     }
+
     document.getElementById('btnSearchSlot')?.addEventListener('click', () => {
-      if (state.date && state.time) {
-        loadTableStatusForDateTime(state.date, state.time);
-      } else {
-        alert('Please select date and time first.');
-      }
+      if (!state.date) return alert('Please select a date first.');
+      if (!state.time) return alert('Please select a time first.');
+      loadTableStatusForDateTime(state.date, state.time);
     });
-    document.getElementById('btnAddReservationSlot')?.addEventListener('click', () => openNewReservationModal());
+
+    document.getElementById('btnAddReservationSlot')?.addEventListener('click', () => {
+      if (!state.date || !state.time) return alert('Please select date and time first to create a reservation.');
+      openNewReservationModal();
+    });
+
+    document.getElementById('btnClearDateTime')?.addEventListener('click', () => {
+      const now = new Date();
+      state.date = now.toISOString().slice(0, 10);
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      state.time = `${hh}:${mm}`;
+      document.getElementById('viewDatePicker').value = state.date;
+      document.getElementById('viewTimePicker').value = state.time;
+      const vs = viewHeader.querySelector('.view-subtitle');
+      if (vs) vs.textContent = formatDateForHeader(state.date, state.time);
+      loadTableStatusForDate(state.date);
+    });
   }
 
   // Date-only status loading
@@ -285,6 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!list.length) return;
         const header = document.createElement('div');
         header.className = 'table-status-header';
+        header.style.gridColumn = '1 / -1';
         header.innerHTML = `<h2>${capitalize(status)}</h2>`;
         grid.appendChild(header);
         list.forEach(t => {
@@ -382,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Modals for create/edit
+  // Modal for creating/editing a table
   function openEditModal(table) {
     const isNew = !table || !table.id;
     const overlay = document.createElement('div');
@@ -456,6 +528,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => modalName.focus(), 50);
   }
 
+  // Delete table
   async function confirmDelete(table) {
     if (!confirm(`Delete ${table.name}? This action cannot be undone.`)) return;
     try {
@@ -477,6 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
     openEditModal({});
   }
 
+  // New reservation modal (date/time already filled)
   function openNewReservationModal() {
     if (!state.date || !state.time) return alert('Please select date and time first!');
     // Fetch available tables for chosen slot
@@ -518,7 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.querySelector('#modalSave').addEventListener('click', () => {
           const table_id = overlay.querySelector('#modalTableSelect').value;
           const guest = overlay.querySelector('#modalGuest').value.trim();
-          // POST reservation to backend (you'll need api/create_reservation.php)
+          // POST reservation to backend (requires api/create_reservation.php)
           fetch('../api/create_reservation.php', {
             method: 'POST',
             headers: {"Content-Type": "application/json"},
@@ -531,7 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }).then(res => res.json()).then(j => {
             if (!j.success) throw new Error(j.error || 'Create reservation failed');
             overlay.remove();
-            // Optionally reload that date/time's status
+            // reload that date/time's status
             loadTableStatusForDateTime(state.date, state.time);
           }).catch(err => alert("Create reservation failed: " + err.message));
         });
@@ -566,17 +640,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Party size select restore
+  // Party size control
   if (partySelect) {
     partySelect.addEventListener('change', e => { state.partySeats = e.target.value; renderView(); });
     state.partySeats = partySelect.value || 'any';
   }
-  // Party sort select event
   if (partySortSelect) {
-    partySortSelect.addEventListener('change', e => {
-      state.partySort = e.target.value;
-      renderView();
-    });
+    partySortSelect.addEventListener('change', e => { state.partySort = e.target.value; renderView(); });
     state.partySort = partySortSelect.value || 'default';
   }
 
@@ -598,7 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault(); openNewTableModal();
   });
 
-  // Modal CSS injection
+  // Modal CSS injection (keeps modal styling available if not present)
   (function injectModalCss() {
     if (document.getElementById('modal-styles')) return;
     const css = `

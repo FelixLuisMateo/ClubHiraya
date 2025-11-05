@@ -244,7 +244,7 @@ body {
   border-radius: 12px;
   padding: 22px; /* increased padding for larger cards */
   box-shadow: 0 6px 20px rgba(0,0,0,0.18);
-  max-height: 72vh;
+  max-height: 80vh;
   overflow-y: auto;
   box-sizing: border-box;
 }
@@ -460,11 +460,7 @@ body {
 }
 .icon-btn:hover { transform: translateY(-2px); }
 .icon-btn:focus { outline: 3px solid rgba(43,140,255,0.25); }
-
-/* ensure cards-grid used inside viewContent keeps same spacing */
 .view-content .cards-grid { margin: 0; }
-
-/* ---------- New: Date/time styles (improves the date view controls) ---------- */
 /* Container for date/time controls placed above the status grid */
 .date-controls {
   display: flex;
@@ -553,6 +549,8 @@ body {
 
 /* table status column header for date view */
 .table-status-header {
+  grid-column: 1 / -1;
+  display: block; /* ensure it's treated as a block across the row */
   margin-top: 18px;
   margin-bottom: 8px;
 }
@@ -609,4 +607,48 @@ body {
   .filters-row { margin-left: 150px; }
   .content-wrap { margin-left: 150px; padding-top: 120px; }
   .search-wrap { width: 250px; }
+}
+
+/* --- Appended small improvements (non-destructive) --- */
+/* Override / polish the subtitle (keeps existing .view-subtitle but tightens the look) */
+.view-subtitle {
+  font-size: 14px;
+  color: #444;
+  margin-top: 6px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+/* Clear button style (small icon-like) */
+#btnClearDateTime {
+  margin-left: 8px;
+  padding: 6px 8px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 6px;
+  font-weight: 700;
+  color: #444;
+}
+#btnClearDateTime:hover {
+  background: #f6f8ff;
+  border-color: #d8e3ff;
+}
+
+/* Ensure a small inline divider exists between date/time inputs (used by .picker-wrap) */
+.date-controls .picker-wrap .divider {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12'><circle cx='6' cy='6' r='2' fill='%23999' /></svg>");
+  background-repeat: no-repeat;
+  background-position: center;
+  margin: 0 6px;
+}
+
+/* mobile adjustments for appended elements */
+@media (max-width: 900px) {
+  .date-controls .picker-wrap input[type="date"],
+  .date-controls .picker-wrap input[type="time"] {
+    min-width: 120px;
+  }
 }
