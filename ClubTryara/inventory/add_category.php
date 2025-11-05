@@ -43,11 +43,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
   <aside class="sidebar" role="complementary" aria-label="Sidebar">
-    <div class="sidebar-header"><img src="../images/logo1.png" class="sidebar-header-img"></div>
+    <div class="sidebar-header"><img src="../assets/logos/logo1.png" class="sidebar-header-img"></div>
     <nav class="sidebar-menu">
-      <a href="../index.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../images/home.png"></span><span>Home</span></a>
-      <a href="../php/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../images/table.png"></span><span>Tables</span></a>
-      <a href="inventory.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../images/inventory.png"></span><span>Inventory</span></a>
+      <a href="../index.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/home.png"></span><span>Home</span></a>
+      <a href="../php/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/table.png"></span><span>Tables</span></a>
+      <a href="inventory.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/inventory.png"></span><span>Inventory</span></a>
     </nav>
     <div style="flex:1"></div>
     <button class="sidebar-logout">Logout</button>

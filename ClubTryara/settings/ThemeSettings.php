@@ -34,13 +34,12 @@ function renderThemeSettings() {
                 <span class="theme-label">Dark Mode</span>
                 <label class="switch">
                     <input type="checkbox" name="dark_mode" '.($isDark ? 'checked' : '').' onchange="this.form.submit()">
-                    <span class="slider">
+                    <span class="slider" style="position: relative; top: -5px;">
                         <span class="switch-on">ON</span>
                         <span class="switch-off">OFF</span>
                     </span>
                 </label>
             </div>
-
             <div>
                 <label style="font-weight:bold;display:block;margin-bottom:8px;">Sidebar Color</label>
                 <div style="display:flex;align-items:center;gap:12px;">

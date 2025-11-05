@@ -4,11 +4,11 @@
  * - uses APP_SETTINGS.rates (from settings-sync.js) to convert amounts
  * - click any price to toggle between PHP and the selected currency
  *
- * Replace your app.js with this file and hard-refresh (Ctrl+F5).
+ * This is a full replacement of your app.js with one small, safe change:
+ * - The Proceed button listener now prefers the new payment module (window.appPayments.openPaymentModal('proceed'))
+ *   if available, and otherwise falls back to the legacy handleProceed() behavior.
  *
- * Change: renderOrder now temporarily preserves any existing .reserved-table-block DOM node
- * while it rebuilds the compute area so the Clear/summary UI won't be removed by a full innerHTML reset.
- * Also keeps the reserved-price-changed listener that triggers immediate recompute.
+ * Replace your ClubTryara/js/app.js with this file and hard-refresh (Ctrl+F5).
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -417,7 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tax = subtotal * TAX_RATE;
     const discountAmount = subtotal * (discountRate || 0);
     
-    // Add reserved table price if selected
+    // Add Reserved cabin price if selected
     const tablePrice = parseFloat(document.body.dataset.reservedTablePrice) || 0;
     const payable = subtotal + serviceCharge + tax - discountAmount + tablePrice;
     
@@ -475,10 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const btnPlus = document.createElement('button');
           btnPlus.type = 'button';
           btnPlus.className = 'order-qty-btn';
-          btnPlus.textContent = '+';
-          btnPlus.title = 'Increase';
-          btnPlus.addEventListener('click', () => changeQty(item.id, item.qty + 1));
-          qtyWrap.appendChild(btnPlus);
+          row.appendChild(btnPlus);
 
           row.appendChild(qtyWrap);
 
@@ -608,11 +605,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return r;
       }
 
-      // Insert Reserved Table line ABOVE Subtotal if present (we still show a numeric line)
+      // Insert Reserved cabin line ABOVE Subtotal if present (we still show a numeric line)
       if (parseFloat(nums.tablePrice) > 0) {
         // If reservedNode exists then the summary UI already shows price; still show a numeric row for totals,
         // placing it after summary (summary was appended earlier).
-        orderCompute.appendChild(makeRow('Reserved Table', nums.tablePrice));
+        orderCompute.appendChild(makeRow('Reserved Cabin', nums.tablePrice));
       }
 
       orderCompute.appendChild(makeRow('Subtotal', nums.subtotal));
@@ -785,9 +782,30 @@ document.addEventListener('DOMContentLoaded', () => {
       await loadProducts(); order = []; discountRate = DISCOUNT_TYPES['Regular']; discountType = 'Regular'; noteValue = ''; renderOrder();
     });
 
-    // Hook the page-level proceed button (single canonical handler)
+    // Hook the page-level proceed button to open the payment modal if available,
+    // otherwise fall back to the old handleProceed behavior.
     if (proceedBtnPage) {
-      proceedBtnPage.addEventListener('click', async () => { await handleProceed(); });
+      proceedBtnPage.addEventListener('click', (e) => {
+        e.preventDefault();
+        // Prefer the new payment module if it's loaded
+        try {
+          if (window.appPayments && typeof window.appPayments.openPaymentModal === 'function') {
+            window.appPayments.openPaymentModal('proceed');
+            return;
+          }
+        } catch (err) {
+          console.warn('Payment module not available, falling back to handleProceed', err);
+        }
+        // Fallback: call legacy function if the payment module isn't present
+        try {
+          const maybePromise = handleProceed && handleProceed();
+          if (maybePromise && typeof maybePromise.then === 'function') {
+            maybePromise.catch((err) => console.error('Legacy proceed failed', err));
+          }
+        } catch (err) {
+          console.error('Fallback proceed() failed', err);
+        }
+      });
     }
 
     // Hook the page-level bill out button (single canonical handler)
@@ -809,10 +827,26 @@ document.addEventListener('DOMContentLoaded', () => {
       totalsInput.name = 'totals';
       totalsInput.value = JSON.stringify(totals);
       form.appendChild(totalsInput);
+
+      // include reserved & meta if available
+      try {
+        const persistedRaw = sessionStorage.getItem('clubtryara:selected_table_v1');
+        if (persistedRaw) {
+          const parsed = JSON.parse(persistedRaw);
+          const reservedInput = document.createElement('input');
+          reservedInput.type = 'hidden';
+          reservedInput.name = 'meta';
+          reservedInput.value = JSON.stringify({ reserved: parsed });
+          form.appendChild(reservedInput);
+        }
+      } catch (e) {}
+
       document.body.appendChild(form); form.submit(); document.body.removeChild(form);
     }
 
-    // ---------- Proceed (update DB stock) ----------
+    // ---------- Proceed (legacy update DB stock) ----------
+    // Note: This function remains as a fallback only. The preferred flow is the app-payments module
+    // which will save the sale, capture payment details, and call update_stock.php.
     async function handleProceed() {
       if (order.length === 0) { alert('No items to proceed.'); return; }
       if (!confirm('Proceed with this order and update stock?')) return;
@@ -857,15 +891,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const parsed = JSON.parse(persistedRaw);
         if (parsed && typeof parsed.price !== 'undefined') {
           document.body.dataset.reservedTablePrice = (parseFloat(parsed.price) || 0);
-          // ensure any reserved UI inserted later will reflect this price; also render now so totals include it
-          // renderOrder will be called by loadProducts below, but call once here to be safe
-          // (it will gracefully return if orderCompute not yet present)
           renderOrder();
         }
       }
     } catch (e) {
-      // ignore parse errors
-      console.warn('failed to read persisted reserved table on init', e);
+      console.warn('failed to read persisted reserved cabin on init', e);
     }
 
     // initial load

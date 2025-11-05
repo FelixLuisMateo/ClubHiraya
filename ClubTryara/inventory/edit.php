@@ -68,7 +68,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $price = $_POST['price'] ?? '';
     $category = trim($_POST['category'] ?? '');
     $image = trim($_POST['image'] ?? '');
-    $stock = $_POST['stock'] ?? '';
 
     // sanitize image filename: remove NULs and normalize whitespace to single spaces
     $image = str_replace("\0", '', $image);
@@ -83,8 +82,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!in_array($category, $categories, true)) $errors[] = "Category is required and must be one of the predefined categories.";
 
     if ($image === '' || !preg_match('/^[^\/\\\\]+\\.(jpe?g|png|gif)$/i', $image)) $errors[] = "Image filename is required and must end with .jpg/.png/.gif.";
-    if (!ctype_digit((string)$stock) || intval($stock) < 0 || intval($stock) > 1000000) $errors[] = "Stock must be a non-negative integer.";
-
     if (empty($errors)) {
         try {
             $sql = "UPDATE foods SET name = :name, price = :price, category = :category, stock = :stock, image = :image WHERE id = :id";
@@ -126,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <a href="../index.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/home.png" alt="Home"></span><span>Home</span></a>
           <a href="tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/table.png" alt="Tables"></span><span>Tables</span></a>
           <a href="inventory.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
-          <a href="sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/sales.png" alt="Sales"></span><span>Sales Report</span></a>
+          <a href="../SalesReport/sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/sales.png" alt="Sales"></span><span>Sales Report</span></a>
           <a href="settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/setting.png" alt="Settings"></span><span>Settings</span></a>
       </nav>
       <div style="flex:1" aria-hidden="true"></div>
@@ -181,11 +178,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   </option>
                 <?php endforeach; ?>
               </select>
-            </div>
-
-            <div class="form-group">
-              <label for="stock">Stock</label>
-              <input id="stock" name="stock" type="number" min="0" required value="<?php echo isset($_POST['stock']) ? htmlspecialchars($_POST['stock']) : htmlspecialchars($item['stock']); ?>">
             </div>
 
             <div class="form-group" style="grid-column:1 / -1;">

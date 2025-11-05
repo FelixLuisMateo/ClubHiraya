@@ -12,8 +12,23 @@
     <script defer src="js/settings-sync.js"></script>
     <script defer src="js/app.js"></script>
     <script defer src="js/tables-select.js"></script>
+    <script defer src="js/app-actions.js"></script>
+    <script defer src="js/app-payments.js"></script>
 </head>
-<body<?php if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"'; ?>>
+<body
+<?php
+  if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
+  if (isset($_SESSION['accent_color'])) {
+    $accent = $_SESSION['accent_color'];
+    $gradientMap = [
+      '#d33fd3' => ['#d33fd3', '#a2058f'],
+      '#4b4bff' => ['#4b4bff', '#001b89'],
+      '#bdbdbd' => ['#bdbdbd', '#7a7a7a'],
+    ];
+    $g = $gradientMap[$accent] ?? $gradientMap['#d33fd3'];
+    echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
+  }
+?>>
 
     <noscript>
         <div class="noscript-warning">This app requires JavaScript to function correctly. Please enable JavaScript.</div>
@@ -38,7 +53,7 @@
                 <span class="sidebar-icon"><img src="../clubtryara/assets/logos/inventory.png" alt="Inventory icon"></span>
                 <span>Inventory</span>
             </a>
-            <a href="php/sales_report.php" class="sidebar-btn">
+            <a href="php/../SalesReport/sales_report.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="../clubtryara/assets/logos/sales.png" alt="Sales report icon"></span>
                 <span>Sales Report</span>
             </a>
@@ -91,7 +106,7 @@
                 <div class="order-list" id="orderList" aria-live="polite"></div>
 
                 <div class="order-compute" id="orderCompute" aria-live="polite">
-                    <!-- Reserved table UI will be injected here by tables-select.js -->
+                    <!-- Reserved cabin UI will be injected here by tables-select.js -->
                 </div>
 
                 <div class="order-buttons">
@@ -114,15 +129,15 @@
         </div>
     </div>
 
-    <!-- Reserved Tables Modal -->
+    <!-- Reserved cabins Modal -->
     <div class="modal hidden" id="tablesModal" role="dialog" aria-modal="true" aria-labelledby="tablesModalTitle" tabindex="-1">
         <div class="modal-content" role="document" style="max-width:900px;">
             <button class="close-btn" id="closeTablesModal" aria-label="Close dialog">&times;</button>
-            <h3 id="tablesModalTitle">Reserved Tables</h3>
+            <h3 id="tablesModalTitle">Reserved Cabins</h3>
 
             <div id="tables-loading" style="padding:12px 0;">Loading...</div>
 
-            <div id="tables-empty" style="display:none;padding:12px 0;">No reserved tables found.</div>
+            <div id="tables-empty" style="display:none;padding:12px 0;">No reserved cabins found.</div>
 
             <div style="overflow:auto;max-height:320px;">
                 <table class="table" id="tables-list" style="width:100%;border-collapse:collapse;display:none;">

@@ -236,7 +236,7 @@ body {
   padding: 18px 28px;
   display: grid;
   /* default columns: ID | Name | Price | Category | Stock | Actions */
-  grid-template-columns: 80px 2fr 1fr 1fr 1fr 280px;
+  grid-template-columns: 100px 150px;
   align-items: center;
   margin-bottom: 16px;
   font-weight: 700;
@@ -477,11 +477,11 @@ body.dark-mode .table-header {
   color: #fff;
 }
 
-body.dark-mode .col-image {
+body.dark-mode .form-card {
   background: #363636;
   color: #fff;
 }
-body.dark-mode .table-row {
+body.dark-mode .main-content {
   background: #363636;
   color: #fff;
 }

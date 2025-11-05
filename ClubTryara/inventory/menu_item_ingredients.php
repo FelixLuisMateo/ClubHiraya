@@ -4,7 +4,7 @@ require 'db_connect.php';
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 if (!$id) {
-  header("Location: menu_items.php");
+  header("Location: inventory.php");
   exit;
 }
 
@@ -32,20 +32,20 @@ $stmt2->close();
   <meta charset="utf-8">
   <title>Recipe - <?=htmlspecialchars($menu['name'] ?? '')?></title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="../css/inventory.css">
+  <link rel="stylesheet" href="../css/inv_ingredient.css">
 </head>
 <body>
   <!-- Sidebar (same classes/structure as inventory.php) -->
   <aside class="sidebar" role="complementary" aria-label="Sidebar">
       <div class="sidebar-header">
-          <img src="../images/logo1.png" alt="Club Hiraya logo" class="sidebar-header-img">
+          <img src="../assets/logos/logo1.png" alt="Club Hiraya logo" class="sidebar-header-img">
       </div>
       <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
-          <a href="../index.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../images/home.png" alt="Home"></span><span>Home</span></a>
-          <a href="../php/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../images/table.png" alt="Tables"></span><span>Tables</span></a>
-          <a href="inventory.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../images/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
-          <a href="sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../images/sales.png" alt="Sales"></span><span>Sales Report</span></a>
-          <a href="../settings/settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../images/setting.png" alt="Settings"></span><span>Settings</span></a>
+          <a href="../index.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/home.png" alt="Home"></span><span>Home</span></a>
+          <a href="../tables/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/table.png" alt="Tables"></span><span>Tables</span></a>
+          <a href="inventory.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
+          <a href="../SalesReport/SalesReport.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/sales.png" alt="Sales"></span><span>Sales Report</span></a>
+          <a href="../settings/settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/setting.png" alt="Settings"></span><span>Settings</span></a>
       </nav>
       <div style="flex:1" aria-hidden="true"></div>
       <button class="sidebar-logout" type="button" aria-label="Logout">Logout</button>
@@ -58,7 +58,7 @@ $stmt2->close();
         <input class="search-input" placeholder="Filter recipe items..." oninput="filterRows(this.value)">
       </div>
       <div class="navlinks" style="display:flex;gap:14px;align-items:center;">
-        <a href="menu_items.php" class="btn-cancel" style="padding:8px 12px;text-decoration:none;">Back to Menu</a>
+        <a href="inventory.php" class="btn-cancel" style="padding:8px 12px;text-decoration:none;">Back to Menu</a>
         <a href="ingredients.php" class="btn-cancel" style="padding:8px 12px;text-decoration:none;">Ingredients</a>
         <a href="inventory_transaction.php" class="btn-cancel" style="padding:8px 12px;text-decoration:none;">Transactions</a>
       </div>
@@ -72,7 +72,7 @@ $stmt2->close();
             <div style="color:#666;margin-top:6px;">Ingredients used in this menu item</div>
           </div>
           <div>
-            <a class="btn-cancel" href="menu_items.php" style="padding:10px 14px;display:inline-block;">Back to Menu</a>
+            <a class="btn-cancel" href="inventory.php" style="padding:10px 14px;display:inline-block;">Back to Menu</a>
           </div>
         </div>
 

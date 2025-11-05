@@ -1,15 +1,10 @@
 <?php
-// Settings page - centralized POST handling to avoid "headers already sent" warnings.
-// Start session and process form POSTs BEFORE any output so header() redirects work.
 session_start();
 
-// Centralized POST handling (POST-Redirect-GET)
-// Each settings form includes a hidden input `form` with values: theme, system, notifications
+// Centralized POST handling (PRG)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form'])) {
     $form = $_POST['form'];
-
     if ($form === 'theme') {
-        // Dark mode checkbox and accent color
         $_SESSION['dark_mode'] = isset($_POST['dark_mode']);
         if (isset($_POST['accent_color'])) {
             $_SESSION['accent_color'] = $_POST['accent_color'];
@@ -24,19 +19,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form'])) {
         $_SESSION['notify_low_stock'] = isset($_POST['notify_low_stock']);
     }
 
-    // PRG: redirect back to this page to avoid form re-submissions and ensure subsequent output is fresh
     header("Location: " . $_SERVER['REQUEST_URI']);
     exit();
 }
 
-// Include render functions (these should only output HTML — POSTs handled above)
-include 'ThemeSettings.php';
-include 'SystemSettings.php';
-include 'NotificationsSettings.php';
-include 'BackupRestore.php';
-include 'ChangePassword.php';
+// ✅ Correct includes
+require_once __DIR__ . '/ThemeSettings.php';
+require_once __DIR__ . '/SystemSettings.php';
+require_once __DIR__ . '/NotificationsSettings.php';
+require_once __DIR__ . '/BackupRestore.php';
+require_once __DIR__ . '/ChangePassword.php';
+?>
 
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -76,7 +72,7 @@ include 'ChangePassword.php';
                 <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/inventory.png" alt="Inventory icon"></span>
                 <span>Inventory</span>
             </a>
-            <a href="../php/sales_report.php" class="sidebar-btn">
+            <a href="../php/../SalesReport/sales_report.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/sales.png" alt="Sales report icon"></span>
                 <span>Sales Report</span>
             </a>

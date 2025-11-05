@@ -17,7 +17,6 @@ if ($result && $result->num_rows > 0) {
             'price' => $row['price'],
             'category' => $row['category'],
             'image' => $row['image'],
-            'stock' => $row['stock']
         ];
     }
 }
