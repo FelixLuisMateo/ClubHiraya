@@ -60,44 +60,48 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function renderCardsInto(container, data) {
-    container.innerHTML = '';
-    if (!data.length) {
-      container.innerHTML = '<div style="padding:18px; font-weight:700">No tables found</div>';
-      return;
-    }
-    data.forEach(tbl => {
-      const card = document.createElement('div');
-      card.className = 'table-card';
-      card.setAttribute('role', 'button');
-      card.setAttribute('tabindex', '0');
-      card.dataset.id = tbl.id;
-
-      if (state.selectedId === tbl.id) card.classList.add('active');
-
-      card.innerHTML = `
-        <div class="title">${escapeHtml(tbl.name)}</div>
-        <div class="seats-row"><span>👥</span> ${escapeHtml(String(tbl.seats))} Seats</div>
-        <div class="card-actions" aria-hidden="false">
-          <button class="icon-btn edit-btn" aria-label="Edit table" title="Edit">✎</button>
-          <button class="icon-btn delete-btn" aria-label="Delete table" title="Delete">✖</button>
-        </div>
-      `;
-
-      card.addEventListener('click', () => setSelected(tbl.id));
-      card.addEventListener('keydown', ev => {
-        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setSelected(tbl.id); }
-      });
-
-      const editBtn = card.querySelector('.edit-btn');
-      const deleteBtn = card.querySelector('.delete-btn');
-
-      if (editBtn) editBtn.addEventListener('click', e => { e.stopPropagation(); openEditModal(tbl); });
-      if (deleteBtn) deleteBtn.addEventListener('click', e => { e.stopPropagation(); confirmDelete(tbl); });
-
-      container.appendChild(card);
-    });
+function renderCardsInto(container, data) {
+  container.innerHTML = '';
+  if (!data.length) {
+    container.innerHTML = '<div style="padding:18px; font-weight:700">No tables found</div>';
+    return;
   }
+  data.forEach(tbl => {
+    // Use current status
+    const status = tbl.status || 'available';
+    const statusDotColor =
+      status === 'available' ? '#00b256' :
+      status === 'reserved' ? '#ffd400' :
+      '#d20000';
+    const card = document.createElement('div');
+    card.className = 'table-card';
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.dataset.id = tbl.id;
+    if (state.selectedId === tbl.id) card.classList.add('active');
+    card.innerHTML = `
+      <div class="title">${escapeHtml(tbl.name)}</div>
+      <div class="status-row">
+        <span class="status-dot" style="background:${statusDotColor}"></span>
+        <span class="status-label">${capitalize(status)}</span>
+      </div>
+      <div class="seats-row"><span>👥</span> ${escapeHtml(String(tbl.seats))} Seats</div>
+      <div class="card-actions" aria-hidden="false">
+        <button class="icon-btn edit-btn" aria-label="Edit table" title="Edit">✎</button>
+        <button class="icon-btn delete-btn" aria-label="Delete table" title="Delete">✖</button>
+      </div>
+    `;
+    card.addEventListener('click', () => setSelected(tbl.id));
+    card.addEventListener('keydown', ev => {
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setSelected(tbl.id); }
+    });
+    const editBtn = card.querySelector('.edit-btn');
+    const deleteBtn = card.querySelector('.delete-btn');
+    if (editBtn) editBtn.addEventListener('click', e => { e.stopPropagation(); openEditModal(tbl); });
+    if (deleteBtn) deleteBtn.addEventListener('click', e => { e.stopPropagation(); confirmDelete(tbl); });
+    container.appendChild(card);
+  });
+}
 
   function setSelected(id) {
     state.selectedId = id;
@@ -113,9 +117,13 @@ document.addEventListener('DOMContentLoaded', () => {
     partyControl && partyControl.setAttribute('aria-hidden', 'true');
     // Search filter
     const s = state.search.trim().toLowerCase();
-    let filtered = tablesData;
-    if (s) filtered = tablesData.filter(t => t.name.toLowerCase().includes(s));
-    renderCardsInto(cardsGrid, filtered);
+  let filtered = tablesData;
+  if (state.partySeats !== 'any') {
+    const v = Number(state.partySeats);
+    const [min, max] = v === 2 ? [1,2] : v === 4 ? [3,4] : v === 6 ? [5,6] : [7,8];
+    filtered = tablesData.filter(t => t.seats >= min && t.seats <= max);
+  }
+  renderCardsInto(cardsGrid, filtered);
   }
 
   // PARTY SIZE VIEW (added back)
