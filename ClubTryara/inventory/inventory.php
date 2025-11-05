@@ -1,5 +1,4 @@
-<?php
-session_start();
+<?php session_start();
 
 // Use existing db_connect.php in the same folder which should create $conn (mysqli)
 $dbConnectPath = __DIR__ . '/db_connect.php';
@@ -93,7 +92,7 @@ if ($search !== '') {
               <span class="sidebar-icon"><img src="../assets/logos/inventory.png" alt="Inventory icon"></span>
               <span>Inventory</span>
           </a>
-          <a href="sales_report.php" class="sidebar-btn">
+          <a href="../SalesReport/sales_report.php" class="sidebar-btn">
               <span class="sidebar-icon"><img src="../assets/logos/sales.png" alt="Sales report icon"></span>
               <span>Sales Report</span>
           </a>
@@ -152,11 +151,10 @@ if ($search !== '') {
               <div>Name</div>
               <div>Price</div>
               <div>Category</div>
-              <div></div>
               <div class="col-image" aria-hidden="true">File Name</div>
               <div class="header-actions">
                 <!-- Toggle button to show/hide Image column -->
-                <button id="toggleImageBtn" class="btn-toggle" type="button" aria-pressed="false">Show File Name</button>
+              <button id="toggleImageBtn" class="btn-toggle" type="button" aria-pressed="false" style="color: #fff;">Show File Name</button>
               </div>
 
               <a href="create.php" class="add-btn" title="Add New Item">
@@ -182,7 +180,6 @@ if ($search !== '') {
                       <div><?php echo htmlspecialchars($item['name']); ?></div>
                       <div>₱<?php echo number_format($item['price'], 2); ?></div>
                       <div><?php echo htmlspecialchars($item['category']); ?></div>
-                      <div></div>
 
                       <!-- Image filename cell (hidden by default) -->
                       <div class="col-image"><?php echo htmlspecialchars($item['image']); ?></div>

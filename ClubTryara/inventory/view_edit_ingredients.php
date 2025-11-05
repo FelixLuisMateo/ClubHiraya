@@ -1,3 +1,5 @@
+<?php session_start(); ?>
+
 <?php
 // view_edit_ingredients.php - view ingredient details using same design/layout as edit/inventory
 require 'db_connect.php';
@@ -38,17 +40,29 @@ $q->close();
   <meta charset="utf-8" />
   <title>View Ingredient - <?=htmlspecialchars($ing['name'])?></title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="../css/inventory.css">
+  <link rel="stylesheet" href="../css/inv_ingredient.css">
 </head>
-<body>
+<?php
+  if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
+  if (isset($_SESSION['accent_color'])) {
+    $accent = $_SESSION['accent_color'];
+    $gradientMap = [
+      '#d33fd3' => ['#d33fd3', '#a2058f'],
+      '#4b4bff' => ['#4b4bff', '#001b89'],
+      '#bdbdbd' => ['#bdbdbd', '#7a7a7a'],
+    ];
+    $g = $gradientMap[$accent] ?? $gradientMap['#d33fd3'];
+    echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
+  }
+?>>
   <aside class="sidebar" role="complementary" aria-label="Sidebar">
-    <div class="sidebar-header"><img src="../images/logo1.png" class="sidebar-header-img" alt="logo"></div>
+    <div class="sidebar-header"><img src="../assets/logos/logo1.png" class="sidebar-header-img" alt="logo"></div>
     <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
-      <a href="../index.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../images/home.png" alt="Home"></span><span>Home</span></a>
-      <a href="../php/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../images/table.png" alt="Tables"></span><span>Tables</span></a>
-      <a href="inventory.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../images/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
-      <a href="sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../images/sales.png" alt="Sales"></span><span>Sales Report</span></a>
-      <a href="../settings/settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../images/setting.png" alt="Settings"></span><span>Settings</span></a>
+      <a href="../index.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/home.png" alt="Home"></span><span>Home</span></a>
+      <a href="../php/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/table.png" alt="Tables"></span><span>Tables</span></a>
+      <a href="inventory.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../assets/logos/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
+      <a href="../SalesReport/sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/sales.png" alt="Sales"></span><span>Sales Report</span></a>
+      <a href="../settings/settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/setting.png" alt="Settings"></span><span>Settings</span></a>
     </nav>
     <div style="flex:1" aria-hidden="true"></div>
     <button class="sidebar-logout">Logout</button>

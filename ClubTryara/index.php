@@ -53,7 +53,7 @@
                 <span class="sidebar-icon"><img src="../clubtryara/assets/logos/inventory.png" alt="Inventory icon"></span>
                 <span>Inventory</span>
             </a>
-            <a href="php/sales_report.php" class="sidebar-btn">
+            <a href="php/../SalesReport/sales_report.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="../clubtryara/assets/logos/sales.png" alt="Sales report icon"></span>
                 <span>Sales Report</span>
             </a>

@@ -61,12 +61,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $errors[] = "Category is required and must be one of the predefined categories.";
     }
 
-    if (!ctype_digit((string)$stock) || intval($stock) < 0 || intval($stock) > 1000000) {
-        $errors[] = "Stock must be a non-negative integer.";
-    } else {
-        $stock = intval($stock);
-    }
-
     // Validate image filename (allow spaces, jpg/png/gif), but disallow path separators
     if ($image === '' || !preg_match('/^[^\/\\\\]+\.(jpe?g|png|gif)$/i', $image)) {
         $errors[] = "Image filename is required and must end with .jpg/.jpeg/.png/.gif (no path separators).";
@@ -126,7 +120,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           <a href="../index.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/home.png" alt="Home"></span><span>Home</span></a>
           <a href="tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/table.png" alt="Tables"></span><span>Tables</span></a>
           <a href="inventory.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
-          <a href="sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/sales.png" alt="Sales"></span><span>Sales Report</span></a>
+          <a href="../SalesReport/sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/sales.png" alt="Sales"></span><span>Sales Report</span></a>
           <a href="settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/setting.png" alt="Settings"></span><span>Settings</span></a>
       </nav>
       <div style="flex:1" aria-hidden="true"></div>
