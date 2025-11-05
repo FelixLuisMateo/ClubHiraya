@@ -1,5 +1,4 @@
-// Enhanced table.js: All Tables, Party Size, Date views
-
+// Improved All/Party/Date Table Logic with Sorting and Guest field in modal
 document.addEventListener('DOMContentLoaded', () => {
   // API endpoints
   const API_GET = '../api/get_tables.php';
@@ -17,16 +16,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchInput = document.getElementById('searchInput');
   const searchClear = document.getElementById('searchClear');
   const filterButtons = document.querySelectorAll('.filter-btn');
-  
-  // Party size controls (added back)
   const partyControl = document.getElementById('partyControl');
   const partySelect = document.getElementById('partySelect');
+  const partySortControl = document.getElementById('partySortControl');
+  const partySortSelect = document.getElementById('partySortSelect');
 
   // State
   const state = {
     filter: 'all',
     search: '',
     partySeats: 'any',
+    partySort: 'asc',
     date: '',
     selectedId: null,
   };
@@ -45,14 +45,16 @@ document.addEventListener('DOMContentLoaded', () => {
       tablesData = json.data.map(t => ({
         id: Number(t.id),
         name: t.name,
+        status: t.status,
         seats: Number(t.seats),
+        guest: t.guest || ""
       }));
       renderView();
     } catch (err) {
-      console.warn('loadTables(): API failed.', err);
       tablesData = [
-        { id: 1, name: 'Table 1', seats: 6 },
-        { id: 2, name: 'Table 2', seats: 4 },
+        { id: 1, name: 'Table 1', status: 'occupied', seats: 6, guest: 'Taenamo Jiro' },
+        { id: 2, name: 'Table 2', status: 'reserved', seats: 4, guest: 'WOwmsi' },
+        { id: 3, name: 'Table 3', status: 'available', seats: 2, guest: '' },
       ];
       const grid = document.getElementById('cardsGrid');
       if (grid) grid.innerHTML = `<div style="padding:18px;color:#900">Local fallback data (API failed).</div>`;
@@ -60,48 +62,48 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-function renderCardsInto(container, data) {
-  container.innerHTML = '';
-  if (!data.length) {
-    container.innerHTML = '<div style="padding:18px; font-weight:700">No tables found</div>';
-    return;
-  }
-  data.forEach(tbl => {
-    // Use current status
-    const status = tbl.status || 'available';
-    const statusDotColor =
-      status === 'available' ? '#00b256' :
-      status === 'reserved' ? '#ffd400' :
-      '#d20000';
-    const card = document.createElement('div');
-    card.className = 'table-card';
-    card.setAttribute('role', 'button');
-    card.setAttribute('tabindex', '0');
-    card.dataset.id = tbl.id;
-    if (state.selectedId === tbl.id) card.classList.add('active');
-    card.innerHTML = `
-      <div class="title">${escapeHtml(tbl.name)}</div>
-      <div class="status-row">
-        <span class="status-dot" style="background:${statusDotColor}"></span>
-        <span class="status-label">${capitalize(status)}</span>
-      </div>
-      <div class="seats-row"><span>👥</span> ${escapeHtml(String(tbl.seats))} Seats</div>
-      <div class="card-actions" aria-hidden="false">
-        <button class="icon-btn edit-btn" aria-label="Edit table" title="Edit">✎</button>
-        <button class="icon-btn delete-btn" aria-label="Delete table" title="Delete">✖</button>
-      </div>
-    `;
-    card.addEventListener('click', () => setSelected(tbl.id));
-    card.addEventListener('keydown', ev => {
-      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setSelected(tbl.id); }
+  function renderCardsInto(container, data) {
+    container.innerHTML = '';
+    if (!data.length) {
+      container.innerHTML = '<div style="padding:18px; font-weight:700">No tables found</div>';
+      return;
+    }
+    data.forEach(tbl => {
+      const status = tbl.status || 'available';
+      const statusDotColor =
+        status === 'available' ? '#00b256' :
+        status === 'reserved' ? '#ffd400' :
+        '#d20000';
+      const card = document.createElement('div');
+      card.className = 'table-card';
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.dataset.id = tbl.id;
+      if (state.selectedId === tbl.id) card.classList.add('active');
+      card.innerHTML = `
+        <div class="title">${escapeHtml(tbl.name)}</div>
+        <div class="status-row">
+          <span class="status-dot" style="background:${statusDotColor}"></span>
+          <span class="status-label">${capitalize(status)}</span>
+        </div>
+        <div class="seats-row"><span>👥</span> ${escapeHtml(String(tbl.seats))} Seats</div>
+        ${tbl.guest ? `<div class="guest">${escapeHtml(tbl.guest)}</div>` : ''}
+        <div class="card-actions" aria-hidden="false">
+          <button class="icon-btn edit-btn" aria-label="Edit table" title="Edit">✎</button>
+          <button class="icon-btn delete-btn" aria-label="Delete table" title="Delete">✖</button>
+        </div>
+      `;
+      card.addEventListener('click', () => setSelected(tbl.id));
+      card.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setSelected(tbl.id); }
+      });
+      const editBtn = card.querySelector('.edit-btn');
+      const deleteBtn = card.querySelector('.delete-btn');
+      if (editBtn) editBtn.addEventListener('click', e => { e.stopPropagation(); openEditModal(tbl); });
+      if (deleteBtn) deleteBtn.addEventListener('click', e => { e.stopPropagation(); confirmDelete(tbl); });
+      container.appendChild(card);
     });
-    const editBtn = card.querySelector('.edit-btn');
-    const deleteBtn = card.querySelector('.delete-btn');
-    if (editBtn) editBtn.addEventListener('click', e => { e.stopPropagation(); openEditModal(tbl); });
-    if (deleteBtn) deleteBtn.addEventListener('click', e => { e.stopPropagation(); confirmDelete(tbl); });
-    container.appendChild(card);
-  });
-}
+  }
 
   function setSelected(id) {
     state.selectedId = id;
@@ -115,44 +117,45 @@ function renderCardsInto(container, data) {
     viewContent.innerHTML = `<div class="cards-grid" id="cardsGrid" role="list"></div>`;
     cardsGrid = document.getElementById('cardsGrid');
     partyControl && partyControl.setAttribute('aria-hidden', 'true');
+    partySortControl && partySortControl.setAttribute('aria-hidden', 'true'); // <-- HIDE sort control in All
     // Search filter
     const s = state.search.trim().toLowerCase();
-  let filtered = tablesData;
-  if (state.partySeats !== 'any') {
-    const v = Number(state.partySeats);
-    const [min, max] = v === 2 ? [1,2] : v === 4 ? [3,4] : v === 6 ? [5,6] : [7,8];
-    filtered = tablesData.filter(t => t.seats >= min && t.seats <= max);
-  }
-  renderCardsInto(cardsGrid, filtered);
+    let filtered = tablesData;
+    if (s) filtered = tablesData.filter(t => t.name.toLowerCase().includes(s));
+    renderCardsInto(cardsGrid, filtered);
   }
 
-  // PARTY SIZE VIEW (added back)
   function renderPartyView() {
     viewHeader.innerHTML = '<h1>Party Size</h1>';
     partyControl && partyControl.setAttribute('aria-hidden', 'false');
+    partySortControl && partySortControl.setAttribute('aria-hidden', 'false'); // <-- SHOW sort control in Party
     viewContent.innerHTML = `<div class="cards-grid" id="cardsGrid" role="list"></div>`;
     cardsGrid = document.getElementById('cardsGrid');
-
-    // Get selected bucket
     let filtered = tablesData;
     if (state.partySeats !== 'any') {
       const v = Number(state.partySeats);
       const [min, max] = v === 2 ? [1, 2] : v === 4 ? [3, 4] : v === 6 ? [5, 6] : [7, 8];
       filtered = tablesData.filter(t => t.seats >= min && t.seats <= max);
     }
+    // Sort by seats
+    if (state.partySort === 'asc') {
+      filtered = filtered.slice().sort((a, b) => a.seats - b.seats);
+    } else {
+      filtered = filtered.slice().sort((a, b) => b.seats - a.seats);
+    }
     renderCardsInto(cardsGrid, filtered);
   }
 
-  // DATE VIEW (keep as optimized)
   function renderDateView() {
     viewHeader.innerHTML = '<h1>Date</h1>';
+    partyControl && partyControl.setAttribute('aria-hidden', 'true');
+    partySortControl && partySortControl.setAttribute('aria-hidden', 'true'); // <-- HIDE sort control in Date
     viewContent.innerHTML = `
       <div style="margin-bottom:10px">
         <input type="date" id="viewDatePicker" value="${state.date || ''}" aria-label="Pick a date">
       </div>
       <div id="tableStatusGrid" class="cards-grid"></div>
     `;
-    partyControl && partyControl.setAttribute('aria-hidden', 'true');
     const datePicker = document.getElementById('viewDatePicker');
     if (datePicker) {
       datePicker.addEventListener('change', e => {
@@ -171,7 +174,6 @@ function renderCardsInto(container, data) {
       const json = await res.json();
       if (!json.success) throw new Error(json.error || 'API failed');
       const tables = json.data;
-
       ['available', 'reserved', 'occupied'].forEach(status => {
         const list = tables.filter(t => t.status === status);
         if (!list.length) return;
@@ -179,7 +181,6 @@ function renderCardsInto(container, data) {
         header.className = 'table-status-header';
         header.innerHTML = `<h2>${capitalize(status)}</h2>`;
         grid.appendChild(header);
-
         list.forEach(t => {
           const card = document.createElement('div');
           card.className = 'table-card';
@@ -210,11 +211,15 @@ function renderCardsInto(container, data) {
         <h3>${isNew ? 'New Table' : 'Edit ' + escapeHtml(table.name)}</h3>
         <div class="form-row">
           <label for="modalName">Table Name</label>
-          <input id="modalName" type="text" value="${table && table.name ? table.name : ''}" />
+          <input id="modalName" type="text" value="${table && table.name ? escapeHtml(table.name) : ''}" />
         </div>
         <div class="form-row">
           <label for="modalSeats">Seats</label>
           <input id="modalSeats" type="number" min="1" max="50" value="${table && table.seats ? table.seats : 2}" />
+        </div>
+        <div class="form-row">
+          <label for="modalGuest">Guest (optional)</label>
+          <input id="modalGuest" type="text" value="${table && table.guest ? escapeHtml(table.guest) : ''}" />
         </div>
         <div class="modal-actions">
           <button id="modalCancel" class="btn">Cancel</button>
@@ -226,18 +231,19 @@ function renderCardsInto(container, data) {
 
     const modalName = overlay.querySelector('#modalName');
     const modalSeats = overlay.querySelector('#modalSeats');
+    const modalGuest = overlay.querySelector('#modalGuest');
     overlay.querySelector('#modalCancel').addEventListener('click', () => overlay.remove());
 
     overlay.querySelector('#modalSave').addEventListener('click', async () => {
       const name = modalName.value.trim() || (table && table.name) || 'Table';
       const seats = parseInt(modalSeats.value, 10) || 2;
-
+      const guest = modalGuest.value.trim();
       if (isNew) {
         try {
           const res = await fetch(API_CREATE, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, seats })
+            body: JSON.stringify({ name, seats, guest })
           });
           const j = await res.json();
           if (!j.success) throw new Error(j.error || 'Create failed');
@@ -249,7 +255,7 @@ function renderCardsInto(container, data) {
         }
       } else {
         try {
-          const payload = { id: table.id, seats, name };
+          const payload = { id: table.id, seats, name, guest };
           const res = await fetch(API_UPDATE, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -305,6 +311,11 @@ function renderCardsInto(container, data) {
   if (partySelect) {
     partySelect.addEventListener('change', e => { state.partySeats = e.target.value; renderView(); });
     state.partySeats = partySelect.value || 'any';
+  }
+  // Party sort select event
+  if (partySortSelect) {
+    partySortSelect.addEventListener('change', e => { state.partySort = e.target.value; renderView(); });
+    state.partySort = partySortSelect.value || 'asc';
   }
 
   // Search box

@@ -68,17 +68,25 @@
         <button class="filter-btn" data-filter="time" id="filterTime" role="tab" aria-selected="false">⏲️ Time</button>
         <button id="btnAddReservation" class="filter-btn action-btn" aria-label="New reservation" title="New reservation">➕ New</button>
 
-        <!-- party-size control -->
-        <div id="partyControl" class="party-size-control" aria-hidden="true">
-          <label for="partySelect">Seats:</label>
-          <select id="partySelect" aria-label="Filter by number of seats">
-            <option value="any">Any</option>
-            <option value="2">1-2</option>
-            <option value="4">3-4</option>
-            <option value="6">5-6</option>
-            <option value="8">7-8</option>
-          </select>
-        </div>
+      <div id="partyControl" class="party-size-control" aria-hidden="true">
+        <label for="partySelect">Seats:</label>
+        <select id="partySelect" aria-label="Filter by number of seats">
+          <option value="any">Any</option>
+          <option value="2">1-2</option>
+          <option value="4">3-4</option>
+          <option value="6">5-6</option>
+          <option value="8">7-8</option>
+        </select>
+      </div>
+
+      <!-- NEW: Party sort control -->
+      <div id="partySortControl" class="party-sort-control" aria-hidden="true" style="margin-left:12px;">
+        <label for="partySortSelect">Sort by Seats:</label>
+        <select id="partySortSelect">
+          <option value="asc">Ascending</option>
+          <option value="desc">Descending</option>
+        </select>
+      </div>
 
         <!-- date/time controls (basic placeholders) -->
         <div id="dateControl" class="party-size-control" aria-hidden="true">
