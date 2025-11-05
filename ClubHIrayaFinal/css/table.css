@@ -180,7 +180,7 @@ body {
 /* New filters-row placed under the fixed topbar in normal flow */
 .filters-row {
   margin-left: 140px;
-  padding: 50px 24px 0 14px;
+  padding: 50px 214px 0 14px;
   box-sizing: border-box;
   position: relative;
   z-index: 10;

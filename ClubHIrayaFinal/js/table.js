@@ -225,6 +225,9 @@ document.addEventListener('DOMContentLoaded', () => {
     viewContent.innerHTML = `
       <div class="date-layout date-time-panel" aria-live="polite">
 
+        <div class="side-cards" id="sideCards">
+          <div style="margin-bottom:12px; font-weight:700">Times</div>
+          <div id="timesGrid" class="time-grid" aria-label="Time slots"></div>
 
           <div style="margin-top:14px; font-weight:700">Availability</div>
           <div id="availabilityList" class="availability-list" style="margin-bottom:10px">Pick a time to see availability</div>
