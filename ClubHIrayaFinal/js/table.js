@@ -117,7 +117,10 @@ document.addEventListener('DOMContentLoaded', () => {
     viewContent.innerHTML = `<div class="cards-grid" id="cardsGrid" role="list"></div>`;
     cardsGrid = document.getElementById('cardsGrid');
     partyControl && partyControl.setAttribute('aria-hidden', 'true');
-    partySortControl && partySortControl.setAttribute('aria-hidden', 'true'); // <-- HIDE sort control in All
+    if (partySortControl) {
+      partySortControl.setAttribute('aria-hidden', 'true');
+      partySortControl.style.display = 'none';
+    }
     // Search filter
     const s = state.search.trim().toLowerCase();
     let filtered = tablesData;
@@ -128,7 +131,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderPartyView() {
     viewHeader.innerHTML = '<h1>Party Size</h1>';
     partyControl && partyControl.setAttribute('aria-hidden', 'false');
-    partySortControl && partySortControl.setAttribute('aria-hidden', 'false'); // <-- SHOW sort control in Party
+    if (partySortControl) {
+      partySortControl.setAttribute('aria-hidden', 'false');
+      partySortControl.style.display = 'block';
+    }
     viewContent.innerHTML = `<div class="cards-grid" id="cardsGrid" role="list"></div>`;
     cardsGrid = document.getElementById('cardsGrid');
     let filtered = tablesData;
@@ -137,22 +143,30 @@ document.addEventListener('DOMContentLoaded', () => {
       const [min, max] = v === 2 ? [1, 2] : v === 4 ? [3, 4] : v === 6 ? [5, 6] : [7, 8];
       filtered = tablesData.filter(t => t.seats >= min && t.seats <= max);
     }
-    // Sort by seats
+    // Sorting
     if (state.partySort === 'asc') {
       filtered = filtered.slice().sort((a, b) => a.seats - b.seats);
-    } else {
+    } else if (state.partySort === 'desc') {
       filtered = filtered.slice().sort((a, b) => b.seats - a.seats);
     }
+    // If "default", use original order (typically by ID from DB)
+
     renderCardsInto(cardsGrid, filtered);
-  }
+}
 
   function renderDateView() {
     viewHeader.innerHTML = '<h1>Date</h1>';
     partyControl && partyControl.setAttribute('aria-hidden', 'true');
-    partySortControl && partySortControl.setAttribute('aria-hidden', 'true'); // <-- HIDE sort control in Date
+    if (partySortControl) {
+      partySortControl.setAttribute('aria-hidden', 'true');
+      partySortControl.style.display = 'none';
+    }
     viewContent.innerHTML = `
       <div style="margin-bottom:10px">
         <input type="date" id="viewDatePicker" value="${state.date || ''}" aria-label="Pick a date">
+        <input type="time" id="viewTimePicker" value="${state.time || ''}" aria-label="Pick a time">
+        <button id="btnSearchSlot">Show Availability</button>
+        <button id="btnAddReservationSlot">+ New Reservation</button>
       </div>
       <div id="tableStatusGrid" class="cards-grid"></div>
     `;
@@ -314,9 +328,143 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   // Party sort select event
   if (partySortSelect) {
-    partySortSelect.addEventListener('change', e => { state.partySort = e.target.value; renderView(); });
-    state.partySort = partySortSelect.value || 'asc';
+    partySortSelect.addEventListener('change', e => {
+      state.partySort = e.target.value;
+      renderView();
+    });
+    state.partySort = partySortSelect.value || 'default';
   }
+
+  function renderDateView() {
+  viewHeader.innerHTML = '<h1>Date</h1>';
+  partyControl && partyControl.setAttribute('aria-hidden', 'true');
+  if (partySortControl) {
+    partySortControl.setAttribute('aria-hidden', 'true');
+    partySortControl.style.display = 'none';
+  }
+  viewContent.innerHTML = `
+    <div style="margin-bottom:10px">
+      <input type="date" id="viewDatePicker" value="${state.date || ''}" aria-label="Pick a date">
+      <input type="time" id="viewTimePicker" value="${state.time || ''}" aria-label="Pick a time">
+      <button id="btnSearchSlot">Show Availability</button>
+      <button id="btnAddReservationSlot">+ New Reservation</button>
+    </div>
+    <div id="tableStatusGrid" class="cards-grid"></div>
+  `;
+
+  document.getElementById('viewDatePicker').addEventListener('change', e => {
+    state.date = e.target.value;
+  });
+  document.getElementById('viewTimePicker').addEventListener('change', e => {
+    state.time = e.target.value;
+  });
+  document.getElementById('btnSearchSlot').addEventListener('click', () => {
+    if (state.date && state.time) {
+      loadTableStatusForDateTime(state.date, state.time);
+    }
+  });
+  document.getElementById('btnAddReservationSlot').addEventListener('click', () => openNewReservationModal());
+}
+
+  async function loadTableStatusForDateTime(date, time) {
+  const grid = document.getElementById('tableStatusGrid');
+  grid.innerHTML = 'Loading...';
+  try {
+    // Use your get_availability.php API, pass date/time
+    const res = await fetch(`../api/get_availability.php?date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`);
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || 'API failed');
+    const tables = json.data; // returns status per table for that slot
+
+    // Group by status (using returned status)
+    ['available', 'reserved', 'occupied'].forEach(status => {
+      const list = tables.filter(t => t.status === status);
+      if (!list.length) return;
+      const header = document.createElement('div');
+      header.className = 'table-status-header';
+      header.innerHTML = `<h2>${capitalize(status)}</h2>`;
+      grid.appendChild(header);
+      list.forEach(t => {
+        const card = document.createElement('div');
+        card.className = 'table-card';
+        card.innerHTML = `
+          <div class="title">${escapeHtml(t.name)}</div>
+          <div class="seats-row"><span>👥</span> ${escapeHtml(t.seats)} Seats</div>
+          <div class="status-row">
+            <span class="status-dot" style="background:${status==='available'?'#00b256':status==='reserved'?'#ffd400':'#d20000'}"></span>
+            <span class="status-label">${capitalize(status)}</span>
+          </div>
+          ${t.guest ? `<div class="guest">${escapeHtml(t.guest)}</div>` : ''}
+        `;
+        grid.appendChild(card);
+      });
+    });
+  } catch (err) {
+    grid.innerHTML = `<div style="color:#900">Error loading tables for date/time: ${err.message}</div>`;
+  }
+}
+
+  function openNewReservationModal() {
+  if (!state.date || !state.time) return alert('Please select date and time first!');
+  // Fetch available tables for chosen slot
+  fetch(`../api/get_availability.php?date=${encodeURIComponent(state.date)}&time=${encodeURIComponent(state.time)}`)
+    .then(res => res.json())
+    .then(json => {
+      if (!json.success) throw new Error(json.error || 'API failed');
+      const available = json.data.filter(t => t.status === 'available');
+      // Modal HTML
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal" role="dialog" aria-modal="true">
+          <h3>New Reservation</h3>
+          <div class="form-row">
+            <label for="modalTableSelect">Table</label>
+            <select id="modalTableSelect">
+              ${available.map(t => `<option value="${t.id}">${escapeHtml(t.name)} (${t.seats} seats)</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Date</label><input type="date" id="modalDate" value="${state.date}" readonly />
+          </div>
+          <div class="form-row">
+            <label>Time</label><input type="time" id="modalTime" value="${state.time}" readonly />
+          </div>
+          <div class="form-row">
+            <label for="modalGuest">Guest Name</label><input id="modalGuest" type="text" />
+          </div>
+          <div class="modal-actions">
+            <button id="modalCancel" class="btn">Cancel</button>
+            <button id="modalSave" class="btn primary">Create</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+
+      overlay.querySelector('#modalCancel').addEventListener('click', () => overlay.remove());
+      overlay.querySelector('#modalSave').addEventListener('click', () => {
+        const table_id = overlay.querySelector('#modalTableSelect').value;
+        const guest = overlay.querySelector('#modalGuest').value.trim();
+        // POST reservation to backend (you'll need api/create_reservation.php)
+        fetch('../api/create_reservation.php', {
+          method: 'POST',
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            table_id,
+            date: state.date,
+            start_time: state.time,
+            guest
+          })
+        }).then(res => res.json()).then(j => {
+          if (!j.success) throw new Error(j.error || 'Create reservation failed');
+          overlay.remove();
+          // Optionally reload that date/time's status
+          loadTableStatusForDateTime(state.date, state.time);
+        }).catch(err => alert("Create reservation failed: " + err.message));
+      });
+      overlay.addEventListener('click', ev => { if (ev.target === overlay) overlay.remove(); });
+    });
+}
 
   // Search box
   if (searchInput) {

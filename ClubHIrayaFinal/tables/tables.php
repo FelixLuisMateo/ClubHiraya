@@ -83,6 +83,7 @@
       <div id="partySortControl" class="party-sort-control" aria-hidden="true" style="margin-left:12px;">
         <label for="partySortSelect">Sort by Seats:</label>
         <select id="partySortSelect">
+          <option value="default">Default</option>
           <option value="asc">Ascending</option>
           <option value="desc">Descending</option>
         </select>
