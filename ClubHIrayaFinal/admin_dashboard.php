@@ -1,14 +1,19 @@
-<?php session_start(); ?>     <!-- This needed every php file -->
+<?php session_start(); ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Club Hiraya</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/tables-select.css">
+
+    <!-- Run settings-sync BEFORE the main app so theme and notification flags from the server are applied first -->
+    <script defer src="js/settings-sync.js"></script>
     <script defer src="js/app.js"></script>
+    <script defer src="js/tables-select.js"></script>
 </head>
-<body<?php if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"'; ?>> <!-- Need this also -->
+<body<?php if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"'; ?>>
 
     <noscript>
         <div class="noscript-warning">This app requires JavaScript to function correctly. Please enable JavaScript.</div>
@@ -58,7 +63,7 @@
                 <input type="text" class="search-input" placeholder="Search products" id="searchBox" aria-label="Search products">
             </div>
             <button class="select-table-btn" type="button" aria-haspopup="dialog">
-                Select Table <span class="table-icon"><img src="../ClubHirayaFinal/assets/logos/table.png" alt="Table icon"></span>
+                Select Table <span class="table-icon"><img src="../ClubHirayaFinal/assets/foods/logos/table.png" alt=""></span>
             </button>
         </div>
 
@@ -66,7 +71,6 @@
         <div class="content-area">
             <!-- Products Section -->
             <section class="products-section" aria-label="Products">
-                <!-- Category tabs are rendered dynamically by js/app.js -->
                 <div class="category-tabs" id="categoryTabs" role="tablist" aria-label="Categories">
                     <!-- JS will populate category buttons here -->
                 </div>
@@ -85,10 +89,12 @@
                 </div>
 
                 <div class="order-list" id="orderList" aria-live="polite"></div>
-                <div class="order-compute" id="orderCompute" aria-live="polite"></div>
+
+                <div class="order-compute" id="orderCompute" aria-live="polite">
+                    <!-- Reserved table UI will be injected here by tables-select.js -->
+                </div>
 
                 <div class="order-buttons">
-                    <!-- Page-level Bill Out and Proceed (single copy of each) -->
                     <button class="hold-btn" id="billOutBtn" type="button">Bill Out</button>
                     <button class="proceed-btn" id="proceedBtn" type="button">Proceed</button>
                 </div>
@@ -104,6 +110,34 @@
             <input type="text" id="draftNameInput" placeholder="Draft name or note..." style="width:95%;margin-bottom:12px;" aria-label="Draft name">
             <div style="text-align:right;">
                 <button id="saveDraftBtn" type="button" style="padding:6px 24px;font-size:16px;background:#d51ecb;color:#fff;border:none;border-radius:7px;">Save Draft</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reserved Tables Modal -->
+    <div class="modal hidden" id="tablesModal" role="dialog" aria-modal="true" aria-labelledby="tablesModalTitle" tabindex="-1">
+        <div class="modal-content" role="document" style="max-width:900px;">
+            <button class="close-btn" id="closeTablesModal" aria-label="Close dialog">&times;</button>
+            <h3 id="tablesModalTitle">Reserved Tables</h3>
+
+            <div id="tables-loading" style="padding:12px 0;">Loading...</div>
+
+            <div id="tables-empty" style="display:none;padding:12px 0;">No reserved tables found.</div>
+
+            <div style="overflow:auto;max-height:320px;">
+                <table class="table" id="tables-list" style="width:100%;border-collapse:collapse;display:none;">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left;padding:6px;">Name</th>
+                            <th style="text-align:left;padding:6px;">Table #</th>
+                            <th style="text-align:left;padding:6px;">Party size</th>
+                            <th style="text-align:left;padding:6px;">Status</th>
+                            <th style="text-align:right;padding:6px;">Price</th>
+                            <th style="padding:6px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
         </div>
     </div>
