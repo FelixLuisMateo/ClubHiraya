@@ -36,7 +36,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $name = trim($_POST['name'] ?? '');
     $price = $_POST['price'] ?? '';
     $category = trim($_POST['category'] ?? '');
-    $stock = $_POST['stock'] ?? '';
     $image = trim($_POST['image'] ?? '');
 
     // --- sanitize image filename: same rules as edit.php ---
@@ -174,11 +173,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                   </option>
                 <?php endforeach; ?>
               </select>
-            </div>
-
-            <div class="form-group">
-              <label for="stock">Stock</label>
-              <input id="stock" name="stock" type="number" min="0" required value="<?php echo isset($_POST['stock']) ? htmlspecialchars($_POST['stock']) : '0'; ?>">
             </div>
 
             <div class="form-group" style="grid-column:1 / -1;">

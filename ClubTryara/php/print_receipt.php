@@ -1,12 +1,12 @@
 <?php
 // php/print_receipt.php
-// Printable receipt. When the user clicks "Close" or "Back to POS" this page will:
-// - If opened as a popup by the POS (window.opener exists and exposes handleProceed), call opener._club_tryara.handleProceed() then close the popup.
-// - Otherwise (receipt opened in same tab or opener not available) it will POST the same cart -> api/update_stock.php directly from this page, then navigate to index.php.
-// This ensures that closing the receipt performs the same "proceed" action (update stock) as the Proceed button in the POS.
+// Printable receipt. When the user clicks "Close" or "Back to POS" this page will NOT automatically update stock by default.
+// Instead it will attempt to call opener.appPayments.openPaymentModal() or rely on the POS opener to perform any needed updates.
+// If opener is not present, it will redirect back to the POS without performing any automatic stock update.
 
 $cartJson   = $_POST['cart']   ?? null;
 $totalsJson = $_POST['totals'] ?? null;
+$metaJson   = $_POST['meta'] ?? null;
 
 // If no POST data, show info page with a back link
 if ($cartJson === null) {
@@ -28,7 +28,6 @@ if ($cartJson === null) {
     </head>
     <body>
       <div class="card">
-        
         <h1>No receipt data</h1>
         <p>This page was opened without receipt data. Open the Bill Out/Print Receipt function from the POS (index.php) to print a receipt.</p>
         <p><a class="button" href="index.php">Back to POS</a></p>
@@ -41,6 +40,7 @@ if ($cartJson === null) {
 
 $cart = json_decode($cartJson, true);
 $totals = json_decode($totalsJson, true);
+$meta = $metaJson ? json_decode($metaJson, true) : null;
 if (!is_array($cart)) $cart = [];
 if (!is_array($totals)) $totals = [];
 $date = date('Y-m-d H:i:s');
@@ -107,79 +107,39 @@ function fmt($n) {
     <tr style="border-top:2px solid #eee;"><td><strong>Payable</strong></td><td style="text-align:right;font-weight:900"><strong><?= fmt($totals['payable'] ?? 0) ?></strong></td></tr>
   </table>
 
+  <div style="margin-top:8px;color:#333">
+    <strong>Reservation:</strong>
+    <?php if (!empty($meta['reserved'])): ?>
+      <?php $r = $meta['reserved']; ?>
+      <div>Table: <?= htmlspecialchars($r['table_number'] ?? ($r['id'] ?? '—')) ?> — <?= htmlspecialchars($r['name'] ?? '—') ?></div>
+      <div>Party size: <?= htmlspecialchars($r['party_size'] ?? '—') ?></div>
+      <div>Price: <?= '₱' . number_format(floatval($r['price'] ?? 0),2) ?></div>
+    <?php else: ?>
+      <div>No reservation</div>
+    <?php endif; ?>
+  </div>
+
   <div class="controls no-print">
     <button id="printBtn" class="btn btn-print" type="button" onclick="window.print();">Print</button>
-
-    <!-- Back to POS: will behave like "proceed" (update stock) then return -->
-    <a id="backToPos" class="btn btn-back" href="index.php"
-       onclick="event.preventDefault(); tryProceedAndReturn();">Back to POS</a>
-
-    <!-- Close: same behavior -->
-    <a id="closeBtn" class="btn btn-close" href="index.php"
-       onclick="event.preventDefault(); tryProceedAndReturn();">Close</a>
+    <a id="backToPos" class="btn btn-back" href="index.php" onclick="event.preventDefault(); returnToPOS();">Back to POS</a>
+    <a id="closeBtn" class="btn btn-close" href="#" onclick="event.preventDefault(); returnToPOS();">Close</a>
   </div>
 
   <script>
-    // Cart data available to JS for fallback API calls
     const __receipt_cart = <?= json_encode($cart, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
+    const __receipt_totals = <?= json_encode($totals, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
+    const __receipt_meta = <?= json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
 
-    // Helper: attempt to trigger the parent's proceed function, otherwise call API from here.
-    function tryProceedAndReturn() {
-      // If the POS opened this receipt (popup) and exposes the proceed function, use it.
+    function returnToPOS(){
       try {
-        if (window.opener && window.opener._club_tryara && typeof window.opener._club_tryara.handleProceed === 'function') {
-          // Call proceed in the opener which will update the DB.
-          // We call it asynchronously and then close this popup.
-          try {
-            window.opener._club_tryara.handleProceed();
-          } catch (e) {
-            // If opener's function throws, fall back to local API POST below.
-            console.error('opener.handleProceed() threw:', e);
-            return fallbackPostThenRedirect();
-          }
-          // Close this popup window (if allowed)
-          try { window.close(); } catch (e) {}
+        if (window.opener && window.opener.appPayments && typeof window.opener.appPayments.openPaymentModal === 'function'){
+          try { window.close(); } catch(e) { window.location.href = 'index.php'; }
           return;
         }
-      } catch (err) {
-        console.error('Error contacting opener:', err);
-      }
-
-      // Fallback: POST the cart directly to the update_stock API from this page, then navigate back to POS.
-      return fallbackPostThenRedirect();
+      } catch(e){ console.error('opener communication failed', e); }
+      window.location.href = 'index.php';
     }
 
-    // Posts cart -> ../api/update_stock.php (adjust path if your API is elsewhere) and then navigates back to index.php.
-    function fallbackPostThenRedirect() {
-      // Build payload: items: [{id, qty}, ...]
-      const payload = { items: (Array.isArray(__receipt_cart) ? __receipt_cart.map(i => ({ id: i.id, qty: i.qty })) : []) };
-
-      // If there are no items, just navigate back.
-      if (!payload.items.length) {
-        window.location.href = 'index.php';
-        return;
-      }
-
-      fetch('../api/update_stock.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        credentials: 'same-origin'
-      }).then(response => {
-        if (!response.ok) throw new Error('Network response was not OK: ' + response.status);
-        return response.json();
-      }).then(body => {
-        // Optionally you can inspect body.success
-        // Redirect back to POS
-        window.location.href = 'index.php';
-      }).catch(err => {
-        console.error('Failed to update stock from receipt page:', err);
-        // Still redirect so user can continue; or optionally show an error and let them retry.
-        window.location.href = 'index.php';
-      });
-    }
-
-    // Auto-print if opened by the POS (window.opener present)
     window.addEventListener('load', function() {
       if (window.opener) {
         setTimeout(function() { window.print(); }, 400);
@@ -187,4 +147,3 @@ function fmt($n) {
     });
   </script>
 </body>
-</html>

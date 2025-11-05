@@ -1,4 +1,4 @@
-/* Scoped styles for "reserved table" checkbox, choose button and summary.
+/* Scoped styles for "Reserved cabin" checkbox, choose button and summary.
    Keep these separate to avoid conflicts with global styles.
    Place file at: ClubTryara/css/tables-select.css
    Add <link rel="stylesheet" href="css/tables-select.css"> in index.php head (after style.css).

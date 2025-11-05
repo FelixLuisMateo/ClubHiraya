@@ -59,7 +59,20 @@ if ($search !== '') {
     }
   </style>
 </head>
-<body<?php if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"'; ?>> <!-- Need this also -->
+<body
+<?php
+  if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
+  if (isset($_SESSION['accent_color'])) {
+    $accent = $_SESSION['accent_color'];
+    $gradientMap = [
+      '#d33fd3' => ['#d33fd3', '#a2058f'],
+      '#4b4bff' => ['#4b4bff', '#001b89'],
+      '#bdbdbd' => ['#bdbdbd', '#7a7a7a'],
+    ];
+    $g = $gradientMap[$accent] ?? $gradientMap['#d33fd3'];
+    echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
+  }
+?>>
 
   <!-- Sidebar -->
   <aside class="sidebar" role="complementary" aria-label="Sidebar">

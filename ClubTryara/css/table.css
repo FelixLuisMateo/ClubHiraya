@@ -119,11 +119,11 @@ body {
   width: 120px;
   height: 49px;
   margin: 32px auto 18px auto;
-  background: #001B89;
+  background: Red;
   color: #fff;
   border: none;
   border-radius: 12px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: bold;
   cursor: pointer;
   box-shadow: 0 6px 18px rgba(0,0,0,0.12);
@@ -492,6 +492,10 @@ body {
   .search-wrap { width: 250px; }
 
 }
+
+/* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */
 body.dark-mode .filters-row,
 body.dark-mode .filters,
 body.dark-mode .cards-backdrop,
@@ -505,3 +509,37 @@ body.dark-mode .table-card{
   background: #adadad;
   color: #fff;
 }
+/* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */
+
+/* === SIDEBAR ACCENT THEMES === */
+/* === SIDEBAR ACCENT THEMES === */
+/* === SIDEBAR ACCENT THEMES === */
+:root {
+  --accent-start: #d33fd3;
+  --accent-end: #a2058f;
+}
+
+/* Default sidebar (pink/purple) */
+.sidebar {
+  background: linear-gradient(180deg, var(--accent-start) 0%, var(--accent-end) 100%);
+}
+
+/* Blue accent */
+body.accent-blue .sidebar {
+  background: linear-gradient(180deg, #4b4bff 0%, #001b89 100%);
+}
+
+/* Gray accent */
+body.accent-gray .sidebar {
+  background: linear-gradient(180deg, #bdbdbd 0%, #7a7a7a 100%);
+}
+
+/* Green accent */
+body.accent-green .sidebar {
+  background: linear-gradient(180deg, #27c93f 0%, #1b9f33 100%);
+} 
+/* === SIDEBAR ACCENT THEMES === */
+/* === SIDEBAR ACCENT THEMES === */
+/* === SIDEBAR ACCENT THEMES === */
