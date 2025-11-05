@@ -224,16 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     viewHeader.innerHTML = '<h1>Date</h1>';
     viewContent.innerHTML = `
       <div class="date-layout date-time-panel" aria-live="polite">
-        <div class="calendar" aria-hidden="false">
-          <div class="calendar-box">
-            <div id="inlineCalendar"></div>
-            <div id="selectedDateHeader" style="margin-top:12px;font-weight:700">Date:</div>
-          </div>
-        </div>
 
-        <div class="side-cards" id="sideCards">
-          <div style="margin-bottom:12px; font-weight:700">Times</div>
-          <div id="timesGrid" class="time-grid" aria-label="Time slots"></div>
 
           <div style="margin-top:14px; font-weight:700">Availability</div>
           <div id="availabilityList" class="availability-list" style="margin-bottom:10px">Pick a time to see availability</div>
@@ -265,7 +256,6 @@ document.addEventListener('DOMContentLoaded', () => {
     viewContent.innerHTML = `
       <div class="date-layout">
         <div class="calendar" aria-hidden="true">
-          <div class="calendar-box">Calendar<br><small>(placeholder)</small></div>
         </div>
         <div class="time-container">
           <div class="time-grid" id="timeGrid"></div>
