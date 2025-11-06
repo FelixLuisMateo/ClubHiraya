@@ -39,7 +39,7 @@ include 'ChangePassword.php';
             </a>
             <a href="../tables/tables.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="../assets/foods/logos/table.png" alt="Tables icon"></span>
-                <span>Tables</span>
+                <span>Cabins</span>
             </a>
             <a href="../inventory/inventory.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="../assets/foods/logos/inventory.png" alt="Inventory icon"></span>
