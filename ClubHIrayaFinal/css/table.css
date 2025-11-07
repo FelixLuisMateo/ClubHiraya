@@ -1,4 +1,4 @@
-/* Updated ../css/table.css - larger cards & adjusted spacing */
+/* Updated ../css/table.css - larger cards & adjusted spacing (with enhanced date/time controls) */
 body {
   margin: 0;
   font-family: 'Poppins', sans-serif;
@@ -6,6 +6,7 @@ body {
   color: #111;
 }
 
+/* ---------- Sidebar + Shared styles (unchanged) ---------- */
 .sidebar {
   position: fixed;
   left: 0; top: 0; bottom: 0;
@@ -180,7 +181,7 @@ body {
 /* New filters-row placed under the fixed topbar in normal flow */
 .filters-row {
   margin-left: 140px;
-  padding: 50px 24px 0 14px;
+  padding: 50px 214px 0 14px;
   box-sizing: border-box;
   position: relative;
   z-index: 10;
@@ -243,7 +244,7 @@ body {
   border-radius: 12px;
   padding: 22px; /* increased padding for larger cards */
   box-shadow: 0 6px 20px rgba(0,0,0,0.18);
-  max-height: 72vh;
+  max-height: 80vh;
   overflow-y: auto;
   box-sizing: border-box;
 }
@@ -441,7 +442,7 @@ body {
 }
 .action-btn:hover { transform: translateY(-2px); }
 
-/* per-card action icons */
+ /* per-card action icons */
 .card-actions {
   position: absolute;
   top: 12px;
@@ -459,18 +460,134 @@ body {
 }
 .icon-btn:hover { transform: translateY(-2px); }
 .icon-btn:focus { outline: 3px solid rgba(43,140,255,0.25); }
-
-
-/* ensure cards-grid used inside viewContent keeps same spacing */
 .view-content .cards-grid { margin: 0; }
+/* Container for date/time controls placed above the status grid */
+.date-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(250,250,250,0.95));
+  padding: 10px;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.04);
+}
 
-/* small responsive tweaks */
+/* wrap the pickers in a subtle pill */
+.picker-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: #fff;
+  padding: 6px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1px solid rgba(0,0,0,0.04);
+}
+
+/* inputs */
+.date-controls input[type="date"],
+.date-controls input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 1px solid #e6e6e9;
+  background: #fff;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #111;
+  outline: none;
+  min-width: 140px;
+  box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.date-controls input[type="date"]:focus,
+.date-controls input[type="time"]:focus {
+  border-color: #2b8cff;
+  box-shadow: 0 6px 18px rgba(43,140,255,0.08);
+}
+
+/* Small label for pickers (hidden visually but accessible) */
+.date-controls .label {
+  font-weight: 700;
+  font-size: 13px;
+  color: #333;
+  margin-right: 6px;
+}
+
+/* action buttons */
+.date-controls .btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #cfcfcf;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  color: #111;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.date-controls .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
+.date-controls .btn.primary {
+  background: #001b89;
+  color: #fff;
+  border-color: #001b89;
+}
+
+/* New reservation button uses accent color and is slightly larger */
+.date-controls .btn.add {
+  background: linear-gradient(180deg, #001b89, #001066);
+  color: #fff;
+  border: none;
+  padding: 9px 14px;
+}
+
+/* visually separate the "Show Availability" from the pickers */
+.date-controls .spacer {
+  width: 8px;
+}
+
+/* table status column header for date view */
+.table-status-header {
+  grid-column: 1 / -1;
+  display: block; /* ensure it's treated as a block across the row */
+  margin-top: 18px;
+  margin-bottom: 8px;
+}
+.table-status-header h2 {
+  margin: 8px 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #222;
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.04);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+}
+
+/* adjust card-actions inside date view so they don't overlap time text */
+.view-content .table-card .card-actions { top: 12px; right: 12px; }
+
+/* make the small status button (⚑) visually distinct */
+.icon-btn.status-btn {
+  background: linear-gradient(180deg, #ffffff, #f4f6ff);
+  color: #333;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+/* ---------- small responsive tweaks for date UI ---------- */
 @media (max-width: 900px) {
-  .date-layout {
+  .date-controls {
     flex-direction: column;
+    align-items: stretch;
   }
-  .calendar { flex: none; }
-  .calendar-box { width: 100%; max-width: 380px; }
+  .picker-wrap {
+    justify-content: space-between;
+  }
+  .date-controls input[type="date"],
+  .date-controls input[type="time"] { min-width: 100%; }
 }
 
 /* make sure main headings etc align */
@@ -490,5 +607,48 @@ body {
   .filters-row { margin-left: 150px; }
   .content-wrap { margin-left: 150px; padding-top: 120px; }
   .search-wrap { width: 250px; }
+}
 
+/* --- Appended small improvements (non-destructive) --- */
+/* Override / polish the subtitle (keeps existing .view-subtitle but tightens the look) */
+.view-subtitle {
+  font-size: 14px;
+  color: #444;
+  margin-top: 6px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+/* Clear button style (small icon-like) */
+#btnClearDateTime {
+  margin-left: 8px;
+  padding: 6px 8px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 6px;
+  font-weight: 700;
+  color: #444;
+}
+#btnClearDateTime:hover {
+  background: #f6f8ff;
+  border-color: #d8e3ff;
+}
+
+/* Ensure a small inline divider exists between date/time inputs (used by .picker-wrap) */
+.date-controls .picker-wrap .divider {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12'><circle cx='6' cy='6' r='2' fill='%23999' /></svg>");
+  background-repeat: no-repeat;
+  background-position: center;
+  margin: 0 6px;
+}
+
+/* mobile adjustments for appended elements */
+@media (max-width: 900px) {
+  .date-controls .picker-wrap input[type="date"],
+  .date-controls .picker-wrap input[type="time"] {
+    min-width: 120px;
+  }
 }

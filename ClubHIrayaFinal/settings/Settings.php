@@ -33,13 +33,13 @@ include 'ChangePassword.php';
         </div>
 
         <nav class="sidebar-menu" class="sidebar-btn">
-            <a href="admin_dashboard.php" class="sidebar-btn active" aria-current="page">
+            <a href="../admin_dashboard.php" class="sidebar-btn" aria-current="page">
                 <span class="sidebar-icon"><img src="../assets/foods/logos/home.png" alt="Home icon"></span>
                 <span>Home</span>
             </a>
             <a href="../tables/tables.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="../assets/foods/logos/table.png" alt="Tables icon"></span>
-                <span>Tables</span>
+                <span>Cabins</span>
             </a>
             <a href="../inventory/inventory.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="../assets/foods/logos/inventory.png" alt="Inventory icon"></span>
