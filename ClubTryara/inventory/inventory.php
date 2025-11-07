@@ -151,12 +151,9 @@ if ($search !== '') {
               <div>Name</div>
               <div>Price</div>
               <div>Category</div>
-              <div class="col-image" aria-hidden="true">File Name</div>
+              <div>File Name</div>
               <div class="header-actions">
-                <!-- Toggle button to show/hide Image column -->
-              <button id="toggleImageBtn" class="btn-toggle" type="button" aria-pressed="false" style="color: #fff;">Show File Name</button>
-              </div>
-
+          </div>
               <a href="create.php" class="add-btn" title="Add New Item">
                   Add New
               </a>

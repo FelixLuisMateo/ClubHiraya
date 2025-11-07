@@ -1,3 +1,4 @@
+<?php session_start();?>
 <?php
 // menu_item_ingredients.php - styled to match inventory.php; added "Edit Ingredient" button per row
 require 'db_connect.php';
@@ -34,7 +35,20 @@ $stmt2->close();
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="../css/inv_ingredient.css">
 </head>
-<body>
+<body
+<?php
+  if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
+  if (isset($_SESSION['accent_color'])) {
+    $accent = $_SESSION['accent_color'];
+    $gradientMap = [
+      '#d33fd3' => ['#d33fd3', '#a2058f'],
+      '#4b4bff' => ['#4b4bff', '#001b89'],
+      '#bdbdbd' => ['#bdbdbd', '#7a7a7a'],
+    ];
+    $g = $gradientMap[$accent] ?? $gradientMap['#d33fd3'];
+    echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
+  }
+?>>
   <!-- Sidebar (same classes/structure as inventory.php) -->
   <aside class="sidebar" role="complementary" aria-label="Sidebar">
       <div class="sidebar-header">
@@ -43,7 +57,7 @@ $stmt2->close();
       <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
           <a href="../index.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/home.png" alt="Home"></span><span>Home</span></a>
           <a href="../tables/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/table.png" alt="Tables"></span><span>Tables</span></a>
-          <a href="inventory.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
+          <a href="inventory.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../assets/logos/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
           <a href="../SalesReport/SalesReport.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/sales.png" alt="Sales"></span><span>Sales Report</span></a>
           <a href="../settings/settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/setting.png" alt="Settings"></span><span>Settings</span></a>
       </nav>
@@ -55,10 +69,9 @@ $stmt2->close();
     <!-- Topbar matches inventory.php -->
     <div class="topbar">
       <div class="search-section">
-        <input class="search-input" placeholder="Filter recipe items..." oninput="filterRows(this.value)">
+        <input class="search-input" placeholder="Search recipe items..." oninput="filterRows(this.value)">
       </div>
       <div class="navlinks" style="display:flex;gap:14px;align-items:center;">
-        <a href="inventory.php" class="btn-cancel" style="padding:8px 12px;text-decoration:none;">Back to Menu</a>
         <a href="ingredients.php" class="btn-cancel" style="padding:8px 12px;text-decoration:none;">Ingredients</a>
         <a href="inventory_transaction.php" class="btn-cancel" style="padding:8px 12px;text-decoration:none;">Transactions</a>
       </div>
@@ -69,7 +82,7 @@ $stmt2->close();
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <div>
             <div style="font-size:20px;font-weight:800;"><?=htmlspecialchars($menu['name'] ?? 'Recipe')?></div>
-            <div style="color:#666;margin-top:6px;">Ingredients used in this menu item</div>
+            <div style="margin-top:6px;">Ingredients used in this menu item</div>
           </div>
           <div>
             <a class="btn-cancel" href="inventory.php" style="padding:10px 14px;display:inline-block;">Back to Menu</a>
@@ -79,14 +92,14 @@ $stmt2->close();
         <?php if ($rows->num_rows === 0): ?>
           <div class="empty-state">No recipe defined for this menu item.</div>
         <?php else: ?>
-          <div class="table-header" style="margin-top:6px;">
+          <div class="table-header" style="margin-top:6px; grid-template-columns:1fr 220px 370px;">
             <div>Ingredient</div>
             <div>Qty / Unit</div>
             <div class="header-actions"></div>
           </div>
 
           <?php while($r = $rows->fetch_assoc()): ?>
-            <div class="table-row" style="grid-template-columns:1fr 220px 220px;">
+            <div class="table-row" style="grid-template-columns:1fr 220px 500px;">
               <div>
                 <strong><?=htmlspecialchars($r['ingredient_name'])?></strong>
                 <div class="small-muted"><?=htmlspecialchars($r['base_unit'])?> base unit</div>
@@ -104,10 +117,6 @@ $stmt2->close();
             </div>
           <?php endwhile; ?>
         <?php endif; ?>
-
-        <div style="margin-top:12px;">
-          <a class="btn" href="menu_items.php">Back</a>
-        </div>
       </div>
     </div>
   </main>

@@ -44,9 +44,22 @@ $categories = $conn->query("SELECT * FROM ingredient_category ORDER BY category_
   <meta charset="utf-8" />
   <title>Ingredient Categories - Club Hiraya</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="../css/inventory.css">
+  <link rel="stylesheet" href="../css/inv_ingredient.css">
 </head>
-<body>
+<body
+<?php
+  if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
+  if (isset($_SESSION['accent_color'])) {
+    $accent = $_SESSION['accent_color'];
+    $gradientMap = [
+      '#d33fd3' => ['#d33fd3', '#a2058f'],
+      '#4b4bff' => ['#4b4bff', '#001b89'],
+      '#bdbdbd' => ['#bdbdbd', '#7a7a7a'],
+    ];
+    $g = $gradientMap[$accent] ?? $gradientMap['#d33fd3'];
+    echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
+  }
+?>>
   <aside class="sidebar" role="complementary" aria-label="Sidebar">
     <div class="sidebar-header"><img src="../assets/logos/logo1.png" class="sidebar-header-img" alt="logo"></div>
     <nav class="sidebar-menu" role="navigation" aria-label="Main menu">

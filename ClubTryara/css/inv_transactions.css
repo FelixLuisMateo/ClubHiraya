@@ -164,15 +164,11 @@ body {
   outline: none;
   background: #fff;
 }
-.select-table-btn {
-  background: linear-gradient(180deg,#274edb 0%,#0b3cb8 100%);
-  color: #fff; border: none; border-radius: 8px;
-  font-weight: 700; padding: 8px 16px;
-}
+
 
 /* Main content and topbar */
 .main-content {
-    margin-left: 118px;
+    margin-left: 140px;
     min-height: 100vh;
 }
 .topbar {
@@ -201,19 +197,6 @@ body {
     background: #fff;
     box-sizing: border-box;
 }
-.search-icon {
-    position: absolute;
-    right: 10px;
-    top: 6px;
-    font-size: 15px;
-    color: #555;
-    pointer-events: none;
-}
-.select-table-btn {
-  background: linear-gradient(180deg,#274edb 0%,#0b3cb8 100%);
-  color: #fff; border: none; border-radius: 8px;
-  font-weight: 700; padding: 8px 16px;
-}
 
 /* Inventory Container (uses user's custom margin-left tweak) */
 .inventory-container {
@@ -236,7 +219,7 @@ body {
   padding: 18px 28px;
   display: grid;
   /* default columns: ID | Name | Price | Category | Stock | Actions */
-  grid-template-columns: 100px 100px;
+  grid-template-columns: 80px 2fr 1fr 1fr 1fr 1fr 200px;
   align-items: center;
   margin-bottom: 16px;
   font-weight: 700;
@@ -246,110 +229,19 @@ body {
   font-size: 18px;
 }
 
-/* Image column cell */
-.col-image {
-  display: none; /* hidden by default */
-  overflow: visible;
-  white-space: normal;           /* allow wrapping */
-  word-break: break-word;       /* break long words if necessary */
-  overflow-wrap: anywhere;      /* wrap anywhere to avoid overflow */
-  color: #333;
-  font-weight: 600;
-  font-size: 18px;
-  line-height: 1.35;
-  padding-right: 6px;
-}
-
-/* When container has show-images class, reveal image column */
-.inventory-container.show-images .col-image {
-  width: 250px;
-  display: block;
-}
-
-/* Header actions area (contains the toggle) */
-.header-actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-  position: relative;
-  z-index: 40;
-  margin-right: 140px; /* keep it left of Add button */
-}
-
-/* Toggle button: prevent wrapping so "Hide Image" stays on one line */
-.btn-toggle {
-  background: transparent;
-  border: 2px solid rgba(255, 43, 244, 0.425);
-  color: #000000;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-weight: 700;
-  cursor: pointer;
-
-  display: inline-block;   /* ensure box-level control */
-  white-space: nowrap;     /* prevent the text from wrapping to a new line */
-  min-width: 120px;        /* ensure enough width for "Hide Image" (adjust if needed) */
-  text-align: center;
-}
-.btn-toggle[aria-pressed="true"] {
-  background: linear-gradient(180deg,#d51ecb 0%,#a2058f 100%);
-  color: #fff;
-  border-color: transparent;
-}
-
-/* Add Button (club-styled purple) */
-.add-btn {
-  position: absolute;
-  right: 150px;
-  top: 20%;
-  transform: translateY(-50%);
-  background: linear-gradient(180deg,#d51ecb 0%,#a2058f 100%);
-  color: #fff;
-  border: none;
-  padding: 10px 20px;
-  font-size: 13px;
-  font-weight: 700;
-  border-radius: 8px;
-  cursor: pointer;
-  box-shadow: 0 6px 18px rgba(165,10,111,0.18);
-  text-decoration: none;
-  z-index: 30; /* lower than header-actions */
-}
-
 /* Table Row */
 .table-row  {
   background: #fff;
   border-radius: 14px;
   padding: 18px 28px;
   display: grid;
-  grid-template-columns: 80px  280px;
+  grid-template-columns: 80px 2fr 1fr 1fr 1fr 280px;
   gap: 8px;
   align-items: center;
   margin-bottom: 10px;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 .table-row:hover { transform: translateY(-4px); box-shadow: 0 14px 40px rgba(0,0,0,0.06); }
-
-/* Action buttons */
-.action-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-right: 0px ;}
-.btn-edit {
-  background: linear-gradient(180deg,#fde047 0%,#f6c90b 100%);
-  color: #111;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 700;
-  text-decoration: none;
-  border: none;
-}
-.btn-delete {
-  background: linear-gradient(180deg,#ff6b6b 0%,#ef4444 100%);
-  color: #fff;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 700;
-  border: none;
-}
 
 /* Empty state */
 .empty-state {
@@ -373,14 +265,14 @@ body {
   max-width: 1300px;
   margin: 8px auto 32px;
   background: linear-gradient(180deg,#ffffff 0%, #fbf7fb 100%);
-  padding: 28px;
+  padding: 30px;
   border-radius: 12px;
   box-shadow: 0 12px 40px rgba(12,8,29,0.04);
 }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.form-group label { display:block; font-weight:700; margin-bottom:8px; color:#222; }
+.form-group label { display:block; font-weight:700; margin-bottom:8px}
 .form-group input, .form-group textarea, .form-group select {
-  width:100%; padding:12px 14px; border:1px solid #ececec; border-radius:10px; background:#fff;
+  width:95%; padding:12px 14px; border:1px solid #ececec; border-radius:10px; background:#fff;
   transition: box-shadow .12s ease, border-color .12s ease;
 }
 .form-group input:focus, .form-group textarea:focus {
@@ -401,15 +293,6 @@ body {
 .btn-save:hover { transform: translateY(-3px); opacity: 0.98; }
 .btn-cancel {
   background: #6b7280;
-  color: #fff;
-  padding: 12px 20px;
-  border-radius: 10px;
-  border: none;
-  font-weight: 700;
-   text-decoration: none;
-}
-.btn{
-    background: #6b7280;
   color: #fff;
   padding: 12px 20px;
   border-radius: 10px;
@@ -455,7 +338,7 @@ body {
 
 :root {
   --bg-color: #eee;
-  --main-bg: #ccc;
+  --main-bg: #000000;
   --text-color: #222;
 }
 
@@ -470,31 +353,22 @@ body {
 }
 
 /* Dark mode overrides */
-body.dark-mode {
-  background: #222;
-  color: #fff;
-}
-body.dark-mode .table-header {
-  background: #363636;
-  color: #fff;
-}
-
-body.dark-mode .form-card {
-  background: #363636;
-  color: #fff;
-}
-body.dark-mode .main-content {
-  background: #363636;
-  color: #fff;
-}
-body.dark-mode .table-row{
-  background: #222;
-  color: #fff;
-}
+body.dark-mode,
 body.dark-mode .inventory-container{
   background: #222;
   color: #fff;
 }
+body.dark-mode .table-row,
+body.dark-mode .table-header {
+  background: #363636;
+  color: #fff;
+}
+body.dark-mode .form-card,
+body.dark-mode .form-group{
+  background: #363636;
+  color: #fff;
+}
+
 body.dark-mode .sidebar-btn{
   background: linear-gradient(180deg, #bdbdbd 0%, #7a7a7a 100%);
   color: #fff;
@@ -503,6 +377,7 @@ body.dark-mode .sidebar-btn.active{
   background: #001B89;
   color: #fff;
 }
+
 /* === SIDEBAR ACCENT THEMES === */
 :root {
   --accent-start: #d33fd3;

@@ -509,6 +509,14 @@ body.dark-mode .table-card{
   background: #adadad;
   color: #fff;
 }
+body.dark-mode .sidebar-btn{
+  background: linear-gradient(180deg, #bdbdbd 0%, #7a7a7a 100%);
+  color: #fff;
+}
+body.dark-mode .sidebar-btn.active{
+  background: #001B89;
+  color: #fff;
+}
 /* Dark mode overrides */
 /* Dark mode overrides */
 /* Dark mode overrides */

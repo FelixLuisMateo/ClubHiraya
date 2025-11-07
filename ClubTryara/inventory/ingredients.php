@@ -1,5 +1,4 @@
-<?php
-session_start();
+<?php session_start();
 
 // Use existing db_connect.php which should create $conn (mysqli)
 $dbConnectPath = __DIR__ . '/db_connect.php';
@@ -59,12 +58,25 @@ if ($search !== '') {
   <meta charset="utf-8" />
   <title>Ingredients - Club Hiraya</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="../css/inventory.css">
+  <link rel="stylesheet" href="../css/ingredients.css">
   <style>
     mark.highlight { background:#ffea8a; padding:0 2px; border-radius:3px; color:inherit; }
   </style>
 </head>
-<body<?php if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"'; ?>>
+<body
+<?php
+  if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
+  if (isset($_SESSION['accent_color'])) {
+    $accent = $_SESSION['accent_color'];
+    $gradientMap = [
+      '#d33fd3' => ['#d33fd3', '#a2058f'],
+      '#4b4bff' => ['#4b4bff', '#001b89'],
+      '#bdbdbd' => ['#bdbdbd', '#7a7a7a'],
+    ];
+    $g = $gradientMap[$accent] ?? $gradientMap['#d33fd3'];
+    echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
+  }
+?>>
 
   <!-- Sidebar (same markup/classes as inventory.php) -->
   <aside class="sidebar" role="complementary" aria-label="Sidebar">
@@ -74,7 +86,7 @@ if ($search !== '') {
       <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
           <a href="../index.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/home.png" alt="Home"></span><span>Home</span></a>
           <a href="../php/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/table.png" alt="Tables"></span><span>Tables</span></a>
-          <a href="inventory.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
+          <a href="inventory.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../assets/logos/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
           <a href="../SalesReport/sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/sales.png" alt="Sales"></span><span>Sales Report</span></a>
           <a href="../settings/settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/setting.png" alt="Settings"></span><span>Settings</span></a>
       </nav>
@@ -112,7 +124,7 @@ if ($search !== '') {
         <div>Category</div>
         <div>Stock</div>
         <div>Unit</div>
-        <div class="col-image">Cost</div>
+        <div>Cost</div>
         <div class="header-actions"></div>
         <a href="add_ingredient.php" class="add-btn" title="Add Ingredient">Add New</a>
       </div>
@@ -129,9 +141,8 @@ if ($search !== '') {
             <div><?php echo htmlspecialchars($row['category_name']); ?></div>
             <div><?php echo number_format($row['current_stock'], 4); ?></div>
             <div><?php echo htmlspecialchars($row['unit']); ?></div>
-            <div class="col-image">₱<?php echo number_format($row['cost_per_unit'] ?? 0, 2); ?></div>
+            <div >₱<?php echo number_format($row['cost_per_unit'] ?? 0, 2); ?></div>
             <div class="action-buttons">
-              <a class="btn-edit" href="view_edit_ingredients.php?id=<?php echo urlencode($row['ingredient_id']); ?>">View</a>
               <a class="btn-edit" href="edit_ingredient.php?id=<?php echo urlencode($row['ingredient_id']); ?>">Edit</a>
               <a class="btn-delete" href="ingredients.php?action=delete&id=<?php echo urlencode($row['ingredient_id']); ?>" onclick="return confirm('Delete this ingredient?')">Delete</a>
             </div>

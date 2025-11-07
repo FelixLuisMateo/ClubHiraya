@@ -49,8 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ingredient_id'])) {
 }
 
 // fetch transactions & ingredients
-$txns = $conn->query("SELECT t.transaction_id, i.name AS ingredient, t.change_amount, t.unit, t.reason, t.transaction_date FROM inventory_transaction t JOIN ingredient i ON t.ingredient_id = i.ingredient_id ORDER BY t.transaction_date DESC");
-$ings = $conn->query("SELECT ingredient_id, name FROM ingredient ORDER BY name ASC");
+$txns = $conn->query("SELECT t.transaction_id, i.name AS ingredient, t.change_amount, t.unit, t.reason, t.transaction_date FROM inventory_transaction t JOIN ingredient i ON t.ingredient_id = i.ingredient_id ORDER BY t.transaction_ID DESC");
+$ings = $conn->query("SELECT ingredient_id, name FROM ingredient ORDER BY name DESC");
 ?>
 <!doctype html>
 <html lang="en">
@@ -58,15 +58,28 @@ $ings = $conn->query("SELECT ingredient_id, name FROM ingredient ORDER BY name A
   <meta charset="utf-8" />
   <title>Inventory Transactions - Club Hiraya</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="../css/inventory.css">
+  <link rel="stylesheet" href="../css/inv_transactions.css">
 </head>
-<body>
+<body
+<?php
+  if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
+  if (isset($_SESSION['accent_color'])) {
+    $accent = $_SESSION['accent_color'];
+    $gradientMap = [
+      '#d33fd3' => ['#d33fd3', '#a2058f'],
+      '#4b4bff' => ['#4b4bff', '#001b89'],
+      '#bdbdbd' => ['#bdbdbd', '#7a7a7a'],
+    ];
+    $g = $gradientMap[$accent] ?? $gradientMap['#d33fd3'];
+    echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
+  }
+?>>
   <aside class="sidebar">
     <div class="sidebar-header"><img src="../assets/logos/logo1.png" class="sidebar-header-img"></div>
     <nav class="sidebar-menu">
       <a href="../index.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/home.png"></span><span>Home</span></a>
       <a href="../php/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/table.png"></span><span>Tables</span></a>
-      <a href="inventory.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/inventory.png"></span><span>Inventory</span></a>
+      <a href="inventory.php" class="sidebar-btn active "><span class="sidebar-icon"><img src="../assets/logos/inventory.png"></span><span>Inventory</span></a>
       <a href="../SalesReport/sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/sales.png"></span><span>Sales</span></a>
       <a href="../settings/settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/setting.png"></span><span>Settings</span></a>
     </nav>
@@ -80,7 +93,7 @@ $ings = $conn->query("SELECT ingredient_id, name FROM ingredient ORDER BY name A
       <div class="navlinks" style="display:flex;gap:14px;align-items:center;">
         <a href="ingredients.php" class="btn-cancel">Ingredients</a>
         <a href="ingredient_categories.php" class="btn-cancel">Categories</a>
-        <a href="menu_items.php" class="btn-cancel">Menu</a>
+        <a href="inventory.php" class="btn-cancel">Menu</a>
       </div>
     </div>
 

@@ -75,13 +75,26 @@ $categories = $conn->query("SELECT * FROM ingredient_category ORDER BY category_
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="../css/inventory.css">
 </head>
-<body>
+<body
+<?php
+  if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
+  if (isset($_SESSION['accent_color'])) {
+    $accent = $_SESSION['accent_color'];
+    $gradientMap = [
+      '#d33fd3' => ['#d33fd3', '#a2058f'],
+      '#4b4bff' => ['#4b4bff', '#001b89'],
+      '#bdbdbd' => ['#bdbdbd', '#7a7a7a'],
+    ];
+    $g = $gradientMap[$accent] ?? $gradientMap['#d33fd3'];
+    echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
+  }
+?>>
   <aside class="sidebar" role="complementary" aria-label="Sidebar">
       <div class="sidebar-header"><img src="../assets/logos/logo1.png" class="sidebar-header-img" alt="logo"></div>
       <nav class="sidebar-menu">
         <a href="../index.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/home.png"></span><span>Home</span></a>
         <a href="../php/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/table.png"></span><span>Tables</span></a>
-        <a href="inventory.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/inventory.png"></span><span>Inventory</span></a>
+        <a href="inventory.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../assets/logos/inventory.png"></span><span>Inventory</span></a>
         <a href="../SalesReport/sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/sales.png"></span><span>Sales Report</span></a>
         <a href="../settings/settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/setting.png"></span><span>Settings</span></a>
       </nav>
@@ -104,7 +117,7 @@ $categories = $conn->query("SELECT * FROM ingredient_category ORDER BY category_
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <div>
             <div style="font-size:20px;font-weight:800;">Add New Ingredient</div>
-            <div style="color:#666;margin-top:6px;">Create a new ingredient used for recipes and stock tracking</div>
+            <div style="margin-top:6px;">Create a new ingredient used for recipes and stock tracking</div>
           </div>
           <div><a href="ingredients.php" class="btn-cancel" style="padding:10px 14px;display:inline-block;">Back to Ingredients</a></div>
         </div>
