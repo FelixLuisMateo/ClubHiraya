@@ -293,8 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const visible = products.filter(p => {
         if (currentCategory && p.category !== currentCategory) return false;
         if (!q) return true;
-        return (p.name && p.name.toLowerCase().includes(q)) ||
-               (p.description && p.description.toLowerCase().includes(q));
+        return (p.name && p.name.toLowerCase().includes(q));
       });
 
       foodsGrid.innerHTML = '';

@@ -84,13 +84,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($image === '' || !preg_match('/^[^\/\\\\]+\\.(jpe?g|png|gif)$/i', $image)) $errors[] = "Image filename is required and must end with .jpg/.png/.gif.";
     if (empty($errors)) {
         try {
-            $sql = "UPDATE foods SET name = :name, price = :price, category = :category, stock = :stock, image = :image WHERE id = :id";
+            $sql = "UPDATE foods SET name = :name, price = :price, category = :category, image = :image WHERE id = :id";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
                 ':name' => $name,
                 ':price' => number_format((float)$price,2,'.',''),
                 ':category' => $category,
-                ':stock' => intval($stock),
                 ':image' => $image,
                 ':id' => $item_id
             ]);

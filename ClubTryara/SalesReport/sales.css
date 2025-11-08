@@ -1,0 +1,406 @@
+/* Updated style.css
+   - Horizontal scrolling for category tabs tuned for 1440x1024
+   - Compact category buttons (flex: 0 0 auto) so tabs don't expand layout
+   - Smooth scroll, scroll-snap for better keyboard/trackpad UX
+   - Minor spacing adjustments to fit more content horizontally
+   - Darkmode
+*/
+
+
+/* Base */
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background: #f4f4f6;
+  color: #111;
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: 150px;
+  background: linear-gradient(180deg, #e44ac2 0%, #9a0076 100%);
+  box-shadow: 2px 0 10px rgba(0,0,0,0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 100;
+  padding-top: 8px;
+  overflow: hidden; /* prevent overflowing large images */
+}
+.sidebar-header {
+  width: 100%;
+  padding: 12px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+/* Sidebar logo - constrain size strictly to avoid large images */
+.sidebar-header-img {
+  width: 86px;      /* desired logo width */
+  height: 86px;     /* desired logo height */
+  object-fit: contain;
+  display: block;
+  max-width: 86px;
+  max-height: 86px;
+}
+
+/* Ensure no img inside sidebar exceeds container bounds */
+.sidebar img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+/* Sidebar buttons */
+.sidebar-btn {
+  width: 115px;
+  height: 80px;
+  margin: 0 auto 18px auto;
+  background: #fff;
+  color: #111;
+  border: 5px solid #000000;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  box-sizing: border-box;
+  text-decoration: none;
+  overflow: hidden; /* clip any oversized content inside the button */
+  position: relative;
+}
+
+/* Icon holder inside button - guarantee consistent sizing */
+.sidebar-btn .sidebar-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  box-sizing: border-box;
+}
+
+/* Actual icon images inside sidebar buttons */
+.sidebar-btn .sidebar-icon img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* Improve spacing and avoid text wrapping */
+.sidebar-btn span:last-child {
+  font-size: 17px;
+  margin-top: 0;
+  display: block;
+  text-align: center;
+  width: 100%;
+  font-family: inter;
+  line-height: 1.05;
+  padding: 0 4px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hover and active states for sidebar buttons */
+.sidebar-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
+.sidebar-btn.active {
+  background: #001B89;
+  color: #fff;
+  border: 7px solid #000;
+}
+
+/* Logout */
+.sidebar-logout {
+  width: 120px;
+  height: 49px;
+  margin: 32px auto 18px auto;
+  background: red;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+
+/* Main Content */
+.main-content {
+  margin-left: 160px; /* space for sidebar */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Topbar */
+.topbar {
+  height: 52px;
+  background: #121212;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 36px 0 18px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+.search-section { position: relative; display: flex; align-items: center; }
+.search-input {
+  width: 280px;
+  height: 34px;
+  border-radius: 16px;
+  border: none;
+  font-size: 14px;
+  padding: 0 36px 0 12px;
+  outline: none;
+  background: #fff;
+}
+/* Main content and topbar */
+.main-content {
+    margin-left: 118px;
+    min-height: 100vh;
+}
+.topbar {
+    height: 52px;
+    background: #222;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 36px 0 38px;
+    box-shadow: 0 4px 16px #0001;
+}
+.search-section {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+.search-input {
+    width: 270px;
+    height: 30px;
+    border-radius: 15px;
+    border: none;
+    font-size: 14px;
+    padding: 0 32px 0 13px;
+    outline: none;
+    background: #fff;
+    box-sizing: border-box;
+}
+.search-icon {
+    position: absolute;
+    right: 10px;
+    top: 6px;
+    font-size: 15px;
+    color: #555;
+    pointer-events: none;
+}
+/* Layout */
+.content-area{
+  background-color: #222;
+}
+
+
+/* remove item button */
+.remove-item-btn {
+    margin-left: 14px;
+    background: #ff3b3b;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 20px;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.remove-item-btn:hover { background: #b71c1c; }
+.order-item-name { flex: 1; margin: 0 3px; }
+
+
+/* bottom action buttons */
+.order-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+}
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.32);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+.modal.hidden { display: none; }
+.modal-content {
+    background: #fff;
+    border-radius: 10px;
+    padding: 18px 12px 12px 12px;
+    min-width: 260px;
+    position: relative;
+    box-shadow: 0 8px 24px #0004;
+}
+.close-btn { position: absolute; right: 7px; top: 6px; font-size: 16px; cursor: pointer; }
+
+/* thin scroll for categories */
+.category-tabs::-webkit-scrollbar {
+    height: 8px;
+}
+.category-tabs::-webkit-scrollbar-thumb {
+    background: #d51ecb;
+    border-radius: 6px;
+}
+/* --- FIXED LAYOUT ADJUSTMENTS ---
+   Make Topbar, Category Tabs and Order Section fixed.
+   Append this to the end of css/style.css
+*/
+/* === FIX: topbar, category-tabs, order-section (append to css/style.css) === */
+:root{
+  --sidebar-width: 150px;   /* matches your sidebar width */
+  --topbar-height: 52px;    /* matches your topbar height */
+  --order-width: 360px;     /* change if your order panel width is different */
+  --category-height: 56px;  /* approx height of category tabs row */
+  --gutter: 16px;
+}
+
+/* Keep topbar fixed and not overlapping the order panel */
+.topbar{
+  position: fixed;
+  left: var(--sidebar-width);
+  right: var(--order-width);
+  top: 0;
+  height: var(--topbar-height);
+  z-index: 1200;
+}
+
+/* MOBILE: convert order panel into a bottom sheet and remove large right margin */
+@media (max-width: 900px) {
+  :root { --order-width: 100%; }
+
+  .topbar { left: 0; right: 0; }
+}
+:root {
+  --bg-color: #eee;
+  --main-bg: #ccc;
+  --text-color: #222;
+}
+
+body {
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+
+.main-content {
+  background: var(--main-bg);
+  transition: background 0.25s;
+}
+
+/* Dark mode overrides */
+body.dark-mode {
+  background: #222;
+  color: #222; /* This can change the pop up color */
+}
+body.dark-mode .main-content,
+body.dark-mode .foods-grid,
+body.dark-mode .food-label,
+body.dark-mode .products-section,
+body.dark-mode .order-section{
+  background: #222;
+  color: #fff;
+}
+
+body.dark-mode .order-item,
+body.dark-mode .food-label,
+body.dark-mode .order-list,
+body.dark-mode .food-price,
+body.dark-mode .order-compute,
+body.dark-mode .food-card{
+  background: #363636;
+  color: #fff;
+}
+
+body.dark-mode .sidebar-btn.active{
+  background: #001B89;
+  color: #fff;
+}
+
+body.dark-mode .sidebar-btn{
+  background: linear-gradient(180deg, #bdbdbd 0%, #7a7a7a 100%);
+  color: #fff;
+}
+
+
+body.dark-mode .compute-row .label,
+body.dark-mode .compute-row .value{
+background: #363636;
+  color: #fff;
+}
+
+/* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */
+
+/* Dark mode overrides */
+/* Dark mode overrides *//* Dark mode overrides */
+/* Dark mode overrides *//* Dark mode overrides */
+
+
+
+/* Dark mode overrides *//* Dark mode overrides */
+/* Dark mode overrides */
+/* Dark mode overrides */
+
+/* === SIDEBAR ACCENT THEMES === */
+/* === SIDEBAR ACCENT THEMES === */
+/* === SIDEBAR ACCENT THEMES === */
+:root {
+  --accent-start: #d33fd3;
+  --accent-end: #a2058f;
+}
+
+/* Default sidebar (pink/purple) */
+.sidebar {
+  background: linear-gradient(180deg, var(--accent-start) 0%, var(--accent-end) 100%);
+}
+
+/* Blue accent */
+body.accent-blue .sidebar {
+  background: linear-gradient(180deg, #4b4bff 0%, #001b89 100%);
+}
+
+/* Gray accent */
+body.accent-gray .sidebar {
+  background: linear-gradient(180deg, #bdbdbd 0%, #7a7a7a 100%);
+}
+
+/* Green accent */
+body.accent-green .sidebar {
+  background: linear-gradient(180deg, #27c93f 0%, #1b9f33 100%);
+}
+/* === SIDEBAR ACCENT THEMES === */
+/* === SIDEBAR ACCENT THEMES === */
+/* === SIDEBAR ACCENT THEMES === */
+/* === SIDEBAR ACCENT THEMES === */
+/* === SIDEBAR ACCENT THEMES === */
+
