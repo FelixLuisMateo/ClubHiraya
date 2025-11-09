@@ -13,7 +13,7 @@
     <script defer src="js/app.js"></script>
     <script defer src="js/tables-select.js"></script>
     <script defer src="js/app-actions.js"></script>
-    <script defer src="js/app-payments.js"></script>
+    <script defer src="js/app-payment.js"></script>
 </head>
 <body
 <?php

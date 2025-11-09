@@ -1,27 +1,37 @@
 <?php
-// Minimal example for saving a sale. Adapt to your DB schema.
-// Expects JSON POST: { cart, totals, reserved, payment, meta }
-// Returns JSON: { success: true, saleId: 123 } or { success:false, message: '...' }
+require_once 'db_connect.php';
 
-header('Content-Type: application/json; charset=utf-8');
-
-$raw = file_get_contents('php://input');
-$data = json_decode($raw, true);
-if (!$data) {
-  echo json_encode(['success' => false, 'message' => 'Invalid JSON']); exit;
+$data = json_decode(file_get_contents("php://input"), true);
+if (!$data || !isset($data['order'])) {
+    http_response_code(400);
+    exit("Invalid data");
 }
 
-// TODO: Replace with your DB connection and insert logic
-// For example (mysqli):
-// require_once __DIR__ . '/../php/db_connect.php';
-// $stmt = $conn->prepare('INSERT INTO sales (payload, created_at) VALUES (?, NOW())');
-// $json = json_encode($data, JSON_UNESCAPED_UNICODE);
-// $stmt->bind_param('s', $json);
-// $stmt->execute();
-// $saleId = $stmt->insert_id;
+$order = $data['order'];
+$totals = $data['totals'];
+$payment = $data['payment'];
 
-$saleId = time(); // placeholder unique ID using timestamp for demo
+$stmt = $conn->prepare("INSERT INTO sales (payment_method, subtotal, service_charge, tax, discount, total_amount) VALUES (?, ?, ?, ?, ?, ?)");
+$stmt->bind_param(
+    "sddddi",
+    $payment['method'],
+    $totals['subtotal'],
+    $totals['serviceCharge'],
+    $totals['tax'],
+    $totals['discountAmount'],
+    $totals['payable']
+);
+$stmt->execute();
+$sale_id = $stmt->insert_id;
 
-echo json_encode(['success' => true, 'saleId' => $saleId]);
-exit;
-?>
+// Insert items
+$item_stmt = $conn->prepare("INSERT INTO sales_items (sale_id, item_name, quantity, line_total) VALUES (?, ?, ?, ?)");
+foreach ($order as $item) {
+    $name = $item['name'];
+    $qty = $item['qty'];
+    $total = $item['price'] * $qty;
+    $item_stmt->bind_param("isid", $sale_id, $name, $qty, $total);
+    $item_stmt->execute();
+}
+
+echo json_encode(['success' => true, 'sale_id' => $sale_id]);
