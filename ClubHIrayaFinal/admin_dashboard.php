@@ -76,9 +76,10 @@
             <div class="search-section">
                 <input type="text" class="search-input" placeholder="Search products" id="searchBox" aria-label="Search products">
             </div>
-            <button class="select-table-btn" type="button" aria-haspopup="dialog">
-                Select Table <span class="table-icon"><img src="../ClubHirayaFinal/assets/foods/logos/table.png" alt=""></span>
-            </button>
+            <!-- Changed the Select Cabins control from a button to an anchor so it navigates to Cabins.php -->
+            <a class="select-table-btn" role="link" href="../ClubHirayaFinal/Cabins/Cabins.php">
+                Select Cabins <span class="table-icon"><img src="../ClubHirayaFinal/assets/foods/logos/table.png" alt=""></span>
+            </a>
         </div>
 
         <!-- Content Area -->
