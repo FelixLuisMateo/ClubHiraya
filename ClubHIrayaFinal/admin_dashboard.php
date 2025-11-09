@@ -12,9 +12,23 @@
     <script defer src="js/settings-sync.js"></script>
     <script defer src="js/app.js"></script>
     <script defer src="js/tables-select.js"></script>
+    <script defer src="js/app-actions.js"></script>
+    <script defer src="js/app-payments.js"></script>
 </head>
-<body<?php if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"'; ?>>
-
+<body 
+<?php
+  if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
+  if (isset($_SESSION['accent_color'])) {
+    $accent = $_SESSION['accent_color'];
+    $gradientMap = [
+      '#d33fd3' => ['#d33fd3', '#a2058f'],
+      '#4b4bff' => ['#4b4bff', '#001b89'],
+      '#bdbdbd' => ['#bdbdbd', '#7a7a7a'],
+    ];
+    $g = $gradientMap[$accent] ?? $gradientMap['#d33fd3'];
+    echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
+  }
+?>>
     <noscript>
         <div class="noscript-warning">This app requires JavaScript to function correctly. Please enable JavaScript.</div>
     </noscript>
@@ -62,9 +76,10 @@
             <div class="search-section">
                 <input type="text" class="search-input" placeholder="Search products" id="searchBox" aria-label="Search products">
             </div>
-            <button class="select-table-btn" type="button" aria-haspopup="dialog">
-                Select Table <span class="table-icon"><img src="../ClubHirayaFinal/assets/foods/logos/table.png" alt=""></span>
-            </button>
+            <!-- Changed the Select Cabins control from a button to an anchor so it navigates to Cabins.php -->
+            <a class="select-table-btn" role="link" href="../ClubHirayaFinal/Cabins/Cabins.php">
+                Select Cabins <span class="table-icon"><img src="../ClubHirayaFinal/assets/foods/logos/table.png" alt=""></span>
+            </a>
         </div>
 
         <!-- Content Area -->
