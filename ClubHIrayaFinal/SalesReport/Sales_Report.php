@@ -31,25 +31,25 @@
             <img src="../../clubtryara/assets/logos/logo1.png" alt="Club Hiraya logo" class="sidebar-header-img">
         </div>
 
-        <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
+        <nav class="sidebar-menu" class="sidebar-btn" aria-current="page">
             <a href="../admin_dashboard.php" class="sidebar-btn" aria-current="page">
-                <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/home.png" alt="Home icon"></span>
+                <span class="sidebar-icon"><img src="../assets/foods/logos/home.png" alt="Home icon"></span>
                 <span>Home</span>
             </a>
-            <a href="../../ClubTryara/tables/tables.php" class="sidebar-btn">
-                <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/table.png" alt="Tables icon"></span>
-                <span>Tables</span>
+            <a href="../tables/tables.php" class="sidebar-btn ">
+                <span class="sidebar-icon"><img src="../assets/foods/logos/table.png" alt="Tables icon"></span>
+                <span>Cabins</span>
             </a>
             <a href="../inventory/inventory.php" class="sidebar-btn">
-                <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/inventory.png" alt="Inventory icon"></span>
+                <span class="sidebar-icon"><img src="../assets/foods/logos/inventory.png" alt="Inventory icon"></span>
                 <span>Inventory</span>
             </a>
-            <a href="sales_report.php" class="sidebar-btn active">
-                <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/sales.png" alt="Sales report icon"></span>
+            <a href="../salesreport/../SalesReport/sales_report.php" class="sidebar-btn active">
+                <span class="sidebar-icon"><img src="../assets/foods/logos/sales.png" alt="Sales report icon"></span>
                 <span>Sales Report</span>
             </a>
             <a href="../settings/settings.php" class="sidebar-btn">
-                <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/setting.png" alt="Settings icon"></span>
+                <span class="sidebar-icon"><img src="../assets/foods/logos/setting.png" alt="Settings icon"></span>
                 <span>Settings</span>
             </a>
         </nav>

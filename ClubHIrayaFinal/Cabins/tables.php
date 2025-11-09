@@ -1,7 +1,7 @@
 <?php
 // tables.php - summary of reserved/occupied items posted via hidden payload
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.html');
+    header('Location: Cabins.html');
     exit;
 }
 $raw = $_POST['payload'] ?? '[]';
