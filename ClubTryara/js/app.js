@@ -517,14 +517,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!billOutBtn || !proceedBtnPage) {
         const fallback = document.createElement('div');
         fallback.className = 'order-buttons fallback';
-        if (!billOutBtn) {
-          const b = document.createElement('button');
-          b.id = 'billOutBtn_fallback';
-          b.className = 'hold-btn';
-          b.textContent = 'Bill Out';
-          b.addEventListener('click', handleBillOut);
-          fallback.appendChild(b);
-        }
         if (!proceedBtnPage) {
           const p = document.createElement('button');
           p.id = 'proceedBtn_fallback';
