@@ -1,4 +1,4 @@
-
+<?php session_start(); ?>     <!-- This needed every php file -->
 <!DOCTYPE html>
 <html lang="en">
 <head>

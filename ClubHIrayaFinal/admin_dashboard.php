@@ -102,8 +102,8 @@
             <aside class="order-section" aria-label="Order">
                 <div class="order-actions">
                     <button class="order-action-btn plus" id="newOrderBtn" type="button" title="New order">+</button>
-                    <button class="order-action-btn draft" id="draftBtn" type="button" title="Save draft"><img src="../clubtryara/assets/logos/draft.png" alt="Draft"></button>
-                    <button class="order-action-btn refresh" id="refreshBtn" type="button" title="Reset order"><img src="../clubtryara/assets/logos/reset.png" alt="Reset"></button>
+                    <button class="order-action-btn draft" id="draftBtn" type="button" title="Save draft"><img src="assets/logos/draft.png" alt="Draft"></button>
+                    <button class="order-action-btn refresh" id="refreshBtn" type="button" title="Reset order"><img src="assets/logos/reset.png" alt="Reset"></button>
                 </div>
 
                 <div class="order-list" id="orderList" aria-live="polite"></div>
