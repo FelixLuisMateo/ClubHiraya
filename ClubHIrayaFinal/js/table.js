@@ -317,7 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let filtered = tablesData;
     if (state.partySeats !== 'any') {
       const v = Number(state.partySeats);
-      const [min, max] = v === 2 ? [1, 2] : v === 4 ? [3, 4] : v === 6 ? [5, 6] : [7, 8];
+      const [min, max] = v === 2 ? [1, 2] : v === 4 ? [3, 4] : v === 6 ? [5, 6] : [0, 0];
       filtered = tablesData.filter(t => t.seats >= min && t.seats <= max);
     }
     // Sorting

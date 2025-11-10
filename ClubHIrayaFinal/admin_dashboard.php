@@ -1,4 +1,9 @@
-<?php session_start(); ?>
+<?php
+// Protect page: include the auth check before any output
+require_once __DIR__ . '/php/auth.php'; // adjust path as needed
+
+// existing page logic continues...
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,14 +11,14 @@
     <title>Club Hiraya</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/tables-select.css">
+    <link rel="stylesheet" href="css/tables_select.css">
 
     <!-- Run settings-sync BEFORE the main app so theme and notification flags from the server are applied first -->
     <script defer src="js/settings-sync.js"></script>
     <script defer src="js/app.js"></script>
     <script defer src="js/tables-select.js"></script>
     <script defer src="js/app-actions.js"></script>
-    <script defer src="js/app-payments.js"></script>
+    <script defer src="js/app-payment.js"></script>
 </head>
 <body 
 <?php
@@ -64,9 +69,12 @@
 
         <div style="flex:1" aria-hidden="true"></div>
 
-        <button class="sidebar-logout" type="button" aria-label="Logout">
-            <span>Logout</span>
-        </button>
+        <!-- Logout form: uses POST to call logout.php -->
+        <form method="post" action="logout.php" style="margin:0;">
+            <button class="sidebar-logout" type="submit" aria-label="Logout">
+                <span>Logout</span>
+            </button>
+        </form>
     </aside>
 
     <!-- Main Content -->

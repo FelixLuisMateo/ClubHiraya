@@ -1,5 +1,7 @@
 <?php session_start();
+// Protect page: include the auth check before any output
 
+// existing page logic continues...
 // Use existing db_connect.php in the same folder which should create $conn (mysqli)
 $dbConnectPath = __DIR__ . '/db_connect.php';
 if (!file_exists($dbConnectPath)) {

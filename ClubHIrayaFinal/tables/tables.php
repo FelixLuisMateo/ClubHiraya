@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -84,7 +85,6 @@
           <option value="2">1-2</option>
           <option value="4">3-4</option>
           <option value="6">5-6</option>
-          <option value="8">7-8</option>
         </select>
       </div>
 
