@@ -1,3 +1,4 @@
+<?php session_start(); ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,7 +15,7 @@
     <script defer src="js/app-actions.js"></script>
     <script defer src="js/app-payment.js"></script>
 </head>
-<body 
+<body
 <?php
   if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
   if (isset($_SESSION['accent_color'])) {
@@ -28,6 +29,7 @@
     echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
   }
 ?>>
+
     <noscript>
         <div class="noscript-warning">This app requires JavaScript to function correctly. Please enable JavaScript.</div>
     </noscript>
@@ -66,8 +68,8 @@
         <!-- Logout form: uses POST to call logout.php -->
         <form method="post" action="logout.php" style="margin:0;">
             <button class="sidebar-logout" type="submit" aria-label="Logout">
-                <span>Logout</span>
-            </button>
+            <span>Logout</span>
+        </button>
         </form>
     </aside>
 
@@ -85,7 +87,6 @@
         </div>
 
         <!-- Content Area -->
-        <div class="content-area">
             <!-- Products Section -->
             <section class="products-section" aria-label="Products">
                 <div class="category-tabs" id="categoryTabs" role="tablist" aria-label="Categories">
@@ -112,11 +113,10 @@
                 </div>
 
                 <div class="order-buttons">
-                    <button class="hold-btn" id="billOutBtn" type="button">Bill Out</button>
+            <!--    <button class="hold-btn" id="billOutBtn" type="button">Bill Out</button> -->
                     <button class="proceed-btn" id="proceedBtn" type="button">Proceed</button>
                 </div>
             </aside>
-        </div>
     </main>
 
     <!-- Draft Modal -->

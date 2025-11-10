@@ -1,416 +1,496 @@
-// Reservation interaction logic + dragging support for map images
-// - Dragging: all <img> inside .map-inner are movable except those with class 'background-img'.
-// - When dragging an image that sits inside a .map-object, the parent .map-object position is updated (left/top).
-// - If the image is inside some other wrapper (e.g. .bar-wrapper), that wrapper will be moved instead.
-// - Dragging updates inline style.left and style.top and removes bottom if present (to avoid conflicts).
-// - Dragging will not fire click selection: small movement suppresses click behavior.
+// script.js - enhanced for dragging + selection + right-panel list + payload/draft handling
+// Replaces earlier simpler drag-only script with selection and form integration.
 
 document.addEventListener('DOMContentLoaded', () => {
-  const PRICE = { cabin: 5000, hut: 1000, table: 0 };
-  const objects = Array.from(document.querySelectorAll('.map-object'));
-  const selectedList = document.getElementById('selectedList');
+  const container = document.querySelector('.map-inner');
+  if (!container) return;
+
+  const objects = Array.from(container.querySelectorAll('.map-object'));
+  const selectedListEl = document.getElementById('selectedList');
+  const payloadInput = document.getElementById('payload');
   const proceedBtn = document.getElementById('proceedBtn');
   const enterBtn = document.getElementById('enterBtn');
-  const btnAdd = document.getElementById('btnAdd');
   const btnDraft = document.getElementById('btnDraft');
-  const btnRefresh = document.getElementById('btnRefresh');
-  const payloadInput = document.getElementById('payload');
-
-  // modal elements
   const modal = document.getElementById('modal');
   const modalBackdrop = document.getElementById('modalBackdrop');
-  const modalBody = document.getElementById('modalBody');
   const modalClose = document.getElementById('modalClose');
+  const modalBody = document.getElementById('modalBody');
+  const modalTitle = document.getElementById('modalTitle');
+  const form = document.getElementById('proceedForm');
 
-  // helper: mark button color according to occupied
-  function refreshVisual(el) {
-    const occupied = el.dataset.occupied === 'true';
-    const btn = el.querySelector('.state-btn');
-    if (!btn) return;
-    if (occupied) {
-      el.classList.add('occupied');
-      btn.style.background = '#ff6b6b';
-      btn.style.color = '#700000';
-    } else {
-      el.classList.remove('occupied');
-      btn.style.background = '#2fe44a';
-      btn.style.color = '#003300';
+  // Track selected items (Map id => data object)
+  const selected = new Map();
+
+  // --- Utilities ---
+  function makeId(id) { return String(id); }
+
+  function createListRow(item) {
+    // item: { id, type, customer, days }
+    const row = document.createElement('div');
+    row.className = 'item';
+    row.dataset.id = item.id;
+
+    const left = document.createElement('div');
+    left.style.display = 'flex';
+    left.style.flexDirection = 'column';
+    left.style.gap = '6px';
+    left.style.minWidth = '0';
+
+    const title = document.createElement('div');
+    title.textContent = `${item.id} (${item.type})`;
+    title.style.fontWeight = '900';
+    left.appendChild(title);
+
+    const smallRow = document.createElement('div');
+    smallRow.style.display = 'flex';
+    smallRow.style.gap = '8px';
+    smallRow.style.alignItems = 'center';
+
+    const custInput = document.createElement('input');
+    custInput.type = 'text';
+    custInput.placeholder = 'Customer';
+    custInput.value = item.customer || '';
+    custInput.style.flex = '1';
+    custInput.style.padding = '6px';
+    custInput.style.borderRadius = '6px';
+    custInput.style.border = '1px solid #dcdcdc';
+    custInput.addEventListener('input', () => {
+      const s = selected.get(item.id);
+      if (s) s.customer = custInput.value;
+    });
+
+    const daysInput = document.createElement('input');
+    daysInput.type = 'number';
+    daysInput.min = '1';
+    daysInput.placeholder = 'Days';
+    daysInput.value = item.days || '';
+    daysInput.style.width = '82px';
+    daysInput.style.padding = '6px';
+    daysInput.style.borderRadius = '6px';
+    daysInput.style.border = '1px solid #dcdcdc';
+    daysInput.addEventListener('input', () => {
+      const s = selected.get(item.id);
+      if (s) s.days = parseInt(daysInput.value || '0', 10);
+    });
+
+    smallRow.appendChild(custInput);
+    smallRow.appendChild(daysInput);
+
+    left.appendChild(smallRow);
+
+    const right = document.createElement('div');
+    right.style.display = 'flex';
+    right.style.flexDirection = 'column';
+    right.style.gap = '8px';
+    right.style.alignItems = 'flex-end';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = 'Remove';
+    removeBtn.style.background = '#eee';
+    removeBtn.style.border = '0';
+    removeBtn.style.padding = '8px';
+    removeBtn.style.borderRadius = '8px';
+    removeBtn.style.cursor = 'pointer';
+    removeBtn.addEventListener('click', () => {
+      deselectItem(item.id);
+    });
+
+    right.appendChild(removeBtn);
+
+    row.appendChild(left);
+    row.appendChild(right);
+
+    return row;
+  }
+
+  function renderSelectedList() {
+    selectedListEl.innerHTML = '';
+    for (const [id, data] of selected) {
+      const row = createListRow(data);
+      selectedListEl.appendChild(row);
     }
   }
 
-  // initialize visuals
-  objects.forEach(o => refreshVisual(o));
+  function selectItem(el) {
+    const id = makeId(el.dataset.id || el.getAttribute('data-id'));
+    if (!id) return;
+    if (selected.has(id)) return; // already selected
+    const data = {
+      id,
+      type: el.dataset.type || el.getAttribute('data-type') || 'unknown',
+      customer: '',
+      days: 1
+    };
+    selected.set(id, data);
+    el.classList.add('selected-item');
+    // aria
+    const btn = el.querySelector('.state-btn');
+    if (btn) btn.setAttribute('aria-pressed', 'true');
+    renderSelectedList();
+  }
 
-  // Keep track of selected-for-action ids
-  const selectedIds = new Set();
-
-  // Toggle selection when clicking center button
-  document.querySelectorAll('.state-btn').forEach(btn => {
-    btn.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      const parent = btn.closest('.map-object');
-      if (!parent) return;
-      const id = parent.dataset.id;
-      if (!id) return;
-      if (selectedIds.has(id)) {
-        selectedIds.delete(id);
-        parent.classList.remove('selected-item');
-      } else {
-        selectedIds.add(id);
-        parent.classList.add('selected-item');
-      }
-    });
-  });
-
-  // Also allow clicking the entire object to toggle selection
-  objects.forEach(o => {
-    o.addEventListener('click', () => {
-      const id = o.dataset.id;
-      if (!id) return;
-      if (selectedIds.has(id)) {
-        selectedIds.delete(id);
-        o.classList.remove('selected-item');
-      } else {
-        selectedIds.add(id);
-        o.classList.add('selected-item');
-      }
-    });
-  });
-
-  // Render right-side occupied list
-  function renderOccupiedList() {
-    selectedList.innerHTML = '';
-    const occupied = objects.filter(o => o.dataset.occupied === 'true');
-    if (occupied.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'item';
-      empty.textContent = 'No occupied spots';
-      selectedList.appendChild(empty);
-      return;
+  function deselectItem(id) {
+    const key = makeId(id);
+    if (!selected.has(key)) return;
+    selected.delete(key);
+    const el = container.querySelector(`.map-object[data-id="${cssEscape(key)}"]`);
+    if (el) {
+      el.classList.remove('selected-item');
+      const btn = el.querySelector('.state-btn');
+      if (btn) btn.setAttribute('aria-pressed', 'false');
     }
-    occupied.forEach(o => {
-      const id = o.dataset.id;
-      const type = o.dataset.type;
-      const cust = o.dataset.customer || '';
-      const days = parseInt(o.dataset.days || '0', 10) || 0;
-      const price = PRICE[type] * days;
-      const item = document.createElement('div');
-      item.className = 'item';
-      item.innerHTML = `<div>&gt; ${id} ${type.toUpperCase()}</div><div><small>${cust ? cust : ''}</small>${price ? ' ₱' + price.toLocaleString() : ''}</div>`;
-      // clicking row shows details
-      item.addEventListener('click', () => {
-        if (cust || days) {
-          showModal(`<p><strong>${id}</strong> (${type})<br>Customer: ${cust || '—'}<br>Days: ${days || '—'}<br>Price: ${price ? '₱' + price.toLocaleString() : '—'}</p>`);
-        } else {
-          showModal(`<p><strong>${id}</strong> (${type})<br>No customer recorded.</p>`);
+    renderSelectedList();
+  }
+
+  function toggleSelect(el) {
+    const id = makeId(el.dataset.id || el.getAttribute('data-id'));
+    if (!id) return;
+    if (selected.has(id)) deselectItem(id);
+    else selectItem(el);
+  }
+
+  function cssEscape(str) {
+    // minimal escape for querySelector attribute selector usage
+    return String(str).replace(/(["\\])/g, '\\$1');
+  }
+
+  // --- Dragging (pointer events) ---
+  objects.forEach(el => {
+    // make interactive and focusable
+    el.style.touchAction = 'none';
+    el.tabIndex = 0;
+    el.setAttribute('role', 'button');
+
+    // Avoid starting drag when user clicks on the small state button or on inputs
+    el.addEventListener('pointerdown', function (e) {
+      // If click is on the state button or inside a button, treat as selection/click only
+      if (e.target.closest('.state-btn') || e.target.closest('button') || e.target.closest('input')) {
+        return; // let other handlers manage it
+      }
+      // Only primary pointer to drag
+      if (e.button && e.button !== 0) return;
+      startDrag(e, el);
+    });
+
+    // state button toggles selection
+    const stateBtn = el.querySelector('.state-btn');
+    if (stateBtn) {
+      stateBtn.type = 'button';
+      stateBtn.tabIndex = 0;
+      stateBtn.setAttribute('aria-pressed', 'false');
+      stateBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        toggleSelect(el);
+      });
+      stateBtn.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          toggleSelect(el);
         }
       });
-      selectedList.appendChild(item);
+    }
+
+    // allow keyboard activation on the whole element
+    el.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        toggleSelect(el);
+      }
     });
+
+    // also allow click on the element to toggle selection
+    el.addEventListener('click', (ev) => {
+      // ignore clicks originated from state button (already handled)
+      if (ev.target.closest('.state-btn')) return;
+      toggleSelect(el);
+    });
+  });
+
+  function startDrag(e, el) {
+    el.setPointerCapture(e.pointerId);
+    el.classList.add('dragging');
+
+    const parentRect = container.getBoundingClientRect();
+    let elRect = el.getBoundingClientRect();
+
+    const offsetX = e.clientX - elRect.left;
+    const offsetY = e.clientY - elRect.top;
+
+    function onMove(ev) {
+      ev.preventDefault();
+      elRect = el.getBoundingClientRect(); // recalc for responsive
+      const x = ev.clientX - parentRect.left - offsetX;
+      const y = ev.clientY - parentRect.top - offsetY;
+
+      const maxX = Math.max(0, parentRect.width - elRect.width);
+      const maxY = Math.max(0, parentRect.height - elRect.height);
+      const nx = Math.max(0, Math.min(x, maxX));
+      const ny = Math.max(0, Math.min(y, maxY));
+
+      el.style.left = nx + 'px';
+      el.style.top = ny + 'px';
+      el.style.bottom = '';
+    }
+
+    function onUp() {
+      try { el.releasePointerCapture(e.pointerId); } catch (_) {}
+      el.classList.remove('dragging');
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+    }
+
+    document.addEventListener('pointermove', onMove, { passive: false });
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
   }
 
-  // Proceed: occupy selected available cabins/huts (and tables can be reserved but they have no price)
-  proceedBtn.addEventListener('click', () => {
-    if (selectedIds.size === 0) {
-      alert('Select slots (green) on the map to reserve, then click Proceed.');
-      return;
-    }
-    // gather selected elements
-    const elems = Array.from(selectedIds).map(id => objects.find(o => o.dataset.id === id)).filter(Boolean);
-    const availableElems = elems.filter(e => e.dataset.occupied !== 'true');
-    if (availableElems.length === 0) {
-      alert('No available items selected to reserve.');
-      return;
-    }
-
-    // Prompt once for customer name and days (days only relevant for cabins/huts; for tables days is ignored)
-    const cust = prompt(`Enter customer name for ${availableElems.length} selected item(s):`, '') || '';
-    let days = 1;
-    // If any selected is cabin or hut, ask days
-    if (availableElems.some(e => e.dataset.type === 'cabin' || e.dataset.type === 'hut')) {
-      const d = prompt('How many days will they stay? (enter a number)', '1');
-      days = Math.max(1, parseInt(d, 10) || 1);
-    }
-
-    // Occupy each selected available element
-    availableElems.forEach(el => {
-      el.dataset.occupied = 'true';
-      if (cust.trim()) el.dataset.customer = cust.trim();
-      if (el.dataset.type === 'cabin' || el.dataset.type === 'hut') el.dataset.days = String(days);
-      refreshVisual(el);
-      // remove selection
-      selectedIds.delete(el.dataset.id);
-      el.classList.remove('selected-item');
-    });
-
-    renderOccupiedList();
-
-    // Also set payload for server (optional) - we'll set JSON of current occupied spots
-    const occupiedPayload = objects.filter(o => o.dataset.occupied === 'true').map(o => ({
-      id: o.dataset.id,
-      type: o.dataset.type,
-      customer: o.dataset.customer || '',
-      days: parseInt(o.dataset.days || '0', 10) || 0
-    }));
-    payloadInput.value = JSON.stringify(occupiedPayload);
-  });
-
-  // Enter: checkout selected occupied cabins/huts (clears them)
-  enterBtn.addEventListener('click', () => {
-    if (selectedIds.size === 0) {
-      alert('Select occupied slots you want to check out, then click Enter.');
-      return;
-    }
-    const elems = Array.from(selectedIds).map(id => objects.find(o => o.dataset.id === id)).filter(Boolean);
-    const occupiedSelected = elems.filter(e => e.dataset.occupied === 'true');
-    if (occupiedSelected.length === 0) {
-      alert('No occupied items selected to check out.');
-      return;
-    }
-    if (!confirm(`Check out ${occupiedSelected.length} occupied item(s)?`)) return;
-    occupiedSelected.forEach(el => {
-      el.dataset.occupied = 'false';
-      delete el.dataset.customer;
-      delete el.dataset.days;
-      refreshVisual(el);
-      selectedIds.delete(el.dataset.id);
-      el.classList.remove('selected-item');
-    });
-    renderOccupiedList();
-
-    // update payload for server if needed
-    const occupiedPayload = objects.filter(o => o.dataset.occupied === 'true').map(o => ({
-      id: o.dataset.id,
-      type: o.dataset.type,
-      customer: o.dataset.customer || '',
-      days: parseInt(o.dataset.days || '0', 10) || 0
-    }));
-    payloadInput.value = JSON.stringify(occupiedPayload);
-  });
-
-  // Add New - clear everything
-  btnAdd.addEventListener('click', () => {
-    if (!confirm('Clear all reservations and reset map?')) return;
-    objects.forEach(o => {
-      o.dataset.occupied = 'false';
-      delete o.dataset.customer;
-      delete o.dataset.days;
-      o.classList.remove('selected-item');
-      selectedIds.delete(o.dataset.id);
-      refreshVisual(o);
-    });
-    renderOccupiedList();
-    payloadInput.value = '';
-  });
-
-  // Draft - save snapshot to localStorage
-  btnDraft.addEventListener('click', () => {
-    const snapshot = objects.map(o => ({
-      id: o.dataset.id,
-      type: o.dataset.type,
-      occupied: o.dataset.occupied === 'true',
-      customer: o.dataset.customer || '',
-      days: parseInt(o.dataset.days || '0', 10) || 0,
-      // record current inline position so draft preserves moved positions
-      left: o.style.left || '',
-      top: o.style.top || '',
-      bottom: o.style.bottom || ''
-    }));
-    localStorage.setItem('hiraya_reservation_draft', JSON.stringify(snapshot));
-    btnDraft.classList.add('saved');
-    setTimeout(() => btnDraft.classList.remove('saved'), 800);
-    alert('Draft saved locally.');
-  });
-
-  // Refresh
-  btnRefresh.addEventListener('click', () => location.reload());
-
-  // Modal helpers
-  function showModal(html) {
-    modalBody.innerHTML = html;
+  // --- Modal handling (simple accessibility features) ---
+  function openModal(title, bodyEl) {
+    modalTitle.textContent = title || 'Details';
+    modalBody.innerHTML = '';
+    modalBody.appendChild(bodyEl);
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
+    modal.querySelector('.modal-content').focus();
+    document.body.style.overflow = 'hidden';
+    // trap focus
+    trapFocus(modal);
   }
-  function hideModal() {
+
+  function closeModal() {
     modal.style.display = 'none';
     modal.setAttribute('aria-hidden', 'true');
-  }
-  modalBackdrop.addEventListener('click', hideModal);
-  modalClose.addEventListener('click', hideModal);
-
-  // Restore draft if exists
-  const draft = localStorage.getItem('hiraya_reservation_draft');
-  if (draft) {
-    try {
-      const parsed = JSON.parse(draft);
-      parsed.forEach(item => {
-        const el = objects.find(o => o.dataset.id === item.id);
-        if (!el) return;
-        el.dataset.occupied = item.occupied ? 'true' : 'false';
-        if (item.customer) el.dataset.customer = item.customer;
-        if (item.days) el.dataset.days = String(item.days);
-        // restore saved position if present
-        if (item.left) el.style.left = item.left;
-        if (item.top) el.style.top = item.top;
-        if (item.bottom) el.style.bottom = item.bottom;
-        refreshVisual(el);
-      });
-      renderOccupiedList();
-    } catch (e) { /* ignore parse errors */ }
-  } else {
-    renderOccupiedList();
+    document.body.style.overflow = '';
+    releaseTrapFocus();
   }
 
-  // Submit handler - if you click the hidden form submission later, payloadInput already contains occupied JSON
-  document.getElementById('proceedForm').addEventListener('submit', (e) => {
-    // ensure payload is updated
-    const occupiedPayload = objects.filter(o => o.dataset.occupied === 'true').map(o => ({
-      id: o.dataset.id,
-      type: o.dataset.type,
-      customer: o.dataset.customer || '',
-      days: parseInt(o.dataset.days || '0', 10) || 0
-    }));
-    payloadInput.value = JSON.stringify(occupiedPayload);
+  modalBackdrop.addEventListener('click', closeModal);
+  modalClose.addEventListener('click', closeModal);
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && modal.style.display === 'flex') closeModal();
   });
 
-
-  /* -----------------------------
-     Drag / Move support for images
-     -----------------------------
-     Behavior:
-     - All <img> inside .map-inner are movable EXCEPT images with class 'background-img'.
-     - When dragging an <img>, we move its closest positioned container:
-         * prefer closest('.map-object'), otherwise closest('.bar-wrapper'), otherwise the image itself.
-     - We update style.left and style.top of that container (remove bottom if present).
-     - Small drags (<6px) will not trigger click selection.
-  */
-
-  const mapInner = document.querySelector('.map-inner');
-  if (!mapInner) return;
-
-  let dragState = null; // {container, img, startX, startY, offsetX, offsetY, moved}
-
-  function getContainerForImage(img) {
-    const mapObj = img.closest('.map-object');
-    if (mapObj) return mapObj;
-    const wrapper = img.closest('.bar-wrapper');
-    if (wrapper) return wrapper;
-    return img;
-  }
-
-  function onPointerDown(ev) {
-    // support touch and mouse
-    const isTouch = ev.type === 'touchstart';
-    const point = isTouch ? ev.touches[0] : ev;
-    const target = ev.target;
-    if (!(target instanceof HTMLImageElement)) return;
-    if (!mapInner.contains(target)) return;
-    if (target.classList.contains('background-img')) return; // skip background images
-
-    ev.preventDefault && ev.preventDefault();
-
-    const img = target;
-    const container = getContainerForImage(img);
-    const rect = mapInner.getBoundingClientRect();
-    const contRect = container.getBoundingClientRect();
-
-    // calculate cursor offset within container
-    const offsetX = point.clientX - contRect.left;
-    const offsetY = point.clientY - contRect.top;
-
-    dragState = {
-      container,
-      img,
-      startX: point.clientX,
-      startY: point.clientY,
-      offsetX,
-      offsetY,
-      moved: false,
-      mapRect: rect
-    };
-
-    img.classList.add('dragging');
-
-    // attach move/up listeners on document to track outside the element
-    if (isTouch) {
-      document.addEventListener('touchmove', onPointerMove, { passive: false });
-      document.addEventListener('touchend', onPointerUp);
-      document.addEventListener('touchcancel', onPointerUp);
+  // focus trap (very small) - keeps tab cycling inside modal
+  let lastFocused = null;
+  function trapFocus(root) {
+    lastFocused = document.activeElement;
+    const focusable = root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (focusable.length) {
+      focusable[0].focus();
     } else {
-      document.addEventListener('mousemove', onPointerMove);
-      document.addEventListener('mouseup', onPointerUp);
+      root.querySelector('.modal-content').focus();
+    }
+    // add keydown handler
+    root._trapHandler = function (ev) {
+      if (ev.key !== 'Tab') return;
+      const nodes = Array.from(root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+        .filter(n => !n.disabled && n.offsetParent !== null);
+      if (!nodes.length) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (ev.shiftKey && document.activeElement === first) {
+        ev.preventDefault();
+        last.focus();
+      } else if (!ev.shiftKey && document.activeElement === last) {
+        ev.preventDefault();
+        first.focus();
+      }
+    };
+    root.addEventListener('keydown', root._trapHandler);
+  }
+  function releaseTrapFocus() {
+    if (modal && modal._trapHandler) {
+      modal.removeEventListener('keydown', modal._trapHandler);
+      modal._trapHandler = null;
+    }
+    if (lastFocused) lastFocused.focus();
+    lastFocused = null;
+  }
+
+  // Example: open modal to edit a single selected item
+  // double-click an item in the selected-list row to open modal for that item
+  selectedListEl.addEventListener('dblclick', (ev) => {
+    const row = ev.target.closest('.item');
+    if (!row) return;
+    const id = row.dataset.id;
+    const data = selected.get(id);
+    if (!data) return;
+
+    const body = document.createElement('div');
+    body.style.display = 'flex';
+    body.style.flexDirection = 'column';
+    body.style.gap = '8px';
+
+    const custLabel = document.createElement('label');
+    custLabel.textContent = 'Customer';
+    const custInput = document.createElement('input');
+    custInput.type = 'text';
+    custInput.value = data.customer || '';
+    custInput.style.padding = '6px';
+
+    const daysLabel = document.createElement('label');
+    daysLabel.textContent = 'Days';
+    const daysInput = document.createElement('input');
+    daysInput.type = 'number';
+    daysInput.min = '1';
+    daysInput.value = data.days || 1;
+    daysInput.style.padding = '6px';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.textContent = 'Save';
+    saveBtn.style.marginTop = '10px';
+    saveBtn.addEventListener('click', () => {
+      data.customer = custInput.value;
+      data.days = parseInt(daysInput.value || '0', 10);
+      renderSelectedList();
+      closeModal();
+    });
+
+    body.appendChild(custLabel);
+    body.appendChild(custInput);
+    body.appendChild(daysLabel);
+    body.appendChild(daysInput);
+    body.appendChild(saveBtn);
+
+    openModal(`Edit ${data.id}`, body);
+  });
+
+  // --- Proceed / Enter / Draft logic ---
+  proceedBtn.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    const items = [];
+    for (const [id, data] of selected) {
+      // basic validation
+      const days = parseInt(data.days || '0', 10);
+      if (!data.customer || !data.customer.trim()) {
+        alert(`Please enter customer name for ${id}`);
+        return;
+      }
+      if (!days || days <= 0) {
+        alert(`Please enter valid days for ${id}`);
+        return;
+      }
+      items.push({
+        id: data.id,
+        type: data.type,
+        customer: data.customer,
+        days: days
+      });
+    }
+    // serialize and submit
+    payloadInput.value = JSON.stringify(items);
+    // short disable to prevent double submit
+    proceedBtn.disabled = true;
+    form.submit();
+    setTimeout(() => proceedBtn.disabled = false, 2000);
+  });
+
+  enterBtn.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    // Quick enter: mark selected items as occupied and clear selection
+    for (const [id, data] of selected) {
+      const el = container.querySelector(`.map-object[data-id="${cssEscape(id)}"]`);
+      if (el) {
+        el.dataset.occupied = 'true';
+        el.classList.add('occupied');
+        const btn = el.querySelector('.state-btn');
+        if (btn) {
+          btn.style.background = 'var(--red)';
+          btn.style.color = '#700000';
+          btn.setAttribute('aria-pressed', 'true');
+        }
+      }
+    }
+    selected.clear();
+    renderSelectedList();
+  });
+
+  btnDraft && btnDraft.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    const draft = [];
+    for (const [id, data] of selected) {
+      draft.push({
+        id: data.id,
+        type: data.type,
+        customer: data.customer || '',
+        days: data.days || 1
+      });
+    }
+    try {
+      localStorage.setItem('hiraya_map_draft', JSON.stringify(draft));
+      alert('Draft saved locally.');
+    } catch (err) {
+      console.warn('Could not save draft', err);
+      alert('Unable to save draft.');
+    }
+  });
+
+  // load draft on start
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem('hiraya_map_draft');
+      if (!raw) return;
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return;
+      for (const it of arr) {
+        const el = container.querySelector(`.map-object[data-id="${cssEscape(String(it.id))}"]`);
+        if (el) {
+          selected.set(String(it.id), {
+            id: String(it.id),
+            type: it.type || el.dataset.type || 'unknown',
+            customer: it.customer || '',
+            days: it.days || 1
+          });
+          el.classList.add('selected-item');
+          const btn = el.querySelector('.state-btn');
+          if (btn) btn.setAttribute('aria-pressed', 'true');
+        }
+      }
+      renderSelectedList();
+    } catch (err) {
+      console.warn('Could not load draft', err);
     }
   }
+  loadDraft();
 
-  function onPointerMove(ev) {
-    if (!dragState) return;
-    const isTouch = ev.type === 'touchmove';
-    const point = isTouch ? ev.touches[0] : ev;
-    ev.preventDefault && ev.preventDefault();
-
-    const dx = point.clientX - dragState.startX;
-    const dy = point.clientY - dragState.startY;
-    if (!dragState.moved && Math.hypot(dx, dy) > 3) dragState.moved = true;
-
-    // compute new position relative to mapInner
-    const mapRect = dragState.mapRect;
-    const newLeft = point.clientX - mapRect.left - dragState.offsetX;
-    const newTop = point.clientY - mapRect.top - dragState.offsetY;
-
-    // apply to container
-    dragState.container.style.left = Math.round(newLeft) + 'px';
-    dragState.container.style.top = Math.round(newTop) + 'px';
-    // remove bottom if present (to avoid mixing top and bottom)
-    dragState.container.style.removeProperty('bottom');
-  }
-
-  function onPointerUp(ev) {
-    if (!dragState) return;
-    const wasMoved = dragState.moved;
-    dragState.img.classList.remove('dragging');
-
-    // cleanup listeners
-    document.removeEventListener('mousemove', onPointerMove);
-    document.removeEventListener('mouseup', onPointerUp);
-    document.removeEventListener('touchmove', onPointerMove);
-    document.removeEventListener('touchend', onPointerUp);
-    document.removeEventListener('touchcancel', onPointerUp);
-
-    // If we moved, suppress a following click event that might select the object.
-    if (wasMoved) {
-      // temporarily block click on the dragged image and its container
-      const blockClickHandler = function (e) {
-        e.stopImmediatePropagation();
-        e.preventDefault && e.preventDefault();
-      };
-      dragState.img.addEventListener('click', blockClickHandler, { once: true, capture: true });
-      const cont = dragState.container;
-      cont.addEventListener('click', blockClickHandler, { once: true, capture: true });
-    }
-
-    // Save new inline position to dataset (optional) so Draft can persist positions
-    // We'll store current left/top as inline style already; draft saves style.left/style.top.
-    dragState = null;
-  }
-
-  // attach pointerdown on each image inside mapInner except those marked background-img
-  function attachDraggables() {
-    const imgs = Array.from(mapInner.querySelectorAll('img'));
-    imgs.forEach(img => {
-      // skip explicit background images
-      if (img.classList.contains('background-img')) return;
-      // ensure pointerdown handler not added multiple times
-      img.addEventListener('mousedown', onPointerDown);
-      img.addEventListener('touchstart', onPointerDown, { passive: false });
+  // Clear selection helper (wired to the top-left + button if you want)
+  const btnAdd = document.getElementById('btnAdd');
+  if (btnAdd) {
+    btnAdd.addEventListener('click', () => {
+      // Clear all selections
+      for (const id of Array.from(selected.keys())) deselectItem(id);
     });
   }
 
-  attachDraggables();
+  // Make sure any element that was programmatically marked occupied has visual style
+  (function syncOccupiedVisuals() {
+    const occ = container.querySelectorAll('.map-object[data-occupied="true"]');
+    occ.forEach(el => {
+      el.classList.add('occupied');
+      const btn = el.querySelector('.state-btn');
+      if (btn) {
+        btn.style.background = 'var(--red)';
+        btn.style.color = '#700000';
+        btn.setAttribute('aria-pressed', 'true');
+      }
+    });
+  })();
 
-  // If you dynamically add images later, call attachDraggables() again.
-
-  /* -----------------------------
-     End of drag support
-     ----------------------------- */
-
+  // expose small API on window for debugging / manual use
+  window.hiraya = {
+    selected,
+    selectItemById(id) {
+      const el = container.querySelector(`.map-object[data-id="${cssEscape(String(id))}"]`);
+      if (el) selectItem(el);
+    },
+    deselectItemById(id) { deselectItem(id); },
+    getPayload() {
+      const items = [];
+      for (const [id, data] of selected) items.push(data);
+      return items;
+    }
+  };
 });
