@@ -56,9 +56,12 @@
         
         <div style="flex:1" aria-hidden="true"></div>
 
-        <button class="sidebar-logout" type="button" aria-label="Logout">
-            <span>Logout</span>
-        </button>
+        <!-- Logout form: uses POST to call logout.php -->
+        <form method="post" action="logout.php" style="margin:0;">
+            <button class="sidebar-logout" type="submit" aria-label="Logout">
+                <span>Logout</span>
+            </button>
+        </form>
     </aside>
 
     <main class="main-content" role="main" aria-label="Main content">
