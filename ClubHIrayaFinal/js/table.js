@@ -1,5 +1,5 @@
 // ../js/table.js
-// Tables UI: list, party/date views, availability, reservations + status change button
+// Tables UI: list, party/date/time views, availability, reservations + status change button
 // Requirements: expects API endpoints under ../api/ (get_tables.php, create_table.php,
 // update_table.php, delete_table.php, get_table_status_by_date.php, get_availability.php, create_reservation.php)
 
@@ -416,6 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!list.length) return;
         const header = document.createElement('div');
         header.className = 'table-status-header';
+        header.style.gridColumn = '1 / -1';
         header.innerHTML = `<h2>${capitalize(status)}</h2>`;
         grid.appendChild(header);
         list.forEach(t => {
@@ -452,6 +453,125 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       grid.innerHTML = `<div style="color:#900">Error loading tables for date/time: ${escapeHtml(err.message)}</div>`;
     }
+  }
+
+  // Time view helpers and renderer
+
+  // Helper: generate an array of time strings between start and end (inclusive) at interval minutes
+  function generateTimeSlots(start = '10:00', end = '23:00', interval = 30) {
+    function toMinutes(hhmm) {
+      const [h, m] = String(hhmm).split(':').map(Number);
+      return h * 60 + m;
+    }
+    function toHHMM(mins) {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    }
+
+    const startMin = toMinutes(start);
+    const endMin = toMinutes(end);
+    const slots = [];
+    for (let t = startMin; t <= endMin; t += Math.max(1, interval)) {
+      slots.push(toHHMM(t));
+    }
+    return slots;
+  }
+
+  // Render the Time view: date picker + grid of time slots
+  function renderTimeView() {
+    // header subtitle uses the same helper as date view
+    const subtitle = formatDateForHeader(state.date, state.time);
+    viewHeader.innerHTML = `<h1>Time</h1>${subtitle ? `<div class="view-subtitle">${escapeHtml(subtitle)}</div>` : ''}`;
+
+    // hide party controls same as date view
+    if (partyControl) {
+      partyControl.setAttribute('aria-hidden', 'true');
+      partyControl.classList.remove('visible');
+      partyControl.style.display = '';
+    }
+    if (partySortControl) {
+      partySortControl.setAttribute('aria-hidden', 'true');
+      partySortControl.style.display = 'none';
+    }
+
+    // Build markup: date picker + time grid
+    viewContent.innerHTML = `
+      <div class="date-controls" role="region" aria-label="Date and time controls">
+        <div class="picker-wrap" aria-hidden="false" style="align-items:center;">
+          <label class="label" for="viewDatePicker" style="display:none">Date</label>
+          <input type="date" id="viewDatePicker" value="${state.date || ''}" aria-label="Pick a date" />
+          <span class="divider" aria-hidden="true"></span>
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button id="btnSearchSlot" class="btn primary" title="Show availability for chosen date/time">Show Availability</button>
+          <button id="btnAddReservationSlot" class="btn add" title="Create a new reservation">+ New Reservation</button>
+        </div>
+      </div>
+
+      <div id="timeSlotsContainer" class="time-container">
+        <div class="time-grid" id="timeGrid" aria-label="Available time slots"></div>
+      </div>
+
+      <div id="tableStatusGrid" class="cards-grid" style="margin-top:12px;"></div>
+    `;
+
+    // Wire up date picker
+    const datePicker = document.getElementById('viewDatePicker');
+    if (datePicker) {
+      datePicker.value = state.date || '';
+      datePicker.addEventListener('change', e => {
+        state.date = e.target.value;
+        // update header subtitle immediately
+        const vs = viewHeader.querySelector('.view-subtitle');
+        if (vs) vs.textContent = formatDateForHeader(state.date, state.time);
+        // don't auto-load availability here; wait for time selection or Show Availability
+      });
+    }
+
+    // Generate default time slots (you can change start/end/interval as needed)
+    const slots = generateTimeSlots('10:00', '23:00', 30); // every 30 mins
+
+    const grid = document.getElementById('timeGrid');
+    if (grid) {
+      grid.innerHTML = '';
+      slots.forEach(ts => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'time-slot';
+        btn.dataset.time = ts;
+        btn.textContent = ts;
+        // mark selected if matches state.time
+        if (state.time === ts) btn.classList.add('selected');
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          // deselect previous and select current
+          const prev = grid.querySelector('.time-slot.selected');
+          if (prev) prev.classList.remove('selected');
+          btn.classList.add('selected');
+          state.time = ts;
+          // update header subtitle
+          const vs = viewHeader.querySelector('.view-subtitle');
+          if (vs) vs.textContent = formatDateForHeader(state.date, state.time);
+          // auto-load availability when selecting a time (optional)
+          if (state.date && state.time) loadTableStatusForDateTime(state.date, state.time);
+        });
+        grid.appendChild(btn);
+      });
+    }
+
+    // wire up Show Availability and New Reservation buttons
+    document.getElementById('btnSearchSlot')?.addEventListener('click', () => {
+      if (!state.date) return alert('Please select a date first.');
+      if (!state.time) return alert('Please select a time first.');
+      loadTableStatusForDateTime(state.date, state.time);
+    });
+
+    document.getElementById('btnAddReservationSlot')?.addEventListener('click', () => {
+      if (!state.date || !state.time) return alert('Please select date and time first to create a reservation.');
+      openNewReservationModal();
+    });
   }
 
   // Modal for creating/editing a table
@@ -650,12 +770,12 @@ document.addEventListener('DOMContentLoaded', () => {
     state.partySort = partySortSelect.value || 'default';
   }
 
-  // Main view router (handle 'time' as date view as well)
+  // Main view router (handle 'time' with dedicated view)
   function renderView() {
     switch (state.filter) {
       case 'party': renderPartyView(); break;
       case 'date': renderDateView(); break;
-      case 'time': renderDateView(); break;
+      case 'time': renderTimeView(); break;
       default: renderAllView();
     }
   }
