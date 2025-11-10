@@ -6,7 +6,6 @@
     <title>Club Tryara</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/tables-select.css">
 
     <!-- Run settings-sync BEFORE the main app so theme and notification flags from the server are applied first -->
     <script defer src="js/settings-sync.js"></script>
@@ -83,7 +82,6 @@
         </div>
 
         <!-- Content Area -->
-        <div class="content-area">
             <!-- Products Section -->
             <section class="products-section" aria-label="Products">
                 <div class="category-tabs" id="categoryTabs" role="tablist" aria-label="Categories">
@@ -110,11 +108,10 @@
                 </div>
 
                 <div class="order-buttons">
-                    <button class="hold-btn" id="billOutBtn" type="button">Bill Out</button>
+            <!--    <button class="hold-btn" id="billOutBtn" type="button">Bill Out</button> -->
                     <button class="proceed-btn" id="proceedBtn" type="button">Proceed</button>
                 </div>
             </aside>
-        </div>
     </main>
 
     <!-- Draft Modal -->
