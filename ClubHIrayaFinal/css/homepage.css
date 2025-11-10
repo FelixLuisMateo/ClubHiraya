@@ -10,7 +10,7 @@ body {
 /* === PAHINA NG WELCOME === */
 .welcome-page {
     position: relative;
-    background: url('../assets/foods/logos/bgwelcome.jpg') no-repeat center center/cover;
+    background: url('../assets/logos/bgwelcome.jpg') no-repeat center center/cover;
     height: 100vh;
     display: flex;
     justify-content: flex-end; /* inilalagay ang button sa kanan */
@@ -61,7 +61,7 @@ body {
 /* === PAHINA NG LOGIN === */
 .login-page {
     position: relative;
-    background: url('/assets//login-bg.png') no-repeat center center/cover;
+    background: url('/assets/logos/login-bg.png') no-repeat center center/cover;
     height: 100vh;
     display: flex;
     justify-content: center;
