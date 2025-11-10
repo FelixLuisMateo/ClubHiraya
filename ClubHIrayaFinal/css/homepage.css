@@ -10,7 +10,13 @@ body {
 /* === PAHINA NG WELCOME === */
 .welcome-page {
     position: relative;
-    background: url('../assets/logos/bgwelcome.jpg') no-repeat center center/cover;
+    /* Use explicit properties for clarity */
+    background-image: url('../assets/logos/bgwelcome.jpg');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+    /* fallback color when image fails to load */
+    background-color: #888;
     height: 100vh;
     display: flex;
     justify-content: flex-end; /* inilalagay ang button sa kanan */
@@ -58,11 +64,9 @@ body {
     transform: scale(1.05);
 }
 
-
-
 /* === RESPONSIVE DESIGN (para sa mga maliit na screen) === */
 @media (max-width: 600px) {
-    .login-container {
+    .welcome-container {
         width: 90%;
         padding: 30px;
     }
