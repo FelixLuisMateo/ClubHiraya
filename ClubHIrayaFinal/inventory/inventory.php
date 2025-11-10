@@ -1,7 +1,5 @@
 <?php session_start();
-// Protect page: include the auth check before any output
 
-// existing page logic continues...
 // Use existing db_connect.php in the same folder which should create $conn (mysqli)
 $dbConnectPath = __DIR__ . '/db_connect.php';
 if (!file_exists($dbConnectPath)) {
@@ -82,12 +80,12 @@ if ($search !== '') {
       </div>
 
       <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
-          <a href="../admin_dashboard.php" class="sidebar-btn" aria-current="page">
+          <a href="../index.php" class="sidebar-btn" aria-current="page">
               <span class="sidebar-icon"><img src="../assets/logos/home.png" alt="Home icon"></span>
               <span>Home</span>
           </a>
           <a href="../tables/tables.php" class="sidebar-btn">
-              <span class="sidebar-icon"><img src="../assets/logos/cabin.png" alt="Tables icon"></span>
+              <span class="sidebar-icon"><img src="../assets/logos/table.png" alt="Tables icon"></span>
               <span>Tables</span>
           </a>
           <a href="inventory.php" class="sidebar-btn active">
@@ -106,12 +104,9 @@ if ($search !== '') {
 
       <div style="flex:1" aria-hidden="true"></div>
 
-        <!-- Logout form: uses POST to call logout.php -->
-        <form method="post" action="logout.php" style="margin:0;">
-            <button class="sidebar-logout" type="submit" aria-label="Logout">
-                <span>Logout</span>
-            </button>
-        </form>
+      <button class="sidebar-logout" type="button" aria-label="Logout">
+          <span>Logout</span>
+      </button>
   </aside>
 
   <!-- Main Content -->

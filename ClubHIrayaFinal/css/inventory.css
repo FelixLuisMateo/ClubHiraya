@@ -124,11 +124,11 @@ body {
   width: 120px;
   height: 49px;
   margin: 32px auto 18px auto;
-  background: #001B89;
+  background: Red;
   color: #fff;
   border: none;
   border-radius: 12px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: bold;
   cursor: pointer;
   box-shadow: 0 6px 18px rgba(0,0,0,0.12);
@@ -172,7 +172,7 @@ body {
 
 /* Main content and topbar */
 .main-content {
-    margin-left: 118px;
+    margin-left: 140px;
     min-height: 100vh;
 }
 .topbar {
@@ -237,13 +237,13 @@ body {
   display: grid;
   /* default columns: ID | Name | Price | Category | Stock | Actions */
   grid-template-columns: 80px 2fr 1fr 1fr 1fr 280px;
-  gap: 18px;
   align-items: center;
   margin-bottom: 16px;
   font-weight: 700;
   color: #333;
   position: relative;
   overflow: visible; /* allow header actions to exceed bounds and layer */
+  font-size: 18px;
 }
 
 /* When images are shown, add an extra column before actions. */
@@ -262,7 +262,7 @@ body {
   overflow-wrap: anywhere;      /* wrap anywhere to avoid overflow */
   color: #333;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 18px;
   line-height: 1.35;
   padding-right: 6px;
 }
@@ -339,7 +339,7 @@ body {
 .table-row:hover { transform: translateY(-4px); box-shadow: 0 14px 40px rgba(0,0,0,0.06); }
 
 /* Action buttons */
-.action-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-right: -10px ;}
+.action-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-right: -220px ;}
 .btn-edit {
   background: linear-gradient(180deg,#fde047 0%,#f6c90b 100%);
   color: #111;
@@ -377,17 +377,17 @@ body {
 
 /* Form styling (create/edit) */
 .form-card {
-  max-width: 980px;
+  max-width: 1300px;
   margin: 8px auto 32px;
   background: linear-gradient(180deg,#ffffff 0%, #fbf7fb 100%);
-  padding: 28px;
+  padding: 30px;
   border-radius: 12px;
   box-shadow: 0 12px 40px rgba(12,8,29,0.04);
 }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.form-group label { display:block; font-weight:700; margin-bottom:8px; color:#222; }
+.form-group label { display:block; font-weight:700; margin-bottom:8px}
 .form-group input, .form-group textarea, .form-group select {
-  width:100%; padding:12px 14px; border:1px solid #ececec; border-radius:10px; background:#fff;
+  width:95%; padding:12px 14px; border:1px solid #ececec; border-radius:10px; background:#fff;
   transition: box-shadow .12s ease, border-color .12s ease;
 }
 .form-group input:focus, .form-group textarea:focus {
@@ -453,7 +453,7 @@ body {
 
 :root {
   --bg-color: #eee;
-  --main-bg: #ccc;
+  --main-bg: #000000;
   --text-color: #222;
 }
 
@@ -468,28 +468,56 @@ body {
 }
 
 /* Dark mode overrides */
-body.dark-mode {
-  background: #222;
-  color: #fff;
-}
-body.dark-mode .table-header {
-  background: #363636;
-  color: #fff;
-}
-
-body.dark-mode .col-image {
-  background: #363636;
-  color: #fff;
-}
-body.dark-mode .table-row {
-  background: #363636;
-  color: #fff;
-}
-body.dark-mode .order-section{
-  background: #222;
-  color: #fff;
-}
+body.dark-mode,
+body.dark-mode .order-section, 
 body.dark-mode .inventory-container{
   background: #222;
   color: #fff;
 }
+body.dark-mode .col-image,
+body.dark-mode .table-row,
+body.dark-mode .table-header {
+  background: #363636;
+  color: #fff;
+}
+body.dark-mode .form-card,
+body.dark-mode .form-group{
+  background: #363636;
+  color: #fff;
+}
+
+body.dark-mode .sidebar-btn{
+  background: linear-gradient(180deg, #bdbdbd 0%, #7a7a7a 100%);
+  color: #fff;
+}
+body.dark-mode .sidebar-btn.active{
+  background: #001B89;
+  color: #fff;
+}
+
+/* === SIDEBAR ACCENT THEMES === */
+:root {
+  --accent-start: #d33fd3;
+  --accent-end: #a2058f;
+}
+
+/* Default sidebar (pink/purple) */
+.sidebar {
+  background: linear-gradient(180deg, var(--accent-start) 0%, var(--accent-end) 100%);
+}
+
+/* Blue accent */
+body.accent-blue .sidebar {
+  background: linear-gradient(180deg, #4b4bff 0%, #001b89 100%);
+}
+
+/* Gray accent */
+body.accent-gray .sidebar {
+  background: linear-gradient(180deg, #bdbdbd 0%, #7a7a7a 100%);
+}
+
+/* Green accent */
+body.accent-green .sidebar {
+  background: linear-gradient(180deg, #27c93f 0%, #1b9f33 100%);
+}
+  

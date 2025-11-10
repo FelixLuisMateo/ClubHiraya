@@ -4,7 +4,7 @@ require_once "db_connect.php"; // ✅ connection file
 header('Content-Type: application/json');
 
 // Fetch all foods
-$sql = "SELECT id, name, price, category, image, stock FROM foods";
+$sql = "SELECT id, name, price, category, image, stock FROM old_foods";
 $result = $conn->query($sql);
 
 $foods = [];
