@@ -37,7 +37,7 @@
                 <span>Home</span>
             </a>
             <a href="../tables/tables.php" class="sidebar-btn ">
-                <span class="sidebar-icon"><img src="../assets/logos/table.png" alt="Tables icon"></span>
+                <span class="sidebar-icon"><img src="../assets/logos/cabin.png" alt="Tables icon"></span>
                 <span>Cabins</span>
             </a>
             <a href="../inventory/inventory.php" class="sidebar-btn">

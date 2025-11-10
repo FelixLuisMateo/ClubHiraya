@@ -44,7 +44,7 @@
                 <span>Home</span>
             </a>
             <a href="../ClubHirayaFinal/tables/tables.php" class="sidebar-btn">
-                <span class="sidebar-icon"><img src="../ClubHirayaFinal/assets/logos/table.png" alt="Tables icon"></span>
+                <span class="sidebar-icon"><img src="../ClubHirayaFinal/assets/logos/cabin.png" alt="Tables icon"></span>
                 <span>Cabins</span>
             </a>
             <a href="../ClubHirayaFinal/inventory/inventory.php" class="sidebar-btn">
