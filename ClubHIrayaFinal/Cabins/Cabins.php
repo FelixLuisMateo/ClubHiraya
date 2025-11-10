@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Reservation Map - Club Hiraya</title>
-  <link rel="stylesheet" href="cabins.css">
+  <link rel="stylesheet" href="cabino.css">
 </head>
 <body>
   <header class="topbar">
