@@ -22,15 +22,15 @@
                 <span>Home</span>
             </a>
             <a href="../tables/tables.php" class="sidebar-btn active">
-                <span class="navbtn"><img src="../assets/foods/logos/table.png" alt="Cabins icon"></span>
+                <span class="navbtn"><img src="cabin.png" alt="Cabins icon"></span>
                 <span>Cabins</span>
             </a>
             <a href="../inventory/inventory.php" class="sidebar-btn">
-                <span class="navbtn"><img src="../assets/foods/logos/inventory.png" alt="Inventory icon"></span>
+                <span class="navbtn"><img src="inventory.png" alt="Inventory icon"></span>
                 <span>Inventory</span>
             </a>
             <a href="../salesreport/../SalesReport/sales_report.php" class="sidebar-btn">
-                <span class="navbtn"><img src="../assets/foods/logos/sales.png" alt="Sales report icon"></span>
+                <span class="navbtn"><img src="salesreport.png" alt="Sales report icon"></span>
                 <span>Sales Report</span>
             </a>
             <a href="../settings/settings.php" class="sidebar-btn">
@@ -45,6 +45,7 @@
       <div class="map-inner">
 
         <!-- CENTER BAR -->
+        <!-- Position controlled via cabino.css -->
         <div class="bar-wrapper" id="bar">
           <img class="bar-img" src="bar.png" alt="Bar"
                onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 220 300&quot; width=&quot;220&quot; height=&quot;300&quot;><rect width=&quot;220&quot; height=&quot;300&quot; rx=&quot;110&quot; fill=&quot;white&quot; stroke=&quot;#333&quot; stroke-width=&quot;4&quot;/><text x=&quot;50%&quot; y=&quot;50%&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;middle&quot; fill=&quot;#222&quot; font-size=&quot;20&quot;>Bar</text></svg>';">
@@ -142,91 +143,71 @@
           <button class="state-btn">B10</button>
         </div>
 
-        <!-- Scatter tables T1..T10 -->
+        <!-- Scatter tables T1..T10 (buttons removed as requested) -->
         <div class="map-object table" data-id="T1" data-type="table" data-occupied="false" style="left:250px; top:470px;">
           <img class="obj-img" src="table.png" alt="table" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">T1</button>
         </div>
 
         <div class="map-object table" data-id="T2" data-type="table" data-occupied="false" style="left:450px; top:470px;">
           <img class="obj-img" src="table.png" alt="table" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">T2</button>
         </div>
 
         <div class="map-object table" data-id="T3" data-type="table" data-occupied="false" style="left:650px; top:434px;">
           <img class="obj-img" src="table.png" alt="table" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">T3</button>
         </div>
 
         <div class="map-object table" data-id="T4" data-type="table" data-occupied="false" style="left:620px; top:360px;">
           <img class="obj-img" src="table.png" alt="table" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">T4</button>
         </div>
 
         <div class="map-object table" data-id="T5" data-type="table" data-occupied="false" style="left:810px; top:250px;">
           <img class="obj-img" src="table.png" alt="table" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">T5</button>
         </div>
 
         <div class="map-object table" data-id="T6" data-type="table" data-occupied="false" style="left:630px; top:250px;">
           <img class="obj-img" src="table.png" alt="table" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">T6</button>
         </div>
 
         <div class="map-object table" data-id="T7" data-type="table" data-occupied="false" style="left:620px; top:180px;">
           <img class="obj-img" src="table.png" alt="table" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">T7</button>
         </div>
 
         <div class="map-object table" data-id="T8" data-type="table" data-occupied="false" style="left:850px; top:170px;">
           <img class="obj-img" src="table.png" alt="table" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">T8</button>
         </div>
 
         <div class="map-object table" data-id="T9" data-type="table" data-occupied="false" style="left:580px; top:85px;">
           <img class="obj-img" src="table.png" alt="table" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">T9</button>
         </div>
 
         <div class="map-object table" data-id="T10" data-type="table" data-occupied="false" style="left:700px; top:65px;">
           <img class="obj-img" src="table.png" alt="table" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">T10</button>
         </div>
 
-        <!-- Vertical stack T11..T17 on right (vertical as requested) -->
-        <!-- TABLE STACK (Move this anywhere you want on the map) -->
+        <!-- Vertical stack T11..T17 on right (buttons removed) -->
 <div class="table-stack" style="position: absolute; right: 260px; bottom:-4px;">
   <div class="map-object table small" data-id="T11" data-type="table" data-occupied="false">
     <img class="obj-img" src="table.png" alt="t11">
-    <button class="state-btn">T11</button>
   </div>
   <div class="map-object table small" data-id="T12" data-type="table" data-occupied="false">
     <img class="obj-img" src="table.png" alt="t12">
-    <button class="state-btn">T12</button>
   </div>
   <div class="map-object table small" data-id="T13" data-type="table" data-occupied="false">
     <img class="obj-img" src="table.png" alt="t13">
-    <button class="state-btn">T13</button>
   </div>
   <div class="map-object table small" data-id="T14" data-type="table" data-occupied="false">
     <img class="obj-img" src="table.png" alt="t14">
-    <button class="state-btn">T14</button>
   </div>
   <div class="map-object table small" data-id="T15" data-type="table" data-occupied="false">
     <img class="obj-img" src="table.png" alt="t15">
-    <button class="state-btn">T15</button>
   </div>
   <div class="map-object table small" data-id="T16" data-type="table" data-occupied="false">
     <img class="obj-img" src="table.png" alt="t16">
-    <button class="state-btn">T16</button>
   </div>
   <div class="map-object table small" data-id="T17" data-type="table" data-occupied="false">
     <img class="obj-img" src="table.png" alt="t17">
-    <button class="state-btn">T17</button>
   </div>
 </div>
-
-
 
         <!-- POOL / STAGE bottom-right -->
         <div class="map-stage-pool">

@@ -1,13 +1,9 @@
-// Reservation interaction logic
-// - C cabins price: 5000 PHP per night
-// - B huts price: 1000 PHP per night
-// - T tables: no price, anyone can eat (clickable but no price)
-// - Clicking the center button toggles selection (blue outline) and does NOT immediately occupy
-// - Proceed: occupy selected available cabins/huts and ask for days + customer name (applies same customer/days to all selected available items)
-// - Enter: checkout selected occupied cabins/huts (clears their occupied state)
-// - Clicking an occupied item or selecting an occupied row will show customer & price details
-// - Draft saves current occupancy to localStorage, Refresh reloads page
-// - Proceed posts to tables.php (payload) for server handling
+// Reservation interaction logic + dragging support for map images
+// - Dragging: all <img> inside .map-inner are movable except those with class 'background-img'.
+// - When dragging an image that sits inside a .map-object, the parent .map-object position is updated (left/top).
+// - If the image is inside some other wrapper (e.g. .bar-wrapper), that wrapper will be moved instead.
+// - Dragging updates inline style.left and style.top and removes bottom if present (to avoid conflicts).
+// - Dragging will not fire click selection: small movement suppresses click behavior.
 
 document.addEventListener('DOMContentLoaded', () => {
   const PRICE = { cabin: 5000, hut: 1000, table: 0 };
@@ -25,16 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalBackdrop = document.getElementById('modalBackdrop');
   const modalBody = document.getElementById('modalBody');
   const modalClose = document.getElementById('modalClose');
-
-  // top-right pill toggle if present
-  const pillToggle = document.getElementById('pillToggle');
-  const pillContent = document.getElementById('pillContent');
-  if (pillToggle) {
-    pillToggle.addEventListener('click', () => {
-      const shown = pillContent.style.display === 'flex';
-      pillContent.style.display = shown ? 'none' : 'flex';
-    });
-  }
 
   // helper: mark button color according to occupied
   function refreshVisual(el) {
@@ -167,7 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
       days: parseInt(o.dataset.days || '0', 10) || 0
     }));
     payloadInput.value = JSON.stringify(occupiedPayload);
-    // NOTE: we do not auto-submit. If you want server-side processing, use the form submit or click Proceed that submits.
   });
 
   // Enter: checkout selected occupied cabins/huts (clears them)
@@ -225,7 +210,11 @@ document.addEventListener('DOMContentLoaded', () => {
       type: o.dataset.type,
       occupied: o.dataset.occupied === 'true',
       customer: o.dataset.customer || '',
-      days: parseInt(o.dataset.days || '0', 10) || 0
+      days: parseInt(o.dataset.days || '0', 10) || 0,
+      // record current inline position so draft preserves moved positions
+      left: o.style.left || '',
+      top: o.style.top || '',
+      bottom: o.style.bottom || ''
     }));
     localStorage.setItem('hiraya_reservation_draft', JSON.stringify(snapshot));
     btnDraft.classList.add('saved');
@@ -260,6 +249,10 @@ document.addEventListener('DOMContentLoaded', () => {
         el.dataset.occupied = item.occupied ? 'true' : 'false';
         if (item.customer) el.dataset.customer = item.customer;
         if (item.days) el.dataset.days = String(item.days);
+        // restore saved position if present
+        if (item.left) el.style.left = item.left;
+        if (item.top) el.style.top = item.top;
+        if (item.bottom) el.style.bottom = item.bottom;
         refreshVisual(el);
       });
       renderOccupiedList();
@@ -279,4 +272,145 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
     payloadInput.value = JSON.stringify(occupiedPayload);
   });
+
+
+  /* -----------------------------
+     Drag / Move support for images
+     -----------------------------
+     Behavior:
+     - All <img> inside .map-inner are movable EXCEPT images with class 'background-img'.
+     - When dragging an <img>, we move its closest positioned container:
+         * prefer closest('.map-object'), otherwise closest('.bar-wrapper'), otherwise the image itself.
+     - We update style.left and style.top of that container (remove bottom if present).
+     - Small drags (<6px) will not trigger click selection.
+  */
+
+  const mapInner = document.querySelector('.map-inner');
+  if (!mapInner) return;
+
+  let dragState = null; // {container, img, startX, startY, offsetX, offsetY, moved}
+
+  function getContainerForImage(img) {
+    const mapObj = img.closest('.map-object');
+    if (mapObj) return mapObj;
+    const wrapper = img.closest('.bar-wrapper');
+    if (wrapper) return wrapper;
+    return img;
+  }
+
+  function onPointerDown(ev) {
+    // support touch and mouse
+    const isTouch = ev.type === 'touchstart';
+    const point = isTouch ? ev.touches[0] : ev;
+    const target = ev.target;
+    if (!(target instanceof HTMLImageElement)) return;
+    if (!mapInner.contains(target)) return;
+    if (target.classList.contains('background-img')) return; // skip background images
+
+    ev.preventDefault && ev.preventDefault();
+
+    const img = target;
+    const container = getContainerForImage(img);
+    const rect = mapInner.getBoundingClientRect();
+    const contRect = container.getBoundingClientRect();
+
+    // calculate cursor offset within container
+    const offsetX = point.clientX - contRect.left;
+    const offsetY = point.clientY - contRect.top;
+
+    dragState = {
+      container,
+      img,
+      startX: point.clientX,
+      startY: point.clientY,
+      offsetX,
+      offsetY,
+      moved: false,
+      mapRect: rect
+    };
+
+    img.classList.add('dragging');
+
+    // attach move/up listeners on document to track outside the element
+    if (isTouch) {
+      document.addEventListener('touchmove', onPointerMove, { passive: false });
+      document.addEventListener('touchend', onPointerUp);
+      document.addEventListener('touchcancel', onPointerUp);
+    } else {
+      document.addEventListener('mousemove', onPointerMove);
+      document.addEventListener('mouseup', onPointerUp);
+    }
+  }
+
+  function onPointerMove(ev) {
+    if (!dragState) return;
+    const isTouch = ev.type === 'touchmove';
+    const point = isTouch ? ev.touches[0] : ev;
+    ev.preventDefault && ev.preventDefault();
+
+    const dx = point.clientX - dragState.startX;
+    const dy = point.clientY - dragState.startY;
+    if (!dragState.moved && Math.hypot(dx, dy) > 3) dragState.moved = true;
+
+    // compute new position relative to mapInner
+    const mapRect = dragState.mapRect;
+    const newLeft = point.clientX - mapRect.left - dragState.offsetX;
+    const newTop = point.clientY - mapRect.top - dragState.offsetY;
+
+    // apply to container
+    dragState.container.style.left = Math.round(newLeft) + 'px';
+    dragState.container.style.top = Math.round(newTop) + 'px';
+    // remove bottom if present (to avoid mixing top and bottom)
+    dragState.container.style.removeProperty('bottom');
+  }
+
+  function onPointerUp(ev) {
+    if (!dragState) return;
+    const wasMoved = dragState.moved;
+    dragState.img.classList.remove('dragging');
+
+    // cleanup listeners
+    document.removeEventListener('mousemove', onPointerMove);
+    document.removeEventListener('mouseup', onPointerUp);
+    document.removeEventListener('touchmove', onPointerMove);
+    document.removeEventListener('touchend', onPointerUp);
+    document.removeEventListener('touchcancel', onPointerUp);
+
+    // If we moved, suppress a following click event that might select the object.
+    if (wasMoved) {
+      // temporarily block click on the dragged image and its container
+      const blockClickHandler = function (e) {
+        e.stopImmediatePropagation();
+        e.preventDefault && e.preventDefault();
+      };
+      dragState.img.addEventListener('click', blockClickHandler, { once: true, capture: true });
+      const cont = dragState.container;
+      cont.addEventListener('click', blockClickHandler, { once: true, capture: true });
+    }
+
+    // Save new inline position to dataset (optional) so Draft can persist positions
+    // We'll store current left/top as inline style already; draft saves style.left/style.top.
+    dragState = null;
+  }
+
+  // attach pointerdown on each image inside mapInner except those marked background-img
+  function attachDraggables() {
+    const imgs = Array.from(mapInner.querySelectorAll('img'));
+    imgs.forEach(img => {
+      // skip explicit background images
+      if (img.classList.contains('background-img')) return;
+      // ensure pointerdown handler not added multiple times
+      img.addEventListener('mousedown', onPointerDown);
+      img.addEventListener('touchstart', onPointerDown, { passive: false });
+    });
+  }
+
+  attachDraggables();
+
+  // If you dynamically add images later, call attachDraggables() again.
+
+  /* -----------------------------
+     End of drag support
+     ----------------------------- */
+
 });

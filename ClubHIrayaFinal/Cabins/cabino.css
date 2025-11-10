@@ -386,3 +386,62 @@ html, body {
   color: #fff;
   transform: translateY(-1px);
 }
+
+.map-inner {
+  position: relative; /* required so .bar-wrapper absolute coordinates are relative to the map */
+}
+
+/* Variables you can change to move the bar */
+:root {
+  --bar-left: 360px;   /* distance from left of .map-inner (change to move horizontally) */
+  --bar-top: 80px;     /* distance from top of .map-inner (change to move vertically) */
+  --bar-width: 220px;  /* desired width of the bar image */
+  --bar-height: auto;  /* or a fixed px value */
+}
+
+/* Bar placement: fixed coordinate approach */
+.bar-wrapper {
+  position: absolute;
+  left: var(--bar-left);
+  top: var(--bar-top);
+  transform: translate(0, 0); /* you can use translateX/Y for fine tuning */
+  pointer-events: none; /* prevents the bar from intercepting clicks on map objects beneath it; set to auto if bar should be clickable */
+}
+
+/* Image sizing (keeps aspect ratio) */
+.bar-wrapper .bar-img {
+  width: var(--bar-width);
+  height: var(--bar-height);
+  display: block;
+  max-width: 100%;
+}
+
+/* Make map object containers absolutely positioned (they already use inline left/top/bottom but ensure they behave correctly) */
+.map-object {
+  position: absolute;
+  touch-action: none; /* helps with touch dragging responsiveness */
+}
+
+/* Make the map images show a move cursor and be easier to drag */
+.map-inner img {
+  user-select: none;
+  -webkit-user-drag: none;
+  cursor: grab;
+  touch-action: none;
+}
+
+/* When actively dragging */
+.map-inner img.dragging {
+  cursor: grabbing;
+  opacity: 0.95;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25));
+}
+
+/* Example responsive adjustments for the bar */
+@media (max-width: 1200px) {
+  :root { --bar-left: 300px; --bar-top: 80px; --bar-width: 180px; }
+}
+@media (max-width: 800px) {
+  :root { --bar-left: 160px; --bar-top: 60px; --bar-width: 140px; }
+}
+
