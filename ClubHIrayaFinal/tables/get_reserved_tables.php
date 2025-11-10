@@ -11,7 +11,7 @@ $allowed = ['reserved', 'available', 'all'];
 if (!in_array($type, $allowed, true)) $type = 'all';
 
 // Primary include expected in this project (adjust path if your DB include is elsewhere)
-$primaryInclude = __DIR__ . '../php/db_connect.php';
+$primaryInclude = __DIR__ . '/../php/db_connect.php';
 
 // Fallbacks for common include names/locations
 $includeCandidates = [

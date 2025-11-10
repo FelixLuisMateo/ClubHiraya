@@ -137,7 +137,7 @@
           newLabel.style.alignItems = 'center';
           newLabel.style.gap = '8px';
           const span = document.createElement('span');
-          span.textContent = 'Customer has a reserved table';
+          span.textContent = 'Customer wants to reserved a cabin';
           newLabel.appendChild(checkbox);
           newLabel.appendChild(span);
           reservedBlock.insertBefore(newLabel, reservedBlock.firstChild.nextSibling);
@@ -150,7 +150,7 @@
         chooseBtn.type = 'button';
         chooseBtn.id = 'open-tables-btn';
         chooseBtn.className = 'btn-small';
-        chooseBtn.textContent = 'Choose table';
+        chooseBtn.textContent = 'Choose Cabin';
         chooseBtn.disabled = true;
         chooseBtn.style.marginTop = '8px';
         reservedBlock.appendChild(chooseBtn);
@@ -187,7 +187,7 @@
     // Title above the compute area
     const title = document.createElement('div');
     title.id = 'reserved-table-title';
-    title.textContent = 'Reserved Table';
+    title.textContent = 'Reserved Cabin';
     title.style.fontSize = '13px';
     title.style.fontWeight = '600';
     title.style.marginBottom = '6px';
@@ -205,7 +205,7 @@
     checkbox.setAttribute('aria-controls', 'tablesModal');
 
     const span = document.createElement('span');
-    span.textContent = 'Customer has a reserved table';
+    span.textContent = 'Customer wants to reserved a cabin';
 
     label.appendChild(checkbox);
     label.appendChild(span);
@@ -215,7 +215,7 @@
     chooseBtn.type = 'button';
     chooseBtn.id = 'open-tables-btn';
     chooseBtn.className = 'btn-small';
-    chooseBtn.textContent = 'Choose table';
+    chooseBtn.textContent = 'Choose Cabin';
     chooseBtn.disabled = true;
     chooseBtn.style.marginTop = '8px';
     reservedBlock.appendChild(chooseBtn);
@@ -478,7 +478,7 @@
       const checkbox = document.getElementById('use-reserved-table');
       const useReserved = !!(checkbox && checkbox.checked);
       if (!useReserved) {
-        console.warn('Please check "Customer has a reserved table" first.');
+        console.warn('Please check "Customer wants to reserved a cabin" first.');
         chooseBtn.animate && chooseBtn.animate([{ background: '#f8d7da' }, { background: '' }], { duration: 300 });
         return;
       }
