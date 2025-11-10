@@ -6,7 +6,7 @@
     <title>Club Hiraya</title>
     <link rel="stylesheet" href="css/homepage.css">
 </head>
-<body class="welcome-page">
+<body  class="welcome-page">
 
     <div class="overlay"></div>
 

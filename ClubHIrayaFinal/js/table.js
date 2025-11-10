@@ -1,5 +1,5 @@
 // ../js/table.js
-// Tables UI: list, party/date/time views, availability, reservations + status change button
+// Tables UI adapted for "Cabins" + beds label + per-cabin time monitor.
 // Requirements: expects API endpoints under ../api/ (get_tables.php, create_table.php,
 // update_table.php, delete_table.php, get_table_status_by_date.php, get_availability.php, create_reservation.php)
 
@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const API_CREATE = '../api/create_table.php';
   const API_GET_STATUS_BY_DATE = '../api/get_table_status_by_date.php';
 
-  let tablesData = [];
+  let tablesData = []; // keeps the existing name for compatibility
 
   // DOM references
   const viewHeader = document.getElementById('viewHeader');
@@ -93,17 +93,17 @@ document.addEventListener('DOMContentLoaded', () => {
       await loadTables();
       if (typeof refreshCallback === 'function') refreshCallback();
     } catch (err) {
-      alert('Failed to change table status: ' + err.message);
+      alert('Failed to change cabin status: ' + err.message);
     }
   }
 
-  // Load tables list from API
+  // Load cabins list from API
   async function loadTables() {
     try {
       const res = await fetch(API_GET, { cache: 'no-store' });
       if (!res.ok) throw new Error('Network response was not ok: ' + res.status);
       const json = await res.json();
-      if (!json.success) throw new Error(json.error || 'Failed to load tables');
+      if (!json.success) throw new Error(json.error || 'Failed to load cabins');
       tablesData = json.data.map(t => ({
         id: Number(t.id),
         name: t.name,
@@ -113,11 +113,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }));
       renderView();
     } catch (err) {
-      // Fallback sample data if API fails
+      // Fallback sample data if API fails (renamed to Cabins & Beds)
       tablesData = [
-        { id: 1, name: 'Table 1', status: 'occupied', seats: 6, guest: 'Taenamo Jiro' },
-        { id: 2, name: 'Table 2', status: 'reserved', seats: 4, guest: 'WOwmsi' },
-        { id: 3, name: 'Table 3', status: 'available', seats: 2, guest: '' },
+        { id: 1, name: 'Cabin 1', status: 'occupied', seats: 6, guest: 'Taenamo Jiro' },
+        { id: 2, name: 'Cabin 2', status: 'reserved', seats: 4, guest: 'WOwmsi' },
+        { id: 3, name: 'Cabin 3', status: 'available', seats: 2, guest: '' },
       ];
       const grid = document.getElementById('cardsGrid');
       if (grid) grid.innerHTML = `<div style="padding:18px;color:#900">Local fallback data (API failed).</div>`;
@@ -125,11 +125,88 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Renders a list of table cards into a container
+  // --- Time monitor utilities ---
+  // Keep a single interval for updating monitors to avoid duplicates
+  let _timeMonitorInterval = null;
+  function startTimeMonitors() {
+    stopTimeMonitors();
+    updateTimeMonitors(); // immediate
+    _timeMonitorInterval = setInterval(updateTimeMonitors, 30 * 1000); // every 30s
+  }
+  function stopTimeMonitors() {
+    if (_timeMonitorInterval) {
+      clearInterval(_timeMonitorInterval);
+      _timeMonitorInterval = null;
+    }
+  }
+
+  // parse datetime strings in format "YYYY-MM-DD" and "HH:MM[:SS]" into Date
+  function parseDateTime(dateStr, timeStr) {
+    if (!dateStr || !timeStr) return null;
+    // make sure time has seconds
+    const t = timeStr.length === 5 ? timeStr + ':00' : timeStr;
+    const iso = `${dateStr}T${t}`;
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    return d;
+  }
+
+  function formatDuration(ms) {
+    if (ms < 0) ms = Math.abs(ms);
+    const totalSec = Math.floor(ms / 1000);
+    const days = Math.floor(totalSec / 86400);
+    const hours = Math.floor((totalSec % 86400) / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${mins}m`;
+    return `${mins}m`;
+  }
+
+  // update all elements with class 'time-monitor'
+  function updateTimeMonitors() {
+    const nodes = document.querySelectorAll('.time-monitor');
+    const now = new Date();
+    nodes.forEach(el => {
+      const start = el.dataset.start; // e.g. "2025-11-05 19:00:00"
+      const end = el.dataset.end;
+      if (!start && !end) {
+        el.textContent = '';
+        return;
+      }
+      // support start/end either as ISO or "YYYY-MM-DD HH:MM:SS"
+      const startIso = start ? start.replace(' ', 'T') : null;
+      const endIso = end ? end.replace(' ', 'T') : null;
+      const dStart = startIso ? new Date(startIso) : null;
+      const dEnd = endIso ? new Date(endIso) : null;
+
+      if (dStart && now < dStart) {
+        const ms = dStart - now;
+        el.textContent = `Starts in ${formatDuration(ms)}`;
+        el.classList.remove('ongoing');
+        el.classList.remove('ended');
+      } else if (dStart && dEnd && now >= dStart && now <= dEnd) {
+        const ms = dEnd - now;
+        el.textContent = `Ends in ${formatDuration(ms)}`;
+        el.classList.add('ongoing');
+        el.classList.remove('ended');
+      } else if (dEnd && now > dEnd) {
+        const ms = now - dEnd;
+        el.textContent = `Ended ${formatDuration(ms)} ago`;
+        el.classList.remove('ongoing');
+        el.classList.add('ended');
+      } else {
+        el.textContent = '';
+        el.classList.remove('ongoing');
+        el.classList.remove('ended');
+      }
+    });
+  }
+
+  // Renders a list of cabin cards into a container
   function renderCardsInto(container, data) {
     container.innerHTML = '';
     if (!data.length) {
-      container.innerHTML = '<div style="padding:18px; font-weight:700">No tables found</div>';
+      container.innerHTML = '<div style="padding:18px; font-weight:700">No cabins found</div>';
       return;
     }
     data.forEach(tbl => {
@@ -145,19 +222,19 @@ document.addEventListener('DOMContentLoaded', () => {
       card.dataset.id = tbl.id;
       if (state.selectedId === tbl.id) card.classList.add('active');
 
-      // Card HTML includes a status button (⚑) that cycles status
+      // Note: show "Beds" instead of "Seats" in UI
       card.innerHTML = `
         <div class="title">${escapeHtml(tbl.name)}</div>
         <div class="status-row">
           <span class="status-dot" style="background:${statusDotColor}"></span>
           <span class="status-label">${capitalize(status)}</span>
         </div>
-        <div class="seats-row"><span>👥</span> ${escapeHtml(String(tbl.seats))} Seats</div>
+        <div class="seats-row"><span>🛏️</span> ${escapeHtml(String(tbl.seats))} Beds</div>
         ${tbl.guest ? `<div class="guest">${escapeHtml(tbl.guest)}</div>` : ''}
         <div class="card-actions" aria-hidden="false">
           <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
-          <button class="icon-btn edit-btn" aria-label="Edit table" title="Edit">✎</button>
-          <button class="icon-btn delete-btn" aria-label="Delete table" title="Delete">✖</button>
+          <button class="icon-btn edit-btn" aria-label="Edit cabin" title="Edit">✎</button>
+          <button class="icon-btn delete-btn" aria-label="Delete cabin" title="Delete">✖</button>
         </div>
       `;
 
@@ -179,7 +256,6 @@ document.addEventListener('DOMContentLoaded', () => {
           const next = nextStatusFor(current);
           if (!confirm(`Change status of "${tbl.name}" from "${current}" to "${next}" ?`)) return;
           await changeTableStatus(tbl.id, next, () => {
-            // Refresh the current view appropriately
             if (state.filter === 'date' && state.date) {
               if (state.time) loadTableStatusForDateTime(state.date, state.time);
               else loadTableStatusForDate(state.date);
@@ -198,12 +274,12 @@ document.addEventListener('DOMContentLoaded', () => {
     state.selectedId = id;
     document.querySelectorAll('.table-card').forEach(c => c.classList.toggle('active', c.dataset.id == id));
     const selected = tablesData.find(t => t.id === Number(id));
-    if (selected) console.info('Selected table:', selected.name);
+    if (selected) console.info('Selected cabin:', selected.name);
   }
 
   // Views
   function renderAllView() {
-    viewHeader.innerHTML = '<h1>All Tables</h1>';
+    viewHeader.innerHTML = '<h1>All Cabins</h1>';
     viewContent.innerHTML = `<div class="cards-grid" id="cardsGrid" role="list"></div>`;
     cardsGrid = document.getElementById('cardsGrid');
     // hide party controls
@@ -221,6 +297,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let filtered = tablesData;
     if (s) filtered = tablesData.filter(t => t.name.toLowerCase().includes(s));
     renderCardsInto(cardsGrid, filtered);
+    // Start monitors if any (All view doesn't have reservations times, but harmless)
+    startTimeMonitors();
   }
 
   function renderPartyView() {
@@ -249,6 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
       filtered = filtered.slice().sort((a, b) => b.seats - a.seats);
     }
     renderCardsInto(cardsGrid, filtered);
+    stopTimeMonitors();
   }
 
   // Date view (single authoritative definition)
@@ -335,6 +414,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (vs) vs.textContent = formatDateForHeader(state.date, state.time);
       loadTableStatusForDate(state.date);
     });
+
+    // Start time monitors for date view because this view can include reservation start/end times
+    startTimeMonitors();
   }
 
   // Date-only status loading
@@ -362,15 +444,19 @@ document.addEventListener('DOMContentLoaded', () => {
         list.forEach(t => {
           const card = document.createElement('div');
           card.className = 'table-card';
+          // Build time monitor attributes (if start_time/end_time exist)
+          const startAttr = (t.start_time ? `${date} ${t.start_time}` : '');
+          const endAttr = (t.end_time ? `${date} ${t.end_time}` : '');
           card.innerHTML = `
             <div class="title">${escapeHtml(t.name)}</div>
-            <div class="seats-row"><span>👥</span> ${escapeHtml(t.seats)} Seats</div>
+            <div class="seats-row"><span>🛏️</span> ${escapeHtml(t.seats)} Beds</div>
             <div class="status-row">
               <span class="status-dot" style="background:${status==='available'?'#00b256':status==='reserved'?'#ffd400':'#d20000'}"></span>
               <span class="status-label">${capitalize(status)}</span>
             </div>
             ${t.guest ? `<div class="guest">${escapeHtml(t.guest)}</div>` : ''}
             ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}</div>` : ''}
+            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}"></div>
             <div class="card-actions" aria-hidden="false">
               <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
             </div>
@@ -392,8 +478,11 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
       });
+
+      // After rendering, ensure monitors update immediately
+      updateTimeMonitors();
     } catch (err) {
-      grid.innerHTML = `<div style="color:#900">Error loading tables for date: ${escapeHtml(err.message)}</div>`;
+      grid.innerHTML = `<div style="color:#900">Error loading cabins for date: ${escapeHtml(err.message)}</div>`;
     }
   }
 
@@ -422,14 +511,18 @@ document.addEventListener('DOMContentLoaded', () => {
         list.forEach(t => {
           const card = document.createElement('div');
           card.className = 'table-card';
+          // Availability API may not include start/end; leave time-monitor empty if not present
+          const startAttr = (t.start_time ? `${date} ${t.start_time}` : '');
+          const endAttr = (t.end_time ? `${date} ${t.end_time}` : '');
           card.innerHTML = `
             <div class="title">${escapeHtml(t.name)}</div>
-            <div class="seats-row"><span>👥</span> ${escapeHtml(t.seats)} Seats</div>
+            <div class="seats-row"><span>🛏️</span> ${escapeHtml(t.seats)} Beds</div>
             <div class="status-row">
               <span class="status-dot" style="background:${status==='available'?'#00b256':status==='reserved'?'#ffd400':'#d20000'}"></span>
               <span class="status-label">${capitalize(status)}</span>
             </div>
             ${t.guest ? `<div class="guest">${escapeHtml(t.guest)}</div>` : ''}
+            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}"></div>
             <div class="card-actions" aria-hidden="false">
               <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
             </div>
@@ -450,8 +543,11 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
       });
+
+      // After rendering, update monitors
+      updateTimeMonitors();
     } catch (err) {
-      grid.innerHTML = `<div style="color:#900">Error loading tables for date/time: ${escapeHtml(err.message)}</div>`;
+      grid.innerHTML = `<div style="color:#900">Error loading cabins for date/time: ${escapeHtml(err.message)}</div>`;
     }
   }
 
@@ -572,22 +668,25 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!state.date || !state.time) return alert('Please select date and time first to create a reservation.');
       openNewReservationModal();
     });
+
+    // stop monitors for this view until availability is loaded (they'll be started after render)
+    stopTimeMonitors();
   }
 
-  // Modal for creating/editing a table
+  // Modal for creating/editing a cabin
   function openEditModal(table) {
     const isNew = !table || !table.id;
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
-      <div class="modal" role="dialog" aria-modal="true" aria-label="${isNew ? 'Create Table' : 'Edit ' + escapeHtml(table.name)}">
-        <h3>${isNew ? 'New Table' : 'Edit ' + escapeHtml(table.name)}</h3>
+      <div class="modal" role="dialog" aria-modal="true" aria-label="${isNew ? 'Create Cabin' : 'Edit ' + escapeHtml(table.name)}">
+        <h3>${isNew ? 'New Cabin' : 'Edit ' + escapeHtml(table.name)}</h3>
         <div class="form-row">
-          <label for="modalName">Table Name</label>
+          <label for="modalName">Cabin Name</label>
           <input id="modalName" type="text" value="${table && table.name ? escapeHtml(table.name) : ''}" />
         </div>
         <div class="form-row">
-          <label for="modalSeats">Seats</label>
+          <label for="modalSeats">Beds</label>
           <input id="modalSeats" type="number" min="1" max="50" value="${table && table.seats ? table.seats : 2}" />
         </div>
         <div class="form-row">
@@ -608,7 +707,7 @@ document.addEventListener('DOMContentLoaded', () => {
     overlay.querySelector('#modalCancel').addEventListener('click', () => overlay.remove());
 
     overlay.querySelector('#modalSave').addEventListener('click', async () => {
-      const name = modalName.value.trim() || (table && table.name) || 'Table';
+      const name = modalName.value.trim() || (table && table.name) || 'Cabin';
       const seats = parseInt(modalSeats.value, 10) || 2;
       const guest = modalGuest.value.trim();
       if (isNew) {
@@ -639,7 +738,7 @@ document.addEventListener('DOMContentLoaded', () => {
           await loadTables();
           overlay.remove();
         } catch (err) {
-          alert('Failed to update table: ' + err.message);
+          alert('Failed to update cabin: ' + err.message);
         }
       }
     });
@@ -648,7 +747,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => modalName.focus(), 50);
   }
 
-  // Delete table
+  // Delete cabin
   async function confirmDelete(table) {
     if (!confirm(`Delete ${table.name}? This action cannot be undone.`)) return;
     try {
@@ -661,11 +760,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!j.success) throw new Error(j.error || 'Delete failed');
       await loadTables();
     } catch (err) {
-      alert('Failed to delete table: ' + err.message);
+      alert('Failed to delete cabin: ' + err.message);
     }
   }
 
-  // Add Table modal
+  // Add Cabin modal
   function openNewTableModal() {
     openEditModal({});
   }
@@ -673,7 +772,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // New reservation modal (date/time already filled)
   function openNewReservationModal() {
     if (!state.date || !state.time) return alert('Please select date and time first!');
-    // Fetch available tables for chosen slot
+    // Fetch available cabins for chosen slot
     fetch(`../api/get_availability.php?date=${encodeURIComponent(state.date)}&time=${encodeURIComponent(state.time)}`)
       .then(res => res.json())
       .then(json => {
@@ -686,9 +785,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="modal" role="dialog" aria-modal="true">
             <h3>New Reservation</h3>
             <div class="form-row">
-              <label for="modalTableSelect">Table</label>
+              <label for="modalTableSelect">Cabin</label>
               <select id="modalTableSelect">
-                ${available.map(t => `<option value="${t.id}">${escapeHtml(t.name)} (${t.seats} seats)</option>`).join('')}
+                ${available.map(t => `<option value="${t.id}">${escapeHtml(t.name)} (${t.seats} beds)</option>`).join('')}
               </select>
             </div>
             <div class="form-row">
@@ -734,7 +833,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(err => alert('Failed to fetch availability: ' + err.message));
   }
 
-  // Search box
+  // Search box (if still present)
   if (searchInput) {
     searchInput.addEventListener('input', e => { state.search = e.target.value; renderView(); });
   }

@@ -1,0 +1,40 @@
+/* Styles for per-cabin time monitors */
+.time-monitor {
+  font-weight: 700;
+  font-size: 13px;
+  margin-top: 8px;
+  color: #333;
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.03);
+  border: 1px solid rgba(0,0,0,0.04);
+}
+
+/* Ongoing (reservation currently active) - green */
+.time-monitor.ongoing {
+  background: linear-gradient(180deg,#e6fff0,#dfffe6);
+  color: #006b2e;
+  border-color: rgba(0,107,46,0.12);
+  box-shadow: 0 4px 12px rgba(0,107,46,0.04);
+}
+
+/* Ends soon / starts soon hint */
+.time-monitor.starts-soon {
+  background: linear-gradient(180deg,#fff9e6,#fff4d9);
+  color: #7a5900;
+  border-color: rgba(122,89,0,0.08);
+}
+
+/* Ended reservations - muted */
+.time-monitor.ended {
+  background: #f2f4f6;
+  color: #7a7f86;
+  border-color: rgba(0,0,0,0.04);
+  opacity: 0.85;
+}
+
+/* small responsive tweak */
+@media (max-width: 900px) {
+  .time-monitor { display:block; width:100%; }
+}
