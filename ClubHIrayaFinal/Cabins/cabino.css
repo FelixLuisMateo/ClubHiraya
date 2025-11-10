@@ -9,6 +9,15 @@
 
   /* Topbar sizing (used below) */
   --topbar-height: 84px;
+  --side-panel-padding: 18px;
+  --item-gap: 12px;
+  --control-size: 48px;
+
+  /* Bar variables: size + optional fine-tune offsets */
+  --bar-width: 520px;
+  --bar-height: 500px;
+  --bar-offset-x: 0px; /* tweak to nudge horizontally from center */
+  --bar-offset-y: 0px; /* tweak to nudge vertically from center */
 }
 
 /* Base */
@@ -17,13 +26,10 @@ body {
   margin:0;
   background:var(--bg);
   color:#111;
-  min-height:100vh
+  min-height:100vh;
 }
 
-/* Topbar
-   - Enhanced visual: subtle gradient, rounded bottom, soft shadow
-   - Brand area given more presence (logo circle + stacked title)
-   - Nav moved to the right as compact icon buttons with small purple labels */
+/* Topbar - subtle dark gradient, rounded bottom, soft shadow */
 .topbar {
   display:flex;
   align-items:center;
@@ -67,10 +73,10 @@ body {
 .page-title {
   font-size:12px;
   opacity:0.85;
-  color: #d6d6ff; /* subtle cool tint */
+  color: #d6d6ff;
 }
 
-/* nav - compact icon buttons with small purple labels below (matches screenshot) */
+/* nav - compact icon buttons with small purple labels */
 .nav {
   display:flex;
   gap:12px;
@@ -78,8 +84,6 @@ body {
   justify-content:flex-end;
   margin-left:auto;
 }
-
-/* anchor wrapper for each icon + label */
 .sidebar-btn {
   display:flex;
   flex-direction:column;
@@ -91,8 +95,6 @@ body {
   line-height:1;
   min-width:48px;
 }
-
-/* circular icon pill */
 .navbtn {
   display:flex;
   align-items:center;
@@ -113,20 +115,15 @@ body {
   height:20px;
   object-fit:contain;
   display:block;
-  filter: invert(1) brightness(1.5); /* ensures icons show white on dark bg if they are dark images */
+  filter: invert(1) brightness(1.5);
 }
-
-/* small label under the icon */
 .sidebar-btn > span:last-child {
   display:block;
   font-size:11px;
-  color:#b48cff; /* purple-ish links in screenshot */
-  text-decoration:none;
+  color:#b48cff;
   opacity:0.95;
   transition: color .12s ease, transform .12s ease;
 }
-
-/* hover states to match active pill look */
 .sidebar-btn:hover .navbtn {
   background: linear-gradient(180deg,#1b1785,#1a1a76);
   transform: translateY(-2px);
@@ -135,8 +132,6 @@ body {
   color:#e6d8ff;
   transform: translateY(-1px);
 }
-
-/* active/picked nav (slightly larger and more saturated) */
 .sidebar-btn.active .navbtn {
   background: linear-gradient(180deg,#2b2fc4,#1b1785);
   box-shadow:0 4px 12px rgba(27,23,133,0.35);
@@ -148,52 +143,65 @@ body {
 }
 
 /* Layout */
-.container {padding:18px;
+.container {
+  padding:18px;
   display:flex;
-  gap:18px
+  gap:18px;
+  height: calc(100vh - var(--topbar-height));
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* Map area */
-.map-area {flex:1;
+.map-area {
+  flex:1;
   background:#6ed07a;
   border-radius:12px;
   padding:12px;
-  min-height:700px;
   position:relative;
   box-shadow:0 0 0 8px #0b0b0b;
-  overflow:hidden
+  overflow:hidden;
+  height: 100%;
 }
 .map-inner {
-  position:relative;
-  height:100%
+  position: relative; /* important: bar-wrapper and map objects are positioned relative to this */
+  height: 100%;
 }
 
-/* Bar centered */
+/* -------------------------
+   BAR: centered and stable
+   The bar is now centered inside .map-inner by default.
+   Use --bar-offset-x / --bar-offset-y to nudge it if you need small adjustments.
+   ------------------------- */
 .bar-wrapper {
-  position:absolute;
-  left:140%;
-  top:15%;
-  transform:translate(-50%,-50%);
-  width:220px;
-  height:300px;
+  position: absolute;
+  left: calc(38% + var(--bar-offset-x));
+  top: calc(35% + var(--bar-offset-y));
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 6;
+  /* make size responsive but keep aspect by setting width and auto height */
+  width: clamp(120px, 28vw, var(--bar-width));
+  max-height: calc(var(--bar-height));
   display:flex;
   align-items:center;
   justify-content:center;
-  z-index:6
 }
-.bar-img {
-  width:500px;
-  height:400px;
-  display:block
+.bar-wrapper .bar-img {
+  width: 100%;
+  height: auto;
+  display:block;
+  max-height: 100%;
+  object-fit: contain;
 }
 
-/* Map objects */
+/* Map objects - stable non-draggable layout */
 .map-object {
   position:absolute;
   display:flex;
   align-items:center;
   justify-content:center;
-  cursor:default; /* Default cursor – no dragging cursor */
+  cursor:default;
   user-select:none;
   z-index:5;
   pointer-events:auto;
@@ -203,9 +211,8 @@ body {
   max-width:100%;
   max-height:100%;
   object-fit:contain;
-  pointer-events:none
+  pointer-events:none;
 }
-/* state button (cabins only) */
 .state-btn {
   position:absolute;
   left:50%;
@@ -219,126 +226,232 @@ body {
   background:var(--green);
   color:#003300;
   cursor:pointer;
-  box-shadow:0 4px 0 rgba(0,0,0,0.12)
+  box-shadow:0 4px 0 rgba(0,0,0,0.12);
 }
 .map-object.occupied .state-btn {
   background:var(--red);
-  color:#700000
-}
-.map-object table {
-  width:50%;
-  height:100%
+  color:#700000;
 }
 
 /* sizes */
-.cabin {
-  width:100px;
-  height:130px
-}
-.hut {width:100px;
-  height:104px
-}
-.table {width:78px;
-  height:115px
-}
-.table.small {
-  width:68px;
-  height:34px
-}
+.cabin { width:100px; height:130px }
+.hut { width:100px; height:104px }
+.table { width:78px; height:115px }
+.table.small { width:68px; height:34px }
 
-/* selection highlight - used when user selects items to process */
-.map-object.selected-item {box-shadow:0 0 0 4px rgba(43,110,246,0.18),0 8px 18px rgba(0,0,0,0.25);
+/* selection highlight */
+.map-object.selected-item {
+  box-shadow:0 0 0 4px rgba(43,110,246,0.18),0 8px 18px rgba(0,0,0,0.25);
   transform:translateY(-4px);
-  z-index:12
+  z-index:12;
 }
 
-/* Right-side panel */
+/* Right-side panel - refined visuals */
 .side-panel {
-  width:360px
+  width:360px;
+  box-sizing: border-box;
+  padding: 0;
 }
 .side-card {
   background:var(--panel);
   border-radius:12px;
-  padding:18px;
-  box-shadow:0 4px 0 rgba(0,0,0,0.24);
+  padding:var(--side-panel-padding);
+  box-shadow:0 6px 18px rgba(0,0,0,0.22);
   min-height:620px;
   display:flex;
   flex-direction:column;
-  gap:14px}
-.side-top-controls{display:flex;
-  gap:80px;
-  justify-content:flex-end}
+  gap:14px;
+  height:100%;
+  overflow:hidden;
+}
+
+/* Top controls */
+.side-top-controls{
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+  align-items:center;
+  padding-bottom:6px;
+  margin-bottom:6px;
+}
 .icon-btn {
-  width:52px;
-  height:48px;
-  border-radius:12px;
+  width:var(--control-size);
+  height:var(--control-size);
+  border-radius:10px;
   border:0;
-  background:#efefef;
+  background: linear-gradient(180deg,#fbfbfd,#f0f1f6);
   font-size:20px;
   cursor:pointer;
   display:flex;
   align-items:center;
-  justify-content:center
+  justify-content:center;
+  box-shadow: 0 8px 18px rgba(10,20,40,0.08);
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+  outline: none;
 }
+.icon-btn:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(10,20,40,0.12); }
+.icon-btn:active { transform: translateY(-1px); }
+.icon-btn img { width:22px; height:22px; display:block; }
+
+/* selected-list area fills available space and scrolls internally */
 .selected-list {
   display:flex;
   flex-direction:column;
-  gap:12px;padding-top:6px;
-  min-height:320px;
-  overflow:auto
+  gap:var(--item-gap);
+  padding-top:6px;
+  min-height:0;
+  overflow:auto;
+  flex:1 1 auto;
+  scroll-behavior: smooth;
+  padding-right:8px;
 }
-.item{background:#e9e9e9;
-  border-radius:12px;
-  padding:12px 14px;
+.selected-list::-webkit-scrollbar { width:8px; }
+.selected-list::-webkit-scrollbar-track { background:transparent; }
+.selected-list::-webkit-scrollbar-thumb { background: rgba(27,23,133,0.12); border-radius:6px; }
+
+/* item card */
+.item{
+  background: #ffffff;
+  border-radius:10px;
+  padding:10px;
   display:flex;
   justify-content:space-between;
-  align-items:center;
-  font-weight:800;
-  cursor:pointer}
-.item small {
-  color:#333
+  align-items:flex-start;
+  font-weight:700;
+  cursor:default;
+  box-shadow: 0 6px 14px rgba(20,20,40,0.04);
+  border: 1px solid rgba(22,22,30,0.04);
 }
-.side-actions {display:flex;
+.item > div:first-child {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  flex:1;
+  min-width:0;
+}
+.item > div:first-child > div:first-child {
+  font-weight:900;
+  font-size:13px;
+  color:#1f2937;
+  margin-bottom:2px;
+}
+.item > div:first-child > div:nth-child(2) {
+  display:flex;
+  gap:8px;
+  align-items:center;
+  width:100%;
+}
+.item input[type="text"] {
+  background:#fbfbfe;
+  border:1px solid #e6e9ef;
+  padding:8px 10px;
+  border-radius:8px;
+  font-size:13px;
+  color:#222;
+  outline: none;
+  flex:1;
+  min-width:0;
+  transition: box-shadow .12s ease, border-color .12s ease;
+}
+.item input[type="text"]:focus {
+  border-color: var(--select);
+  box-shadow: 0 6px 18px rgba(43,110,246,0.08);
+}
+.item input[type="number"] {
+  background:#fff;
+  border:1px solid #e6e9ef;
+  padding:8px 8px;
+  border-radius:8px;
+  font-size:13px;
+  color:#222;
+  width:72px;
+  text-align:center;
+}
+.item > div:last-child {
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  margin-left:10px;
+}
+.item > div:last-child button {
+  background: #fff;
+  border:1px solid rgba(180,180,180,0.08);
+  padding:6px 10px;
+  border-radius:8px;
+  color:#444;
+  cursor:pointer;
+  font-weight:700;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+  transition: background .12s ease, transform .12s ease, box-shadow .12s ease;
+}
+.item > div:last-child button:hover {
+  background:#fff7f7;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.06);
+}
+.item .title-area {
+  background: linear-gradient(180deg, rgba(243,244,250,0.6), rgba(255,255,255,0.4));
+  padding:6px 8px;
+  border-radius:8px;
+  display:inline-block;
+}
+
+/* empty-state hint */
+.selected-list:empty::before {
+  content: "No items selected.";
+  color:#8b93a6;
+  display:block;
+  text-align:center;
+  padding:18px 8px;
+}
+
+/* side-actions pinned to bottom */
+.side-actions {
+  display:flex;
   gap:12px;
   align-items:center;
-  margin-top:100px
+  justify-content:center;
+  margin-top:12px;
+  padding-top:8px;
+  padding-bottom:8px;
+  position: sticky;
+  bottom: var(--side-panel-padding);
+  z-index: 6;
 }
+
+/* action buttons */
 .proceed {
-  width:150px;
-  padding:12px;
-  background:linear-gradient(180deg,#000080,#1b1785);
+  padding:12px 22px;
+  background:linear-gradient(90deg,#0b1aa6,#2b2fc4);
   color:#fff;
-  border-radius:8px;
+  border-radius:10px;
   border:0;
   font-weight:800;
-  cursor:pointer
+  cursor:pointer;
+  box-shadow: 0 10px 28px rgba(43,47,196,0.16);
+  transition: transform .12s ease, box-shadow .12s ease;
 }
 .enter {
-  width:150px;
-  padding:12px;
-  background:linear-gradient(180deg,#a12aa1,#bf3fcf);
+  padding:12px 22px;
+  background:linear-gradient(90deg,#a12aa1,#bf3fcf);
   color:#fff;
-  border-radius:8px;
+  border-radius:10px;
   border:0;
   font-weight:800;
-  cursor:pointer
+  cursor:pointer;
+  box-shadow: 0 10px 28px rgba(177,63,207,0.12);
+  transition: transform .12s ease, box-shadow .12s ease;
 }
-.checkin {
-  order: 0;
-  flex-basis: 100%;
-  max-width: 360px;
-  margin: 0 auto 10px;
-}
+.proceed:hover, .enter:hover { transform: translateY(-3px); }
 .side-actions > button.proceed,
-.side-actions > button.checkin,
 .side-actions > button.enter {
-  flex: 1 1 0;            /* allow buttons to grow/shrink equally */
-  min-width: 96px;        /* prevent buttons from becoming too small on narrow viewports */
-  max-width: 220px;       /* prevent them from becoming too wide on large panels */
+  flex: 1 1 0;
+  min-width: 120px;
+  max-width: 220px;
   box-sizing: border-box;
 }
 
-/* Pool/Stage */
+/* Pool/Stage (kept) */
 .map-stage-pool {
   position:absolute;
   right:28px;
@@ -347,19 +460,19 @@ body {
   border-radius:6px;
   overflow:hidden;
   box-shadow:0 6px 0 rgba(0,0,0,0.12);
-  z-index:4
+  z-index:4;
 }
 .map-stage-pool .pool {
   background:#4e86c2;
   color:#fff;
   padding:18px;
-  text-align:center
+  text-align:center;
 }
 .map-stage-pool .stage {
   background:#222;
   color:#fff;
   padding:10px;
-  text-align:center
+  text-align:center;
 }
 
 /* Modal */
@@ -369,12 +482,12 @@ body {
   inset:0;
   align-items:center;
   justify-content:center;
-  z-index:9999
+  z-index:9999;
 }
 .modal-backdrop {
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,0.45)
+  background:rgba(0,0,0,0.45);
 }
 .modal-content {
   position:relative;
@@ -382,165 +495,56 @@ body {
   border-radius:10px;
   padding:18px;
   max-width:420px;
-  z-index:10000
+  z-index:10000;
 }
 .modal-header {
   display:flex;
   justify-content:space-between;
-  align-items:center
+  align-items:center;
 }
 .modal-close {
   background:transparent;
   border:0;
   font-size:22px;
-  cursor:pointer
+  cursor:pointer;
 }
 .modal-body {
-  padding-top:10px}
+  padding-top:10px;
+}
 
 /* Responsive */
-@media (max-width:1000px){ .container{flex-direction:column} .side-panel{width:100%} .map-area{min-height:520px} }
+@media (max-width:1000px){
+  .container{flex-direction:column}
+  .side-panel{width:100%}
+  .map-area{min-height:520px}
+  .side-top-controls { justify-content:flex-start; gap:8px; }
+  .side-card { padding:14px; }
+  .side-actions { bottom: 12px; }
+}
 
-/* Fix for the previous invalid rule and to keep the table-stack sensible */
+/* Keep map-object and bar positioning helpers */
 .table-stack {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  position: absolute; /* explicitly positioned */
+  position: absolute;
   right: 460px;
-  bottom: 20px; /* raise the stack slightly to avoid accidental overlap */
+  bottom: 20px;
   z-index: 10;
 }
+.map-object.table.small { position: relative; width: 270px; }
 
-/* Ensure small tables keep reasonable size */
-.map-object.table.small {
-  position: relative;
-  width: 270px;  /* adjust table size */
-}
-
-/* Make the whole main area a fixed-height layout so map doesn't shift when page zoom/scroll */
-html, body {
-  height: 100%;
-}
-
-/* container fills the remaining viewport under the topbar */
-.container {
-  height: calc(100vh - var(--topbar-height));
-  box-sizing: border-box;
-  overflow: hidden; /* prevent page scroll from affecting map */
-}
-
-/* let the side-card take full container height and keep its inner list scrollable */
-.side-panel {
-  height: 100%;
-  box-sizing: border-box;
-}
-.side-card {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden; /* keep outer panel fixed; inner .selected-list will scroll */
-}
-
-/* the white list scrolls internally (preserve your existing styles) */
-.selected-list {
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-right: 8px; /* space for scrollbar so rows don't reflow */
-}
-
-/* ensure map area fills available height and does not expand the page */
-.map-area {
-  min-height: 0; /* allow the .container height to control it */
-  height: 100%;
-  overflow: hidden; /* prevent internal scrolling that would move object positions */
-}
-
-/* nav hover: make Home/Inventory/Sales/Settings behave like the active Tables pill on hover */
-.navbtn:hover {
-  background: linear-gradient(180deg, #1b1785, #1a1a76);
-  color: #fff;
-  transform: translateY(-1px);
-}
-
-.map-inner {
-  position: relative; /* required so .bar-wrapper absolute coordinates are relative to the map */
-}
-
-/* Variables you can change to move the bar */
-:root {
-  --bar-left: 280px;   /* distance from left of .map-inner (change to move horizontally) */
-  --bar-top: 140px;     /* distance from top of .map-inner (change to move vertically) */
-  --bar-width: 520px;  /* desired width of the bar image */
-  --bar-height: 500px;  /* or a fixed px value */
-}
-
-/* Bar placement: fixed coordinate approach */
-.bar-wrapper {
-  position: absolute;
-  left: var(--bar-left);
-  top: var(--bar-top);
-  transform: translate(0, 0);
-  pointer-events: none;
-}
-
-/* Image sizing (keeps aspect ratio) */
-.bar-wrapper .bar-img {
-  width: var(--bar-width);
-  height: var(--bar-height);
-  display: block;
-  max-width: 1000%;
-}
-
-/* Make map object containers absolutely positioned (they already use inline left/top/bottom but ensure they behave correctly) */
-.map-object {
-  position: absolute;
-  touch-action: none;
-}
-
-/* Remove any "dragging" cursor/visual styles (dragging removed from JS) */
-/* Previously .map-inner img { cursor: grab } and .map-inner img.dragging { cursor: grabbing } */
-.map-inner img {
-  user-select: none;
-  -webkit-user-drag: none;
-  cursor: default; /* do not indicate draggable */
-  touch-action: none;
-}
-
-/* Explicitly remove any leftover state-button rules for huts so there's no visual hint or leftover styles */
-.map-object.hut .state-btn,
-.map-object[data-type="hut"] .state-btn {
-  display: none !important;
-  pointer-events: none !important;
-}
-
-/* Huts should not be interactive (prevents accidental hover/click) */
-.map-object.hut,
-.map-object[data-type="hut"] {
-  pointer-events: none;
-  cursor: default;
-}
-
-/* Table and hut images should not show draggable cursor */
-.map-object.table img,
-.map-object.hut img {
-  cursor: default;
-  -webkit-user-drag: none;
-}
-
-/* Example large-screen adjustment to keep a specific hut (B4) from overlapping the table stack.
-   This targets a narrow range close to 1440x1024 to avoid affecting other breakpoints.
-   Adjust the coordinates if you need a slightly different placement. */
+/* Specific large-screen adjustment for B4 to avoid overlap */
 @media (min-width: 1430px) and (max-width: 1450px) and (min-height: 1014px) and (max-height: 1034px) {
   .map-object[data-id="B4"] { left: 457px !important; bottom: 110px !important; }
   .table-stack { right: 150px !important; bottom: 24px !important; }
 }
 
-/* Example responsive adjustments for the bar */
+/* Responsive bar adjustments */
 @media (max-width: 1200px) {
-  :root { --bar-left: 300px; --bar-top: 80px; --bar-width: 180px; }
+  :root { --bar-width: 180px; --bar-height: 260px; }
 }
 @media (max-width: 800px) {
-  :root { --bar-left: 160px; --bar-top: 60px; --bar-width: 140px; }
+  :root { --bar-width: 140px; --bar-height: 210px; }
 }
