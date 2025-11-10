@@ -1,31 +1,35 @@
 <?php
-require_once __DIR__ . '/php/auth.php';
-require_login();
+// logout.php
+// Destroys the session and redirects the user to the login page.
+// This script expects a POST (logout form submission). If you prefer GET-based logout,
+// you can remove the request method check.
 
-// Expect POST with csrf_token
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $token = $_POST['csrf_token'] ?? '';
-    if (!verify_csrf_token($token)) {
-        // Invalid request
-        header('HTTP/1.1 400 Bad Request');
-        echo 'Invalid CSRF token.';
-        exit;
-    }
-    // Destroy session safely
-    $_SESSION = [];
-    if (ini_get('session.use_cookies')) {
-        $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000,
-            $params['path'], $params['domain'],
-            $params['secure'], $params['httponly']
-        );
-    }
-    session_destroy();
-    header('Location: login.php');
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    // Optional: if someone visits logout.php directly by GET, redirect them back.
+    header('Location: ../ClubHirayaFinal/login.php');
     exit;
 }
 
-// If accessed via GET, redirect to login
-header('Location: login.php');
+// Start session (if not already started)
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Clear session variables
+$_SESSION = [];
+
+// If session uses cookies, clear the session cookie
+if (ini_get("session.use_cookies")) {
+    $params = session_get_cookie_params();
+    setcookie(session_name(), '', time() - 42000,
+        $params["path"], $params["domain"],
+        $params["secure"], $params["httponly"]
+    );
+}
+
+// Destroy the session
+session_destroy();
+
+// Redirect to your login page. Adjust this path to match your project's login location.
+header('Location: ../ClubHirayaFinal/login.php');
 exit;
-?>
