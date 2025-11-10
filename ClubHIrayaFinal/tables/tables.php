@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
   <link rel="stylesheet" href="../css/table.css">
+  <!-- small overrides (pins filters to top, hides search topbar) -->
+  <link rel="stylesheet" href="../css/table-overrides.css">
   <!-- flatpickr for inline calendar (required by calendar.js) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 </head>
@@ -63,22 +65,16 @@
         </button>
     </aside>
 
-  <!-- Fixed Topbar: search only -->
-  <div class="topbar" aria-hidden="false">
-    <div class="search-wrap" role="search" aria-label="Search tables">
-      <input id="searchInput" type="search" placeholder="Search tables" aria-label="Search tables">
-      <button id="searchClear" title="Clear search" aria-label="Clear search">✕</button>
-    </div>
-  </div>
+  <!-- NOTE: top search bar removed per request -->
 
-    <!-- Filters row (normal flow, sits under the fixed topbar) -->
+    <!-- Filters row (now pinned to top by CSS) -->
   <div class="filters-row" aria-hidden="false">
     <div class="filters" role="tablist" aria-label="Table filters">
       <button class="filter-btn active" data-filter="all" id="filterAll" role="tab" aria-selected="true">🏠 All Table</button>
       <button class="filter-btn" data-filter="party" id="filterParty" role="tab" aria-selected="false">👥 Party Size</button>
       <button class="filter-btn" data-filter="date" id="filterDate" role="tab" aria-selected="false">📅 Date</button>
-        <button class="filter-btn" data-filter="time" id="filterTime" role="tab" aria-selected="false">⏲️ Time</button>
-        <button id="btnAddReservation" class="filter-btn action-btn" aria-label="New reservation" title="New reservation">➕ New</button>
+      <button class="filter-btn" data-filter="time" id="filterTime" role="tab" aria-selected="false">⏲️ Time</button>
+      <button id="btnAddReservation" class="filter-btn action-btn" aria-label="New reservation" title="New reservation">➕ New</button>
 
       <!-- party-size control -->
       <div id="partyControl" class="party-size-control" aria-hidden="true">
@@ -102,11 +98,10 @@
         </select>
       </div>
 
-      <!-- date/time controls -->
+      <!-- date/time controls (kept for JS to use inside views) -->
       <div id="dateControl" class="party-size-control" aria-hidden="true">
         <input type="date" id="filterDateInput" aria-label="Filter by date">
       </div>
-      <!-- ... -->
     </div>
   </div>
 

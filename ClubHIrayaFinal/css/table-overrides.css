@@ -1,0 +1,43 @@
+/* table-overrides.css
+   Small, non-destructive overrides:
+   - hide the old topbar/search
+   - pin filters-row to the top
+   - push main content down so it's not overlapped
+*/
+
+/* Hide the old topbar if present */
+.topbar {
+  display: none !important;
+}
+
+/* Pin filters row to top (right of sidebar) */
+.filters-row {
+  position: fixed;
+  left: 1px;          /* keep sidebar space */
+  right: 0;
+  top: 10px;            /* small gap from top */
+  z-index: 90;
+  padding: 1px 9px;    /* tighten vertical padding when pinned */
+  box-sizing: border-box;
+  background: transparent; /* keep the original filters background or let inner .filters style apply */
+}
+
+/* Make inner filters block stretch nicely */
+.filters {
+  margin: 0;
+}
+
+/* Ensure the cards/content is pushed down enough so pinned filters don't overlap it */
+.content-wrap {
+  /* original left margin preserved; increase top padding to account for pinned filters */
+  margin-left: 130px;
+  padding: 103px 4px 24px 24px; /* top padding ~120px to clear filters and header */
+  box-sizing: border-box;
+}
+
+/* Small tweak: ensure cards-backdrop remains in-flow below pinned filters */
+.cards-backdrop {
+  margin-top: 0;
+}
+
+/* If you had any JS toggling aria-hidden on .filters-row, keep using it; these CSS rules will still apply */
