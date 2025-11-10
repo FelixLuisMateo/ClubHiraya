@@ -1,20 +1,9 @@
-<?php
-// Protect page: include the auth check before any output
-require_once __DIR__ . '/php/auth.php';
-
-// Must be logged in; allow both employee and admin to access this dashboard
-require_login();
-require_role(['employee', 'admin']);
-
-// Determine role flags for conditional rendering in the UI
-$is_admin = (isset($_SESSION['role']) && $_SESSION['role'] === 'admin');
-$is_employee = (isset($_SESSION['role']) && $_SESSION['role'] === 'employee');
-?>
+<?php session_start(); ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Club Hiraya - Employee</title>
+    <title>Club Hiraya</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/tables-select.css">
@@ -24,7 +13,6 @@ $is_employee = (isset($_SESSION['role']) && $_SESSION['role'] === 'employee');
     <script defer src="js/app.js"></script>
     <script defer src="js/tables-select.js"></script>
 </head>
-<body
 <?php
   if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
   if (isset($_SESSION['accent_color'])) {
@@ -38,6 +26,7 @@ $is_employee = (isset($_SESSION['role']) && $_SESSION['role'] === 'employee');
     echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
   }
 ?>>
+
     <noscript>
         <div class="noscript-warning">This app requires JavaScript to function correctly. Please enable JavaScript.</div>
     </noscript>
@@ -45,46 +34,37 @@ $is_employee = (isset($_SESSION['role']) && $_SESSION['role'] === 'employee');
     <!-- Sidebar -->
     <aside class="sidebar" role="complementary" aria-label="Sidebar">
         <div class="sidebar-header">
-            <img src="assets/logos/logo1.png" alt="Club Hiraya logo" class="sidebar-header-img">
+            <img src="../ClubHirayaFinal/assets/foods/logos/logo1.png" alt="Club Hiraya logo" class="sidebar-header-img">
         </div>
 
         <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
-            <a href="employee_dashboard.php" class="sidebar-btn active" aria-current="page">
-                <span class="sidebar-icon"><img src="assets/logos/home.png" alt="Home icon"></span>
+            <a href="../ClubHirayaFinal /admin_dashboard.php" class="sidebar-btn active" aria-current="page">
+                <span class="sidebar-icon"><img src="../ClubHirayaFinal/assets/foods/logos/home.png" alt="Home icon"></span>
                 <span>Home</span>
             </a>
-
-            <?php if ($is_admin): ?>
-            <a href="tables/tables.php" class="sidebar-btn">
-                <span class="sidebar-icon"><img src="assets/logos/table.png" alt="Tables icon"></span>
-                <span>Cabins</span>
+            <a href="../ClubHirayaFinal/tables/tables.php" class="sidebar-btn">
+                <span class="sidebar-icon"><img src="../ClubHirayaFinal/assets/foods/logos/table.png" alt="Tables icon"></span>
+                <span>Tables</span>
             </a>
-            <a href="inventory/inventory.php" class="sidebar-btn">
-                <span class="sidebar-icon"><img src="assets/logos/inventory.png" alt="Inventory icon"></span>
+            <a href="../ClubHirayaFinal/inventory/inventory.php" class="sidebar-btn">
+                <span class="sidebar-icon"><img src="../ClubHirayaFinal/assets/foods/logos/inventory.png" alt="Inventory icon"></span>
                 <span>Inventory</span>
             </a>
-            <a href="SalesReport/sales_report.php" class="sidebar-btn">
-                <span class="sidebar-icon"><img src="assets/logos/sales.png" alt="Sales report icon"></span>
+            <a href="php/../SalesReport/sales_report.php" class="sidebar-btn">
+                <span class="sidebar-icon"><img src="../ClubHirayaFinal/assets/foods/logos/sales.png" alt="Sales report icon"></span>
                 <span>Sales Report</span>
             </a>
-            <?php endif; ?>
-
-            <!-- Settings allowed for both admin and employee -->
-            <a href="settings/settings.php" class="sidebar-btn">
-                <span class="sidebar-icon"><img src="assets/logos/setting.png" alt="Settings icon"></span>
+            <a href="../ClubHirayaFinal/settings/settings.php" class="sidebar-btn">
+                <span class="sidebar-icon"><img src="../ClubHirayaFinal/assets/foods/logos/setting.png" alt="Settings icon"></span>
                 <span>Settings</span>
             </a>
         </nav>
 
         <div style="flex:1" aria-hidden="true"></div>
 
-        <!-- Logout form: uses POST to call logout.php and includes CSRF token -->
-        <form method="post" action="logout.php" style="margin:0;">
-            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generate_csrf_token()); ?>">
-            <button class="sidebar-logout" type="submit" aria-label="Logout">
-                <span>Logout</span>
-            </button>
-        </form>
+        <button class="sidebar-logout" type="button" aria-label="Logout">
+            <span>Logout</span>
+        </button>
     </aside>
 
     <!-- Main Content -->
@@ -95,7 +75,7 @@ $is_employee = (isset($_SESSION['role']) && $_SESSION['role'] === 'employee');
                 <input type="text" class="search-input" placeholder="Search products" id="searchBox" aria-label="Search products">
             </div>
             <button class="select-table-btn" type="button" aria-haspopup="dialog">
-                Select Table <span class="table-icon"><img src="assets/logos/table.png" alt=""></span>
+                Select Table <span class="table-icon"><img src="../ClubHirayaFinal/assets/foods/logos/table.png" alt=""></span>
             </button>
         </div>
 
@@ -116,8 +96,8 @@ $is_employee = (isset($_SESSION['role']) && $_SESSION['role'] === 'employee');
             <aside class="order-section" aria-label="Order">
                 <div class="order-actions">
                     <button class="order-action-btn plus" id="newOrderBtn" type="button" title="New order">+</button>
-                    <button class="order-action-btn draft" id="draftBtn" type="button" title="Save draft"><img src="assets/logos/draft.png" alt="Draft"></button>
-                    <button class="order-action-btn refresh" id="refreshBtn" type="button" title="Reset order"><img src="assets/logos/reset.png" alt="Reset"></button>
+                    <button class="order-action-btn draft" id="draftBtn" type="button" title="Save draft"><img src="../clubtryara/assets/logos/draft.png" alt="Draft"></button>
+                    <button class="order-action-btn refresh" id="refreshBtn" type="button" title="Reset order"><img src="../clubtryara/assets/logos/reset.png" alt="Reset"></button>
                 </div>
 
                 <div class="order-list" id="orderList" aria-live="polite"></div>

@@ -67,7 +67,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div class="login-wrapper">
         <div class="login-center">
             <div class="login-content">
-                <form action="login.php" method="POST">
+                <form action="admin_dashboard.php" method="POST">
                     <label for="email">EMPLOYEE LOGIN</label>
                     <input type="email" id="email" name="email" placeholder="Email" required>
                     <input type="password" id="password" name="password" placeholder="Password" required>
