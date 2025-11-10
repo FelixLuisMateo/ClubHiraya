@@ -17,6 +17,7 @@
       </div>
     </div>
 
+    <nav class="nav">
             <a href="../admin_dashboard.php" class="sidebar-btn" aria-current="page">
                 <span class="navbtn"><img src="home.png" alt="Home icon"></span>
                 <span>Home</span>
@@ -53,37 +54,34 @@
 
         <!-- Cabins C1..C8 (positions approximate to your image) -->
         <!-- Each object uses: data-id, data-type (cabin/hut/table), data-occupied, data-customer, data-days -->
-        <div class="map-object cabin" data-id="C1" data-type="cabin" data-occupied="false" style="left:140px; bottom:30px;">
+        <div class="map-object cabin" data-id="C1" data-type="cabin" data-occupied="false" style="left:40px; bottom:30px;">
           <img class="obj-img" src="cabin.png" alt="cabin" onerror="this.onerror=null;this.style.display='none'">
           <button class="state-btn" title="Toggle selection / show info">C1</button>
         </div>
 
-        <div class="map-object hut" data-id="B1" data-type="hut" data-occupied="false" style="left:250px; bottom:18px;">
+        <div class="map-object hut" data-id="B1" data-type="hut" data-occupied="false" style="left:130px; bottom:40px;">
           <img class="obj-img" src="bahaykubo.png" alt="hut" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn" title="Toggle selection / show info">B1</button>
         </div>
 
-        <div class="map-object cabin" data-id="C2" data-type="cabin" data-occupied="false" style="left:330px; bottom:30px;">
+        <div class="map-object cabin" data-id="C2" data-type="cabin" data-occupied="false" style="left:215px; bottom:30px;">
           <img class="obj-img" src="cabin.png" alt="cabin" onerror="this.onerror=null;this.style.display='none'">
           <button class="state-btn">C2</button>
         </div>
 
-        <div class="map-object hut" data-id="B2" data-type="hut" data-occupied="false" style="left:450px; bottom:18px;">
+        <div class="map-object hut" data-id="B2" data-type="hut" data-occupied="false" style="left:300px; bottom:40px;">
           <img class="obj-img" src="bahaykubo.png" alt="hut" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">B2</button>
         </div>
 
-        <div class="map-object cabin" data-id="C3" data-type="cabin" data-occupied="false" style="left:530px; bottom:30px;">
+        <div class="map-object cabin" data-id="C3" data-type="cabin" data-occupied="false" style="left:380px; bottom:30px;">
           <img class="obj-img" src="cabin.png" alt="cabin" onerror="this.onerror=null;this.style.display='none'">
           <button class="state-btn">C3</button>
         </div>
 
-        <div class="map-object hut" data-id="B3" data-type="hut" data-occupied="false" style="left:660px; bottom:58px;">
+        <div class="map-object hut" data-id="B3" data-type="hut" data-occupied="false" style="left:460px; bottom:40px;">
           <img class="obj-img" src="bahaykubo.png" alt="hut" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">B3</button>
         </div>
 
-        <div class="map-object hut" data-id="B4" data-type="hut" data-occupied="false" style="left:660px; bottom:-8px;">
+        <div class="map-object hut" data-id="B4" data-type="hut" data-occupied="false" style="left:460px; bottom:-8px;">
           <img class="obj-img" src="bahaykubo.png" alt="hut" onerror="this.onerror=null;this.style.display='none'">
           <button class="state-btn">B4</button>
         </div>
@@ -93,9 +91,8 @@
           <button class="state-btn">C4</button>
         </div>
 
-        <div class="map-object hut" data-id="B5" data-type="hut" data-occupied="false" style="left:50px; top:480px;">
+        <div class="map-object hut" data-id="B5" data-type="hut" data-occupied="false" style="left:50px; top:500px;">
           <img class="obj-img" src="bahaykubo.png" alt="hut" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">B5</button>
         </div>
 
         <div class="map-object cabin" data-id="C5" data-type="cabin" data-occupied="false" style="left:40px; top:270px;">
@@ -103,9 +100,8 @@
           <button class="state-btn">C5</button>
         </div>
 
-        <div class="map-object hut" data-id="B6" data-type="hut" data-occupied="false" style="left:50px; top:320px;">
+        <div class="map-object hut" data-id="B6" data-type="hut" data-occupied="false" style="left:50px; top:360px;">
           <img class="obj-img" src="bahaykubo.png" alt="hut" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">B6</button>
         </div>
 
         <div class="map-object cabin" data-id="C6" data-type="cabin" data-occupied="false" style="left:40px; top:120px;">
@@ -118,14 +114,12 @@
           <button class="state-btn">C7</button>
         </div>
 
-        <div class="map-object hut" data-id="B7" data-type="hut" data-occupied="false" style="left:50px; top:170px;">
+        <div class="map-object hut" data-id="B7" data-type="hut" data-occupied="false" style="left:50px; top:190px;">
           <img class="obj-img" src="bahaykubo.png" alt="hut" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">B7</button>
         </div>
 
         <div class="map-object hut" data-id="B8" data-type="hut" data-occupied="false" style="left:300px; top:1px;">
           <img class="obj-img" src="bahaykubo.png" alt="hut" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">B8</button>
         </div>
 
         <div class="map-object cabin" data-id="C8" data-type="cabin" data-occupied="false" style="left:500px; top:10px;">
@@ -135,12 +129,10 @@
 
         <div class="map-object hut" data-id="B9" data-type="hut" data-occupied="false" style="left:400px; top:1px;">
           <img class="obj-img" src="bahaykubo.png" alt="hut" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">B9</button>
         </div>
 
         <div class="map-object hut" data-id="B10" data-type="hut" data-occupied="false" style="left:630px; top:1px;">
           <img class="obj-img" src="bahaykubo.png" alt="hut" onerror="this.onerror=null;this.style.display='none'">
-          <button class="state-btn">B10</button>
         </div>
 
         <!-- Scatter tables T1..T10 (buttons removed as requested) -->

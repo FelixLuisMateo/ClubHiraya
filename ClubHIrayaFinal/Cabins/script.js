@@ -1,11 +1,16 @@
-// script.js - enhanced for dragging + selection + right-panel list + payload/draft handling
-// Replaces earlier simpler drag-only script with selection and form integration.
+// script.js - selection + right-panel list + payload/draft handling
+// Dragging removed entirely. Only cabins (data-type="cabin") are interactive/clickable.
+// Tables and bahaykubo (huts) are made non-interactive: their state buttons are hidden and they are not focusable.
 
 document.addEventListener('DOMContentLoaded', () => {
   const container = document.querySelector('.map-inner');
   if (!container) return;
 
-  const objects = Array.from(container.querySelectorAll('.map-object'));
+  // Only cabin elements are interactive
+  const cabinElements = Array.from(container.querySelectorAll('.map-object[data-type="cabin"]'));
+  // Non-cabin elements should not be clickable/focusable
+  const nonInteractive = Array.from(container.querySelectorAll('.map-object:not([data-type="cabin"])'));
+
   const selectedListEl = document.getElementById('selectedList');
   const payloadInput = document.getElementById('payload');
   const proceedBtn = document.getElementById('proceedBtn');
@@ -21,11 +26,24 @@ document.addEventListener('DOMContentLoaded', () => {
   // Track selected items (Map id => data object)
   const selected = new Map();
 
-  // --- Utilities ---
+  // Make non-cabin objects clearly non-interactive
+  nonInteractive.forEach(el => {
+    // hide any state button if present and prevent pointer/focus
+    const btn = el.querySelector('.state-btn');
+    if (btn) {
+      btn.style.display = 'none';
+      btn.setAttribute('aria-hidden', 'true');
+    }
+    // prevent keyboard focus/clicks
+    el.tabIndex = -1;
+    el.style.pointerEvents = 'none';
+  });
+
+  // Utilities
   function makeId(id) { return String(id); }
+  function cssEscape(str) { return String(str).replace(/(["\\])/g, '\\$1'); }
 
   function createListRow(item) {
-    // item: { id, type, customer, days }
     const row = document.createElement('div');
     row.className = 'item';
     row.dataset.id = item.id;
@@ -115,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function selectItem(el) {
     const id = makeId(el.dataset.id || el.getAttribute('data-id'));
     if (!id) return;
-    if (selected.has(id)) return; // already selected
+    if (selected.has(id)) return;
     const data = {
       id,
       type: el.dataset.type || el.getAttribute('data-type') || 'unknown',
@@ -124,7 +142,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     selected.set(id, data);
     el.classList.add('selected-item');
-    // aria
     const btn = el.querySelector('.state-btn');
     if (btn) btn.setAttribute('aria-pressed', 'true');
     renderSelectedList();
@@ -150,30 +167,23 @@ document.addEventListener('DOMContentLoaded', () => {
     else selectItem(el);
   }
 
-  function cssEscape(str) {
-    // minimal escape for querySelector attribute selector usage
-    return String(str).replace(/(["\\])/g, '\\$1');
-  }
-
-  // --- Dragging (pointer events) ---
-  objects.forEach(el => {
-    // make interactive and focusable
-    el.style.touchAction = 'none';
+  // Wire up cabin elements only (no dragging)
+  cabinElements.forEach(el => {
     el.tabIndex = 0;
     el.setAttribute('role', 'button');
-
-    // Avoid starting drag when user clicks on the small state button or on inputs
-    el.addEventListener('pointerdown', function (e) {
-      // If click is on the state button or inside a button, treat as selection/click only
-      if (e.target.closest('.state-btn') || e.target.closest('button') || e.target.closest('input')) {
-        return; // let other handlers manage it
+    // clicking element toggles selection (unless click is on inner controls)
+    el.addEventListener('click', (ev) => {
+      if (ev.target.closest('input') || ev.target.closest('button')) return;
+      toggleSelect(el);
+    });
+    // keyboard support
+    el.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        toggleSelect(el);
       }
-      // Only primary pointer to drag
-      if (e.button && e.button !== 0) return;
-      startDrag(e, el);
     });
 
-    // state button toggles selection
     const stateBtn = el.querySelector('.state-btn');
     if (stateBtn) {
       stateBtn.type = 'button';
@@ -190,99 +200,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
     }
-
-    // allow keyboard activation on the whole element
-    el.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' || ev.key === ' ') {
-        ev.preventDefault();
-        toggleSelect(el);
-      }
-    });
-
-    // also allow click on the element to toggle selection
-    el.addEventListener('click', (ev) => {
-      // ignore clicks originated from state button (already handled)
-      if (ev.target.closest('.state-btn')) return;
-      toggleSelect(el);
-    });
   });
 
-  function startDrag(e, el) {
-    el.setPointerCapture(e.pointerId);
-    el.classList.add('dragging');
-
-    const parentRect = container.getBoundingClientRect();
-    let elRect = el.getBoundingClientRect();
-
-    const offsetX = e.clientX - elRect.left;
-    const offsetY = e.clientY - elRect.top;
-
-    function onMove(ev) {
-      ev.preventDefault();
-      elRect = el.getBoundingClientRect(); // recalc for responsive
-      const x = ev.clientX - parentRect.left - offsetX;
-      const y = ev.clientY - parentRect.top - offsetY;
-
-      const maxX = Math.max(0, parentRect.width - elRect.width);
-      const maxY = Math.max(0, parentRect.height - elRect.height);
-      const nx = Math.max(0, Math.min(x, maxX));
-      const ny = Math.max(0, Math.min(y, maxY));
-
-      el.style.left = nx + 'px';
-      el.style.top = ny + 'px';
-      el.style.bottom = '';
-    }
-
-    function onUp() {
-      try { el.releasePointerCapture(e.pointerId); } catch (_) {}
-      el.classList.remove('dragging');
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      document.removeEventListener('pointercancel', onUp);
-    }
-
-    document.addEventListener('pointermove', onMove, { passive: false });
-    document.addEventListener('pointerup', onUp);
-    document.addEventListener('pointercancel', onUp);
-  }
-
-  // --- Modal handling (simple accessibility features) ---
+  // Modal handling (basic)
   function openModal(title, bodyEl) {
     modalTitle.textContent = title || 'Details';
     modalBody.innerHTML = '';
     modalBody.appendChild(bodyEl);
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
-    modal.querySelector('.modal-content').focus();
     document.body.style.overflow = 'hidden';
-    // trap focus
     trapFocus(modal);
   }
-
   function closeModal() {
     modal.style.display = 'none';
     modal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
     releaseTrapFocus();
   }
-
   modalBackdrop.addEventListener('click', closeModal);
   modalClose.addEventListener('click', closeModal);
   document.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape' && modal.style.display === 'flex') closeModal();
   });
 
-  // focus trap (very small) - keeps tab cycling inside modal
   let lastFocused = null;
   function trapFocus(root) {
     lastFocused = document.activeElement;
     const focusable = root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-    if (focusable.length) {
-      focusable[0].focus();
-    } else {
-      root.querySelector('.modal-content').focus();
-    }
-    // add keydown handler
+    if (focusable.length) focusable[0].focus();
     root._trapHandler = function (ev) {
       if (ev.key !== 'Tab') return;
       const nodes = Array.from(root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
@@ -309,8 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
     lastFocused = null;
   }
 
-  // Example: open modal to edit a single selected item
-  // double-click an item in the selected-list row to open modal for that item
+  // double-click to edit selected list row via modal
   selectedListEl.addEventListener('dblclick', (ev) => {
     const row = ev.target.closest('.item');
     if (!row) return;
@@ -323,24 +268,11 @@ document.addEventListener('DOMContentLoaded', () => {
     body.style.flexDirection = 'column';
     body.style.gap = '8px';
 
-    const custLabel = document.createElement('label');
-    custLabel.textContent = 'Customer';
-    const custInput = document.createElement('input');
-    custInput.type = 'text';
-    custInput.value = data.customer || '';
-    custInput.style.padding = '6px';
-
-    const daysLabel = document.createElement('label');
-    daysLabel.textContent = 'Days';
-    const daysInput = document.createElement('input');
-    daysInput.type = 'number';
-    daysInput.min = '1';
-    daysInput.value = data.days || 1;
-    daysInput.style.padding = '6px';
-
-    const saveBtn = document.createElement('button');
-    saveBtn.type = 'button';
-    saveBtn.textContent = 'Save';
+    const custLabel = document.createElement('label'); custLabel.textContent = 'Customer';
+    const custInput = document.createElement('input'); custInput.type = 'text'; custInput.value = data.customer || '';
+    const daysLabel = document.createElement('label'); daysLabel.textContent = 'Days';
+    const daysInput = document.createElement('input'); daysInput.type = 'number'; daysInput.min = '1'; daysInput.value = data.days || 1;
+    const saveBtn = document.createElement('button'); saveBtn.type = 'button'; saveBtn.textContent = 'Save';
     saveBtn.style.marginTop = '10px';
     saveBtn.addEventListener('click', () => {
       data.customer = custInput.value;
@@ -358,12 +290,11 @@ document.addEventListener('DOMContentLoaded', () => {
     openModal(`Edit ${data.id}`, body);
   });
 
-  // --- Proceed / Enter / Draft logic ---
+  // Proceed: validate and submit payload
   proceedBtn.addEventListener('click', (ev) => {
     ev.preventDefault();
     const items = [];
     for (const [id, data] of selected) {
-      // basic validation
       const days = parseInt(data.days || '0', 10);
       if (!data.customer || !data.customer.trim()) {
         alert(`Please enter customer name for ${id}`);
@@ -373,24 +304,17 @@ document.addEventListener('DOMContentLoaded', () => {
         alert(`Please enter valid days for ${id}`);
         return;
       }
-      items.push({
-        id: data.id,
-        type: data.type,
-        customer: data.customer,
-        days: days
-      });
+      items.push({ id: data.id, type: data.type, customer: data.customer, days: days });
     }
-    // serialize and submit
     payloadInput.value = JSON.stringify(items);
-    // short disable to prevent double submit
     proceedBtn.disabled = true;
     form.submit();
     setTimeout(() => proceedBtn.disabled = false, 2000);
   });
 
+  // Enter: mark selected cabins as occupied (visual only)
   enterBtn.addEventListener('click', (ev) => {
     ev.preventDefault();
-    // Quick enter: mark selected items as occupied and clear selection
     for (const [id, data] of selected) {
       const el = container.querySelector(`.map-object[data-id="${cssEscape(id)}"]`);
       if (el) {
@@ -408,16 +332,12 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSelectedList();
   });
 
+  // Draft button: save selected data to localStorage
   btnDraft && btnDraft.addEventListener('click', (ev) => {
     ev.preventDefault();
     const draft = [];
     for (const [id, data] of selected) {
-      draft.push({
-        id: data.id,
-        type: data.type,
-        customer: data.customer || '',
-        days: data.days || 1
-      });
+      draft.push({ id: data.id, type: data.type, customer: data.customer || '', days: data.days || 1 });
     }
     try {
       localStorage.setItem('hiraya_map_draft', JSON.stringify(draft));
@@ -428,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // load draft on start
+  // Load draft if present
   function loadDraft() {
     try {
       const raw = localStorage.getItem('hiraya_map_draft');
@@ -437,10 +357,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!Array.isArray(arr)) return;
       for (const it of arr) {
         const el = container.querySelector(`.map-object[data-id="${cssEscape(String(it.id))}"]`);
-        if (el) {
+        if (el && el.dataset.type === 'cabin') {
           selected.set(String(it.id), {
             id: String(it.id),
-            type: it.type || el.dataset.type || 'unknown',
+            type: it.type || 'cabin',
             customer: it.customer || '',
             days: it.days || 1
           });
@@ -456,16 +376,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   loadDraft();
 
-  // Clear selection helper (wired to the top-left + button if you want)
+  // Clear selection helper (wired to the + button)
   const btnAdd = document.getElementById('btnAdd');
   if (btnAdd) {
     btnAdd.addEventListener('click', () => {
-      // Clear all selections
       for (const id of Array.from(selected.keys())) deselectItem(id);
     });
   }
 
-  // Make sure any element that was programmatically marked occupied has visual style
+  // Sync existing occupied visuals
   (function syncOccupiedVisuals() {
     const occ = container.querySelectorAll('.map-object[data-occupied="true"]');
     occ.forEach(el => {
@@ -479,12 +398,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   })();
 
-  // expose small API on window for debugging / manual use
+  // Expose small API for debugging
   window.hiraya = {
     selected,
     selectItemById(id) {
       const el = container.querySelector(`.map-object[data-id="${cssEscape(String(id))}"]`);
-      if (el) selectItem(el);
+      if (el && el.dataset.type === 'cabin') selectItem(el);
     },
     deselectItemById(id) { deselectItem(id); },
     getPayload() {

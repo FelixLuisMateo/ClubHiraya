@@ -118,17 +118,19 @@ body {
   display:flex;
   align-items:center;
   justify-content:center;
-  cursor:pointer;
+  cursor:default; /* Default cursor – no dragging cursor */
   user-select:none;
-  z-index:5
+  z-index:5;
+  pointer-events:auto;
 }
 .map-object .obj-img {
   display:block;
-  width:120%;
-  height:300%;
+  max-width:100%;
+  max-height:100%;
   object-fit:contain;
   pointer-events:none
 }
+/* state button (cabins only) */
 .state-btn {
   position:absolute;
   left:50%;
@@ -155,14 +157,14 @@ body {
 
 /* sizes */
 .cabin {
-  width:120px;
-  height:30px
+  width:100px;
+  height:130px
 }
-.hut {width:86px;
-  height:74px
+.hut {width:100px;
+  height:104px
 }
 .table {width:78px;
-  height:15px
+  height:115px
 }
 .table.small {
   width:68px;
@@ -323,22 +325,27 @@ body {
 
 /* Responsive */
 @media (max-width:1000px){ .container{flex-direction:column} .side-panel{width:100%} .map-area{min-height:520px} }
+
+/* Fix for the previous invalid rule and to keep the table-stack sensible */
 .table-stack {
   display: flex;
-  flex-direction: column; /* vertical line */
+  flex-direction: column;
   align-items: center;
   gap: 10px;
-  position: 200px; /* lets you move the entire stack */
-  z-index: 10;        /* keeps it above background */
+  position: absolute; /* explicitly positioned */
+  right: 460px;
+  bottom: 20px; /* raise the stack slightly to avoid accidental overlap */
+  z-index: 10;
 }
 
+/* Ensure small tables keep reasonable size */
 .map-object.table.small {
   position: relative;
-  width: 70px;  /* adjust table size */
+  width: 270px;  /* adjust table size */
 }
 
+/* Topbar height variable */
 :root {
-  /* set topbar height (adjust if your topbar's actual height differs) */
   --topbar-height: 84px;
 }
 
@@ -404,8 +411,8 @@ html, body {
   position: absolute;
   left: var(--bar-left);
   top: var(--bar-top);
-  transform: translate(0, 0); /* you can use translateX/Y for fine tuning */
-  pointer-events: none; /* prevents the bar from intercepting clicks on map objects beneath it; set to auto if bar should be clickable */
+  transform: translate(0, 0);
+  pointer-events: none;
 }
 
 /* Image sizing (keeps aspect ratio) */
@@ -419,22 +426,45 @@ html, body {
 /* Make map object containers absolutely positioned (they already use inline left/top/bottom but ensure they behave correctly) */
 .map-object {
   position: absolute;
-  touch-action: none; /* helps with touch dragging responsiveness */
-}
-
-/* Make the map images show a move cursor and be easier to drag */
-.map-inner img {
-  user-select: none;
-  -webkit-user-drag: none;
-  cursor: grab;
   touch-action: none;
 }
 
-/* When actively dragging */
-.map-inner img.dragging {
-  cursor: grabbing;
-  opacity: 0.95;
-  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25));
+/* Remove any "dragging" cursor/visual styles (dragging removed from JS) */
+/* Previously .map-inner img { cursor: grab } and .map-inner img.dragging { cursor: grabbing } */
+.map-inner img {
+  user-select: none;
+  -webkit-user-drag: none;
+  cursor: default; /* do not indicate draggable */
+  touch-action: none;
+}
+
+/* Explicitly remove any leftover state-button rules for huts so there's no visual hint or leftover styles */
+.map-object.hut .state-btn,
+.map-object[data-type="hut"] .state-btn {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* Huts should not be interactive (prevents accidental hover/click) */
+.map-object.hut,
+.map-object[data-type="hut"] {
+  pointer-events: none;
+  cursor: default;
+}
+
+/* Table and hut images should not show draggable cursor */
+.map-object.table img,
+.map-object.hut img {
+  cursor: default;
+  -webkit-user-drag: none;
+}
+
+/* Example large-screen adjustment to keep a specific hut (B4) from overlapping the table stack.
+   This targets a narrow range close to 1440x1024 to avoid affecting other breakpoints.
+   Adjust the coordinates if you need a slightly different placement. */
+@media (min-width: 1430px) and (max-width: 1450px) and (min-height: 1014px) and (max-height: 1034px) {
+  .map-object[data-id="B4"] { left: 457px !important; bottom: 110px !important; }
+  .table-stack { right: 300px !important; bottom: 24px !important; }
 }
 
 /* Example responsive adjustments for the bar */
@@ -444,4 +474,3 @@ html, body {
 @media (max-width: 800px) {
   :root { --bar-left: 160px; --bar-top: 60px; --bar-width: 140px; }
 }
-
