@@ -286,13 +286,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
                     foreach ($orders as $o) {
                         $id = htmlspecialchars($o['id']);
                         $date = date('M d, Y', strtotime($o['created_at'] ?? date('Y-m-d')));
-                        $rawNote = $o['note'] ?? '';
+                        $rawNote = $o['id'] ?? '';
                         $pm = $o['payment_method'] ?? null;
                         $parsed = parse_note_and_payment($rawNote, $pm);
 
                         // Prefer table_no if present for the label
                         $labelSource = '';
-                        if (!empty($o['table_no'])) {
+                        if (!empty($o['sale_id'])) {
                             $labelSource = $o['table_no'];
                         } elseif (!empty($parsed['label'])) {
                             $labelSource = $parsed['label'];
@@ -411,7 +411,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
             }
 
             const o = payload.order;
-            const title = (o.table_no ? o.table_no : (o.note ? (o.note.split(/\r\n|\n/)[0] || ('Order ' + o.id)) : ('Order ' + o.id)));
+            const title = (o.table_no ? o.note : (o.note ? (o.note.split(/\r\n|\n/)[0] || ('Order ' + o.id)) : ('Order ' + o.id)));
             detailTitle.textContent = title;
             detailDate.textContent = new Date(o.created_at).toLocaleString();
             detailTotal.textContent = formatCurrency(o.total_amount || 0);
