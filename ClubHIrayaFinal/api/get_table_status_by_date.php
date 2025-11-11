@@ -12,11 +12,16 @@ if (!$date) {
 }
 
 // For each table, try to get a reservation for the selected date
+// Include reservation id and start/end datetimes so frontend can notify precisely.
 $sql = "
 SELECT t.id AS table_id, t.name, t.seats,
        IFNULL(r.status, 'available') AS status,
        r.guest,
-       r.start_time, r.end_time
+       r.start_time,
+       r.end_time,
+       r.id AS reservation_id,
+       r.`start` AS start_dt,
+       r.`end` AS end_dt
 FROM tables t
 LEFT JOIN reservations r
   ON t.id = r.table_id AND r.date = :date AND r.status IN ('reserved','occupied')
