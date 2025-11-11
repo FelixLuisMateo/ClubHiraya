@@ -177,6 +177,8 @@ body {
 .main-content {
     margin-left: 118px;
     min-height: 100vh;
+    color: #222;
+
 }
 .topbar {
     height: 52px;
@@ -718,7 +720,7 @@ body {
 }
 
 .main-content {
-  background: var(--main-bg);
+  background: #222;
   transition: background 0.25s;
 }
 

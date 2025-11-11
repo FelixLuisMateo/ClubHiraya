@@ -60,13 +60,13 @@ require_once __DIR__ . '/ChangePassword.php';
         </div>
 
         <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
-            <a href="../index.php" class="sidebar-btn" aria-current="page">
+            <a href="../admin_dashboard.php" class="sidebar-btn" aria-current="page">
                 <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/home.png" alt="Home icon"></span>
                 <span>Home</span>
             </a>
             <a href="../../ClubTryara/tables/tables.php" class="sidebar-btn">
-                <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/table.png" alt="Tables icon"></span>
-                <span>Tables</span>
+                <span class="sidebar-icon"><img src="../assets/logos/cabin.png" alt="Tables icon"></span>
+                <span>Cabins</span>
             </a>
             <a href="../inventory/inventory.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/inventory.png" alt="Inventory icon"></span>
