@@ -74,36 +74,19 @@
     const summary = document.createElement('div');
     summary.id = 'selected-table-summary';
     summary.style.display = 'none';
-    summary.style.marginTop = '8px';
-    summary.style.fontSize = '13px';
 
     summary.innerHTML = `
-    <div style="display: flex; flex-direction: column; gap: 10px;">
-      <div>
-        <span style="font-weight: 600; font-size: 15px;">Selected Cabin:</span><br>
-        <strong id="selected-table-name" style="font-size: 15px; display: block; margin-top: 2px;">—</strong>
+      <div class="selected-table-info">
+        <div><strong>Selected Cabin:</strong> <span id="selected-table-name">—</span></div>
+        <div><strong>Party Size:</strong> <span id="selected-table-party">—</span></div>
+        <div><strong>Price:</strong> ₱<span id="selected-table-price">0.00</span></div>
       </div>
-      <div>
-        <span style="font-weight: 600; font-size: 15px;">Party Size:</span><br>
-        <span id="selected-table-party" style="font-size: 15px; display: block; margin-top: 2px;">—</span>
-      </div>
-      <div>
-        <span style="font-weight: 600; font-size: 15px;">Price:</span><br>
-        <span style="font-size: 15px; display: block; margin-top: 2px;">₱ <span id="selected-table-price">0.00</span></span>
-      </div>
-    </div>
-  `;
-    // Clear button (created here so handler can be attached or replaced)
-    const clearBtn = document.createElement('button');
-    clearBtn.type = 'button';
-    clearBtn.id = 'clear-selected-table';
-    clearBtn.className = 'btn-link';
-    clearBtn.style.marginLeft = '8px';
-    clearBtn.textContent = 'Clear';
-    summary.appendChild(clearBtn);
+      <button id="clear-selected-table">Clear</button>
+    `;
 
     return summary;
   }
+
 
   // ensure Clear button has handler (idempotent)
   function ensureClearHandler() {

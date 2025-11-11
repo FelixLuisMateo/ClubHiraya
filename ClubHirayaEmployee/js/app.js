@@ -350,25 +350,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!orderList || !orderCompute) return;
       orderList.innerHTML = '';
+
       if (order.length === 0) {
         orderList.textContent = 'No items in order.';
       } else {
         order.forEach(item => {
           const row = document.createElement('div');
           row.className = 'order-item';
-          // expose id for DOM fallback
           if (typeof item.id !== 'undefined' && item.id !== null) row.dataset.id = item.id;
 
-          const name = document.createElement('div');
-          name.className = 'order-item-name';
-          name.textContent = item.name;
-          row.appendChild(name);
+          // --- Row: 2 parts (Name on top, Controls below) ---
+          const nameDiv = document.createElement('div');
+          nameDiv.className = 'order-item-name';
+          nameDiv.textContent = item.name;
+          row.appendChild(nameDiv);
 
-          // qty controls
-          const qtyWrap = document.createElement('div');
-          qtyWrap.style.display = 'flex';
-          qtyWrap.style.alignItems = 'center';
-          qtyWrap.style.gap = '6px';
+          // Controls container (qty, price, remove)
+          const controlsDiv = document.createElement('div');
+          controlsDiv.className = 'order-item-controls';
+
+          // Quantity group
+          const qtyGroup = document.createElement('div');
+          qtyGroup.className = 'order-qty-group';
 
           const btnMinus = document.createElement('button');
           btnMinus.type = 'button';
@@ -376,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
           btnMinus.textContent = '−';
           btnMinus.title = 'Decrease';
           btnMinus.addEventListener('click', () => changeQty(item.id, item.qty - 1));
-          qtyWrap.appendChild(btnMinus);
+          qtyGroup.appendChild(btnMinus);
 
           const qtyInput = document.createElement('input');
           qtyInput.className = 'order-qty-input';
@@ -384,7 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
           qtyInput.value = item.qty;
           qtyInput.min = 0;
           qtyInput.addEventListener('change', () => changeQty(item.id, Number(qtyInput.value)));
-          qtyWrap.appendChild(qtyInput);
+          qtyGroup.appendChild(qtyInput);
 
           const btnPlus = document.createElement('button');
           btnPlus.type = 'button';
@@ -392,39 +395,37 @@ document.addEventListener('DOMContentLoaded', () => {
           btnPlus.textContent = '+';
           btnPlus.title = 'Increase';
           btnPlus.addEventListener('click', () => changeQty(item.id, item.qty + 1));
-          qtyWrap.appendChild(btnPlus);
+          qtyGroup.appendChild(btnPlus);
 
-          row.appendChild(qtyWrap);
+          controlsDiv.appendChild(qtyGroup);
 
-          const price = document.createElement('div');
+          // Price element
+          const priceDiv = document.createElement('div');
           const linePhp = (item.price * item.qty) || 0;
-          price.className = 'order-line-price';
-          setupPriceToggle(price, linePhp);
-          price.style.minWidth = '80px';
-          price.style.textAlign = 'right';
-          row.appendChild(price);
+          priceDiv.className = 'order-item-price';
+          setupPriceToggle(priceDiv, linePhp);
+          controlsDiv.appendChild(priceDiv);
 
+          // Remove button
           const removeBtn = document.createElement('button');
           removeBtn.type = 'button';
           removeBtn.className = 'remove-item-btn';
           removeBtn.innerHTML = '×';
           removeBtn.title = 'Remove';
           removeBtn.addEventListener('click', () => removeFromOrder(item.id));
-          row.appendChild(removeBtn);
+          controlsDiv.appendChild(removeBtn);
 
+          row.appendChild(controlsDiv);
           orderList.appendChild(row);
         });
       }
 
-      // compute and show in orderCompute area
+      // --- Compute and display totals below ---
       const nums = computeNumbers();
-
-      // Preserve any existing reserved-block so it isn't removed by innerHTML=''
       const existingReserved = orderCompute.querySelector('.reserved-table-block');
       const reservedNode = existingReserved || document.querySelector('.reserved-table-block');
 
       orderCompute.innerHTML = '';
-
       if (reservedNode) orderCompute.appendChild(reservedNode);
 
       const actions = document.createElement('div');
@@ -478,7 +479,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       discountPanel.style.display = 'none';
       noteInput.style.display = 'none';
-
       interactiveWrap.appendChild(discountPanel);
       interactiveWrap.appendChild(noteInput);
       orderCompute.appendChild(interactiveWrap);
@@ -513,7 +513,6 @@ document.addEventListener('DOMContentLoaded', () => {
       orderCompute.appendChild(makeRow(`Discount (${discountType})`, nums.discountAmount));
       orderCompute.appendChild(makeRow('Payable Amount', nums.payable, true));
 
-      // fallback buttons (unchanged)
       if (!billOutBtn || !proceedBtnPage) {
         const fallback = document.createElement('div');
         fallback.className = 'order-buttons fallback';
@@ -535,6 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
         orderCompute.appendChild(fallback);
       }
     }
+
 
     // ---------- DRAFTS ----------
     function getLocalDrafts() {
