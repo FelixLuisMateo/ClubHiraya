@@ -1,9 +1,19 @@
 // ../js/table.js
-// Full replacement: unified status button behavior with choice dialog and timer support.
-// Expects API endpoints under ../api/: get_tables.php, create_table.php, update_table.php,
-// delete_table.php, get_table_status_by_date.php, get_availability.php, create_reservation.php
+// Full replacement with defensive fixes for two common runtime errors:
+// - guard calls to updateTimeMonitors() in case it's undefined or throws
+// - ensure DOM nodes (grid) exist before using .innerHTML in catch blocks
+// Also adds global error logging to make debugging easier.
 
 document.addEventListener('DOMContentLoaded', () => {
+  // small global error logging to surface client errors quickly
+  window.addEventListener('error', (ev) => {
+    // log to console (visible in DevTools)
+    console.error('Uncaught error:', ev.message, ev.filename, ev.lineno, ev.colno, ev.error);
+  });
+  window.addEventListener('unhandledrejection', (ev) => {
+    console.error('Unhandled promise rejection:', ev.reason);
+  });
+
   // API endpoints
   const API_GET = '../api/get_tables.php';
   const API_UPDATE = '../api/update_table.php';
@@ -82,11 +92,12 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: Number(tableId), status: newStatus })
       });
-      const j = await res.json();
+      const j = await res.json().catch(e => { throw new Error('Invalid JSON response from update_table.php: ' + e.message); });
       if (!j.success) throw new Error(j.error || 'Update failed');
       await loadTables();
       if (typeof refreshCallback === 'function') refreshCallback();
     } catch (err) {
+      console.error('changeTableStatus error', err);
       alert('Failed to change cabin status: ' + err.message);
     }
   }
@@ -111,20 +122,29 @@ document.addEventListener('DOMContentLoaded', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    const j = await res.json();
+    const j = await res.json().catch(e => { throw new Error('Invalid JSON response from create_reservation.php: ' + e.message); });
     if (!j.success) throw new Error(j.error || 'Create reservation failed');
     return j;
   }
 
   // --- Time monitors ---
   let _timeMonitorInterval = null;
-  // Track notifications in-memory (cron should use DB notified_at for persistent)
   const notifiedReservations = new Set();
 
   function startTimeMonitors() {
     stopTimeMonitors();
-    updateTimeMonitors();
-    _timeMonitorInterval = setInterval(updateTimeMonitors, 30 * 1000);
+    try {
+      if (typeof updateTimeMonitors === 'function') updateTimeMonitors();
+    } catch (e) {
+      console.error('updateTimeMonitors call failed during startTimeMonitors:', e);
+    }
+    _timeMonitorInterval = setInterval(() => {
+      try {
+        if (typeof updateTimeMonitors === 'function') updateTimeMonitors();
+      } catch (e) {
+        console.error('updateTimeMonitors threw in interval:', e);
+      }
+    }, 30 * 1000);
   }
   function stopTimeMonitors() {
     if (_timeMonitorInterval) {
@@ -206,70 +226,76 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function triggerEndNotification(reservationId, cabinName, endDtStr) {
-    if (reservationId && notifiedReservations.has(String(reservationId))) return;
-    if (reservationId) notifiedReservations.add(String(reservationId));
-
-    const title = `Cabin time ended`;
-    const body = cabinName ? `${cabinName} reservation has ended${endDtStr ? ' at ' + endDtStr : ''}.` : `A reservation has ended.`;
-    showToast(`${body}`, { background: '#c62828' });
-    playBeep();
-
     try {
+      if (reservationId && notifiedReservations.has(String(reservationId))) return;
+      if (reservationId) notifiedReservations.add(String(reservationId));
+
+      const title = `Cabin time ended`;
+      const body = cabinName ? `${cabinName} reservation has ended${endDtStr ? ' at ' + endDtStr : ''}.` : `A reservation has ended.`;
+      showToast(`${body}`, { background: '#c62828' });
+      playBeep();
+
       const allowed = await ensureNotificationPermission();
       if (allowed) {
         const n = new Notification(title, { body, tag: 'cabin-end-' + (reservationId || Math.random()) });
         n.onclick = () => { try { window.focus(); } catch (e) {} };
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('triggerEndNotification error', e);
+    }
   }
 
   function updateTimeMonitors() {
     const nodes = document.querySelectorAll('.time-monitor');
     const now = new Date();
     nodes.forEach(el => {
-      const start = el.dataset.start;
-      const end = el.dataset.end;
-      if (!start && !end) {
-        el.textContent = '';
-        return;
-      }
-      const startIso = start ? start.replace(' ', 'T') : null;
-      const endIso = end ? end.replace(' ', 'T') : null;
-      const dStart = startIso ? new Date(startIso) : null;
-      const dEnd = endIso ? new Date(endIso) : null;
+      try {
+        const start = el.dataset.start;
+        const end = el.dataset.end;
+        if (!start && !end) {
+          el.textContent = '';
+          return;
+        }
+        const startIso = start ? start.replace(' ', 'T') : null;
+        const endIso = end ? end.replace(' ', 'T') : null;
+        const dStart = startIso ? new Date(startIso) : null;
+        const dEnd = endIso ? new Date(endIso) : null;
 
-      if (dStart && now < dStart) {
-        const ms = dStart - now;
-        el.textContent = `Starts in ${formatDuration(ms)}`;
-        el.classList.remove('ongoing');
-        el.classList.remove('ended');
-      } else if (dStart && dEnd && now >= dStart && now <= dEnd) {
-        const ms = dEnd - now;
-        el.textContent = `Ends in ${formatDuration(ms)}`;
-        el.classList.add('ongoing');
-        el.classList.remove('ended');
-      } else if (dEnd && now > dEnd) {
-        const ms = now - dEnd;
-        el.textContent = `Ended ${formatDuration(ms)} ago`;
-        el.classList.remove('ongoing');
-        el.classList.add('ended');
-        const resId = el.dataset.reservationId || el.dataset.resId || '';
-        const cabinName = el.dataset.cabinName || el.dataset.tableName || '';
-        if (resId) {
-          if (!notifiedReservations.has(String(resId))) {
-            triggerEndNotification(resId, cabinName, (dEnd ? dEnd.toLocaleString() : ''));
+        if (dStart && now < dStart) {
+          const ms = dStart - now;
+          el.textContent = `Starts in ${formatDuration(ms)}`;
+          el.classList.remove('ongoing');
+          el.classList.remove('ended');
+        } else if (dStart && dEnd && now >= dStart && now <= dEnd) {
+          const ms = dEnd - now;
+          el.textContent = `Ends in ${formatDuration(ms)}`;
+          el.classList.add('ongoing');
+          el.classList.remove('ended');
+        } else if (dEnd && now > dEnd) {
+          const ms = now - dEnd;
+          el.textContent = `Ended ${formatDuration(ms)} ago`;
+          el.classList.remove('ongoing');
+          el.classList.add('ended');
+          const resId = el.dataset.reservationId || el.dataset.resId || '';
+          const cabinName = el.dataset.cabinName || el.dataset.tableName || '';
+          if (resId) {
+            if (!notifiedReservations.has(String(resId))) {
+              triggerEndNotification(resId, cabinName, (dEnd ? dEnd.toLocaleString() : ''));
+            }
+          } else {
+            const key = `no-res-${cabinName}-${el.dataset.end}`;
+            if (!notifiedReservations.has(key)) {
+              notifiedReservations.add(key);
+              triggerEndNotification(key, cabinName, (dEnd ? dEnd.toLocaleString() : ''));
+            }
           }
         } else {
-          const key = `no-res-${cabinName}-${el.dataset.end}`;
-          if (!notifiedReservations.has(key)) {
-            notifiedReservations.add(key);
-            triggerEndNotification(key, cabinName, (dEnd ? dEnd.toLocaleString() : ''));
-          }
+          el.textContent = '';
+          el.classList.remove('ongoing');
+          el.classList.remove('ended');
         }
-      } else {
-        el.textContent = '';
-        el.classList.remove('ongoing');
-        el.classList.remove('ended');
+      } catch (e) {
+        console.error('Error while updating single time-monitor element:', e, el);
       }
     });
   }
@@ -325,41 +351,47 @@ document.addEventListener('DOMContentLoaded', () => {
         // Unified choice handler for All view (tbl variable)
         statusBtn.addEventListener('click', async (e) => {
           e.stopPropagation();
-          const current = tbl.status || 'available';
-          const choice = prompt('Change status to: (r)eserved, (o)ccupied (set timer), (a)vailable? Enter r / o / a and press OK. Cancel to abort.');
-          if (choice === null) return;
-          const c = String(choice).trim().toLowerCase();
-          const tableId = tbl.id;
+          try {
+            const current = tbl.status || 'available';
+            const choice = prompt('Change status to: (r)eserved, (o)ccupied (set timer), (a)vailable? Enter r / o / a and press OK. Cancel to abort.');
+            if (choice === null) return;
+            const c = String(choice).trim().toLowerCase();
+            const tableId = tbl.id;
 
-          if (c === 'r') {
-            if (!confirm(`Change status of "${tbl.name}" from "${current}" to "reserved"?`)) return;
-            await changeTableStatus(tableId, 'reserved', () => renderView());
-            return;
-          } else if (c === 'o') {
-            const durInput = prompt('Set occupied duration in minutes (e.g. 90). Leave blank to mark occupied without timer:');
-            if (durInput === null) return;
-            const minutes = durInput.trim() === '' ? 0 : parseInt(durInput.trim(), 10);
-            if (!isNaN(minutes) && minutes > 0) {
-              const guest = prompt('Guest name (optional):') || '';
-              try {
-                await createReservationNow(tableId, minutes, guest);
+            if (c === 'r') {
+              if (!confirm(`Change status of "${tbl.name}" from "${current}" to "reserved"?`)) return;
+              await changeTableStatus(tableId, 'reserved', () => renderView());
+              return;
+            } else if (c === 'o') {
+              const durInput = prompt('Set occupied duration in minutes (e.g. 90). Leave blank to mark occupied without timer:');
+              if (durInput === null) return;
+              const minutes = durInput.trim() === '' ? 0 : parseInt(durInput.trim(), 10);
+              if (!isNaN(minutes) && minutes > 0) {
+                const guest = prompt('Guest name (optional):') || '';
+                try {
+                  await createReservationNow(tableId, minutes, guest);
+                  await changeTableStatus(tableId, 'occupied', () => renderView());
+                } catch (err) {
+                  console.error('createReservationNow failed', err);
+                  alert('Failed to create reservation and mark occupied: ' + err.message);
+                }
+                return;
+              } else {
+                if (!confirm(`Mark "${tbl.name}" as occupied without timer?`)) return;
                 await changeTableStatus(tableId, 'occupied', () => renderView());
-              } catch (err) {
-                alert('Failed to create reservation and mark occupied: ' + err.message);
+                return;
               }
+            } else if (c === 'a') {
+              if (!confirm(`Change status of "${tbl.name}" from "${current}" to "available"?`)) return;
+              await changeTableStatus(tableId, 'available', () => renderView());
               return;
             } else {
-              if (!confirm(`Mark "${tbl.name}" as occupied without timer?`)) return;
-              await changeTableStatus(tableId, 'occupied', () => renderView());
+              alert('No action taken. Enter r, o, or a next time (or cancel).');
               return;
             }
-          } else if (c === 'a') {
-            if (!confirm(`Change status of "${tbl.name}" from "${current}" to "available"?`)) return;
-            await changeTableStatus(tableId, 'available', () => renderView());
-            return;
-          } else {
-            alert('No action taken. Enter r, o, or a next time (or cancel).');
-            return;
+          } catch (err) {
+            console.error('status button handler error (All view):', err);
+            alert('An error occurred: ' + (err && err.message ? err.message : err));
           }
         });
       }
@@ -511,16 +543,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadTableStatusForDate(date) {
     const grid = document.getElementById('tableStatusGrid');
-    if (!grid) return;
+    if (!grid) {
+      console.error('loadTableStatusForDate: #tableStatusGrid not found in DOM');
+      return;
+    }
     grid.innerHTML = 'Loading...';
     try {
       const res = await fetch(`${API_GET_STATUS_BY_DATE}?date=${encodeURIComponent(date)}`);
-      const json = await res.json();
+      const json = await res.json().catch(e => { throw new Error('Invalid JSON from get_table_status_by_date.php: ' + e.message); });
       if (!json.success) throw new Error(json.error || 'API failed');
       const tables = json.data;
       grid.innerHTML = '';
 
-      ['available', 'reserved', 'occupied'].forEach(status => {
+      ['available', 'reserved', 'occupied'].forEach(  status => {
         const list = tables.filter(t => t.status === status);
         if (!list.length) return;
         const header = document.createElement('div');
@@ -556,70 +591,88 @@ document.addEventListener('DOMContentLoaded', () => {
             // Handler for Date view (t variable)
             statusBtn.addEventListener('click', async (ev) => {
               ev.stopPropagation();
-              const current = t.status || 'available';
-              const choice = prompt('Change status to: (r)eserved, (o)ccupied (set timer), (a)vailable? Enter r / o / a and press OK. Cancel to abort.');
-              if (choice === null) return;
-              const c = String(choice).trim().toLowerCase();
-              const tableId = t.table_id || t.id;
-              if (c === 'r') {
-                if (!confirm(`Change status of "${t.name}" from "${current}" to "reserved"?`)) return;
-                await changeTableStatus(tableId, 'reserved', () => {
-                  if (state.time) loadTableStatusForDateTime(state.date, state.time);
-                  else loadTableStatusForDate(state.date);
-                });
-                return;
-              } else if (c === 'o') {
-                const durInput = prompt('Set occupied duration in minutes (e.g. 90). Leave blank to mark occupied without timer:');
-                if (durInput === null) return;
-                const minutes = durInput.trim() === '' ? 0 : parseInt(durInput.trim(), 10);
-                if (!isNaN(minutes) && minutes > 0) {
-                  const guest = prompt('Guest name (optional):') || '';
-                  try {
-                    await createReservationNow(tableId, minutes, guest);
-                    await changeTableStatus(tableId, 'occupied', () => {
-                      if (state.time) loadTableStatusForDateTime(state.date, state.time);
-                      else loadTableStatusForDate(state.date);
-                    });
-                  } catch (err) {
-                    alert('Failed to create reservation and mark occupied: ' + err.message);
-                  }
-                  return;
-                } else {
-                  if (!confirm(`Mark "${t.name}" as occupied without timer?`)) return;
-                  await changeTableStatus(tableId, 'occupied', () => {
+              try {
+                const current = t.status || 'available';
+                const choice = prompt('Change status to: (r)eserved, (o)ccupied (set timer), (a)vailable? Enter r / o / a and press OK. Cancel to abort.');
+                if (choice === null) return;
+                const c = String(choice).trim().toLowerCase();
+                const tableId = t.table_id || t.id;
+                if (c === 'r') {
+                  if (!confirm(`Change status of "${t.name}" from "${current}" to "reserved"?`)) return;
+                  await changeTableStatus(tableId, 'reserved', () => {
                     if (state.time) loadTableStatusForDateTime(state.date, state.time);
                     else loadTableStatusForDate(state.date);
                   });
                   return;
+                } else if (c === 'o') {
+                  const durInput = prompt('Set occupied duration in minutes (e.g. 90). Leave blank to mark occupied without timer:');
+                  if (durInput === null) return;
+                  const minutes = durInput.trim() === '' ? 0 : parseInt(durInput.trim(), 10);
+                  if (!isNaN(minutes) && minutes > 0) {
+                    const guest = prompt('Guest name (optional):') || '';
+                    try {
+                      await createReservationNow(tableId, minutes, guest);
+                      await changeTableStatus(tableId, 'occupied', () => {
+                        if (state.time) loadTableStatusForDateTime(state.date, state.time);
+                        else loadTableStatusForDate(state.date);
+                      });
+                    } catch (err) {
+                      console.error('createReservationNow failed (Date view)', err);
+                      alert('Failed to create reservation and mark occupied: ' + err.message);
+                    }
+                    return;
+                  } else {
+                    if (!confirm(`Mark "${t.name}" as occupied without timer?`)) return;
+                    await changeTableStatus(tableId, 'occupied', () => {
+                      if (state.time) loadTableStatusForDateTime(state.date, state.time);
+                      else loadTableStatusForDate(state.date);
+                    });
+                    return;
+                  }
+                } else if (c === 'a') {
+                  if (!confirm(`Change status of "${t.name}" from "${current}" to "available"?`)) return;
+                  await changeTableStatus(tableId, 'available', () => {
+                    if (state.time) loadTableStatusForDateTime(state.date, state.time);
+                    else loadTableStatusForDate(state.date);
+                  });
+                  return;
+                } else {
+                  alert('No action taken. Enter r, o, or a next time (or cancel).');
+                  return;
                 }
-              } else if (c === 'a') {
-                if (!confirm(`Change status of "${t.name}" from "${current}" to "available"?`)) return;
-                await changeTableStatus(tableId, 'available', () => {
-                  if (state.time) loadTableStatusForDateTime(state.date, state.time);
-                  else loadTableStatusForDate(state.date);
-                });
-                return;
-              } else {
-                alert('No action taken. Enter r, o, or a next time (or cancel).');
-                return;
+              } catch (err) {
+                console.error('status button handler error (Date view):', err);
+                alert('An error occurred: ' + (err && err.message ? err.message : err));
               }
             });
           }
         });
+      });
+      // call updateTimeMonitors safely
+      try {
+        if (typeof updateTimeMonitors === 'function') updateTimeMonitors();
+      } catch (e) {
+        console.error('updateTimeMonitors threw after rendering date view:', e);
       }
-      updateTimeMonitors();
     } catch (err) {
-      grid.innerHTML = `<div style="color:#900">Error loading cabins for date: ${escapeHtml(err.message)}</div>`;
+      if (grid) {
+        grid.innerHTML = `<div style="color:#900">Error loading cabins for date: ${escapeHtml(err.message)}</div>`;
+      } else {
+        console.error('Error loading cabins for date and grid missing:', err);
+      }
     }
   }
 
   async function loadTableStatusForDateTime(date, time) {
     const grid = document.getElementById('tableStatusGrid');
-    if (!grid) return;
+    if (!grid) {
+      console.error('loadTableStatusForDateTime: #tableStatusGrid not found in DOM');
+      return;
+    }
     grid.innerHTML = 'Loading...';
     try {
       const res = await fetch(`../api/get_availability.php?date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`);
-      const json = await res.json();
+      const json = await res.json().catch(e => { throw new Error('Invalid JSON from get_availability.php: ' + e.message); });
       if (!json.success) throw new Error(json.error || 'API failed');
       const tables = json.data;
       grid.innerHTML = '';
@@ -659,49 +712,64 @@ document.addEventListener('DOMContentLoaded', () => {
             // Handler for Time view (t variable)
             statusBtn.addEventListener('click', async (ev) => {
               ev.stopPropagation();
-              const current = t.status || 'available';
-              const choice = prompt('Change status to: (r)eserved, (o)ccupied (set timer), (a)vailable? Enter r / o / a and press OK. Cancel to abort.');
-              if (choice === null) return;
-              const c = String(choice).trim().toLowerCase();
-              const tableId = t.id;
-              if (c === 'r') {
-                if (!confirm(`Change status of "${t.name}" from "${current}" to "reserved"?`)) return;
-                await changeTableStatus(tableId, 'reserved', () => loadTableStatusForDateTime(state.date, state.time));
-                return;
-              } else if (c === 'o') {
-                const durInput = prompt('Set occupied duration in minutes (e.g. 90). Leave blank to mark occupied without timer:');
-                if (durInput === null) return;
-                const minutes = durInput.trim() === '' ? 0 : parseInt(durInput.trim(), 10);
-                if (!isNaN(minutes) && minutes > 0) {
-                  const guest = prompt('Guest name (optional):') || '';
-                  try {
-                    await createReservationNow(tableId, minutes, guest);
+              try {
+                const current = t.status || 'available';
+                const choice = prompt('Change status to: (r)eserved, (o)ccupied (set timer), (a)vailable? Enter r / o / a and press OK. Cancel to abort.');
+                if (choice === null) return;
+                const c = String(choice).trim().toLowerCase();
+                const tableId = t.id;
+                if (c === 'r') {
+                  if (!confirm(`Change status of "${t.name}" from "${current}" to "reserved"?`)) return;
+                  await changeTableStatus(tableId, 'reserved', () => loadTableStatusForDateTime(state.date, state.time));
+                  return;
+                } else if (c === 'o') {
+                  const durInput = prompt('Set occupied duration in minutes (e.g. 90). Leave blank to mark occupied without timer:');
+                  if (durInput === null) return;
+                  const minutes = durInput.trim() === '' ? 0 : parseInt(durInput.trim(), 10);
+                  if (!isNaN(minutes) && minutes > 0) {
+                    const guest = prompt('Guest name (optional):') || '';
+                    try {
+                      await createReservationNow(tableId, minutes, guest);
+                      await changeTableStatus(tableId, 'occupied', () => loadTableStatusForDateTime(state.date, state.time));
+                    } catch (err) {
+                      console.error('createReservationNow failed (Time view)', err);
+                      alert('Failed to create reservation and mark occupied: ' + err.message);
+                    }
+                    return;
+                  } else {
+                    if (!confirm(`Mark "${t.name}" as occupied without timer?`)) return;
                     await changeTableStatus(tableId, 'occupied', () => loadTableStatusForDateTime(state.date, state.time));
-                  } catch (err) {
-                    alert('Failed to create reservation and mark occupied: ' + err.message);
+                    return;
                   }
+                } else if (c === 'a') {
+                  if (!confirm(`Change status of "${t.name}" from "${current}" to "available"?`)) return;
+                  await changeTableStatus(tableId, 'available', () => loadTableStatusForDateTime(state.date, state.time));
                   return;
                 } else {
-                  if (!confirm(`Mark "${t.name}" as occupied without timer?`)) return;
-                  await changeTableStatus(tableId, 'occupied', () => loadTableStatusForDateTime(state.date, state.time));
+                  alert('No action taken. Enter r, o, or a next time (or cancel).');
                   return;
                 }
-              } else if (c === 'a') {
-                if (!confirm(`Change status of "${t.name}" from "${current}" to "available"?`)) return;
-                await changeTableStatus(tableId, 'available', () => loadTableStatusForDateTime(state.date, state.time));
-                return;
-              } else {
-                alert('No action taken. Enter r, o, or a next time (or cancel).');
-                return;
+              } catch (err) {
+                console.error('status button handler error (Time view):', err);
+                alert('An error occurred: ' + (err && err.message ? err.message : err));
               }
             });
           }
         });
       });
 
-      updateTimeMonitors();
+      // call updateTimeMonitors safely
+      try {
+        if (typeof updateTimeMonitors === 'function') updateTimeMonitors();
+      } catch (e) {
+        console.error('updateTimeMonitors threw after rendering time view:', e);
+      }
     } catch (err) {
-      grid.innerHTML = `<div style="color:#900">Error loading cabins for date/time: ${escapeHtml(err.message)}</div>`;
+      if (grid) {
+        grid.innerHTML = `<div style="color:#900">Error loading cabins for date/time: ${escapeHtml(err.message)}</div>`;
+      } else {
+        console.error('Error loading cabins for date/time and grid missing:', err);
+      }
     }
   }
 
@@ -809,7 +877,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stopTimeMonitors();
   }
 
-  // Modals & actions
+  // Modals & actions (unchanged)
   function openEditModal(table) {
     const isNew = !table || !table.id;
     const overlay = document.createElement('div');
@@ -999,7 +1067,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnAddReservation')?.addEventListener('click', e => { e.preventDefault(); openNewTableModal(); });
   document.getElementById('fabNew')?.addEventListener('click', e => { e.preventDefault(); openNewTableModal(); });
 
-  // modal CSS
+  // modal CSS injection (unchanged)
   (function injectModalCss() {
     if (document.getElementById('modal-styles')) return;
     const css = `
@@ -1026,8 +1094,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadTables() {
     try {
       const res = await fetch(API_GET, { cache: 'no-store' });
-      if (!res.ok) throw new Error('Network response was not ok: ' + res.status);
-      const json = await res.json();
+      const json = await res.json().catch(e => { throw new Error('Invalid JSON from get_tables.php: ' + e.message); });
       if (!json.success) throw new Error(json.error || 'Failed to load cabins');
       tablesData = json.data.map(t => ({
         id: Number(t.id),
@@ -1038,6 +1105,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }));
       renderView();
     } catch (err) {
+      console.error('loadTables error', err);
       tablesData = [
         { id: 1, name: 'Cabin 1', status: 'occupied', seats: 6, guest: 'Taenamo Jiro' },
         { id: 2, name: 'Cabin 2', status: 'reserved', seats: 4, guest: 'WOwmsi' },

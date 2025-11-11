@@ -8,21 +8,14 @@
 //   guest (string, optional)
 //   duration (minutes, optional, default 90)
 //   party_size (int, optional)
-//
-// Response:
-//   { success: true, id: <reservation id> }
-// or
-//   { success: false, error: "message" }
-
+//   status (optional) - 'reserved' or 'occupied' (default 'reserved')
 header('Content-Type: application/json; charset=utf-8');
 
-// DEV: show errors (disable in production)
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/db.php';
 
-// Read input (JSON preferred)
 $raw = file_get_contents('php://input');
 $input = [];
 if ($raw) {
@@ -31,8 +24,6 @@ if ($raw) {
         $input = $decoded;
     }
 }
-
-// Fallback to form data
 if (empty($input)) {
     $input = $_POST;
 }
@@ -43,8 +34,13 @@ $start_time = isset($input['start_time']) ? trim($input['start_time']) : '';
 $guest      = isset($input['guest']) ? trim($input['guest']) : '';
 $duration   = isset($input['duration']) ? (int)$input['duration'] : 90;
 $party_size = isset($input['party_size']) ? (int)$input['party_size'] : null;
+$status     = isset($input['status']) ? trim($input['status']) : 'reserved';
 
-// Basic validation
+$allowedStatuses = ['reserved','occupied','cancelled','completed'];
+if (!in_array($status, $allowedStatuses, true)) {
+    $status = 'reserved';
+}
+
 if ($table_id <= 0) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Invalid table_id']);
@@ -56,7 +52,7 @@ if ($date === '' || $start_time === '') {
     exit;
 }
 
-// Validate date format YYYY-MM-DD
+// validate date
 $dtDate = DateTime::createFromFormat('Y-m-d', $date);
 if ($dtDate === false) {
     http_response_code(400);
@@ -64,10 +60,10 @@ if ($dtDate === false) {
     exit;
 }
 
-// Parse start datetime
+// parse start datetime (accept "HH:MM" 24h)
 $dtStart = DateTime::createFromFormat('Y-m-d H:i', $date . ' ' . $start_time);
 if ($dtStart === false) {
-    // Try common alternative formats
+    // try fallback formats
     $dtStart = DateTime::createFromFormat('Y-m-d g:i A', $date . ' ' . $start_time);
     if ($dtStart === false) {
         http_response_code(400);
@@ -79,13 +75,13 @@ if ($dtStart === false) {
 $dtEnd = clone $dtStart;
 $dtEnd->modify('+' . max(1, $duration) . ' minutes');
 
-$start_dt = $dtStart->format('Y-m-d H:i:00'); // for datetime fields
+$start_dt = $dtStart->format('Y-m-d H:i:00'); // datetime
 $end_dt   = $dtEnd->format('Y-m-d H:i:00');
 $start_time_only = $dtStart->format('H:i:00');
 $end_time_only   = $dtEnd->format('H:i:00');
 
 try {
-    // Check table exists (optional but helpful)
+    // ensure table exists
     $stmt = $pdo->prepare("SELECT id FROM `tables` WHERE id = :id LIMIT 1");
     $stmt->execute([':id' => $table_id]);
     $tbl = $stmt->fetch();
@@ -95,8 +91,7 @@ try {
         exit;
     }
 
-    // Check for overlapping reservations for same table:
-    // Overlap if NOT (r.end <= requested_start OR r.start >= requested_end)
+    // check overlapping reservations
     $sqlCheck = "
         SELECT COUNT(*) AS cnt
         FROM reservations r
@@ -117,9 +112,7 @@ try {
         exit;
     }
 
-    // Insert reservation
-    // The reservations table in your project appears to use both date/start_time/end_time and start/end (datetimes).
-    // This insert attempts to populate both sets of columns. Adjust column names if your schema differs.
+    // insert (populate both time-only and datetime columns)
     $sqlInsert = "
         INSERT INTO reservations
           (table_id, date, start_time, end_time, `start`, `end`, guest, party_size, status, created_at)
@@ -136,10 +129,17 @@ try {
         ':end_dt'     => $end_dt,
         ':guest'      => $guest,
         ':party_size' => $party_size ?: null,
-        ':status'     => 'reserved'
+        ':status'     => $status
     ]);
 
     $newId = (int)$pdo->lastInsertId();
+
+    // optional: if status == 'occupied', update table.status immediately
+    if ($status === 'occupied') {
+        $upd = $pdo->prepare("UPDATE `tables` SET `status` = 'occupied', `guest` = :guest WHERE id = :id");
+        $upd->execute([':id' => $table_id, ':guest' => $guest]);
+    }
+
     echo json_encode(['success' => true, 'id' => $newId]);
     exit;
 } catch (Exception $e) {
@@ -147,4 +147,3 @@ try {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     exit;
 }
-?>
