@@ -1,549 +1,341 @@
 /**
- * app-payment.js — Complete payment modal + save+print flow
- *
- * - Builds a payment modal (Cash / GCash / Bank Transfer)
- * - Reads order and totals robustly (window.appActions.gatherCartForPayload, window.getOrder, window.order, DOM fallback)
- * - Posts to php/save_and_print.php (saves into sales_report & sales_items)
- * - Opens php/print_receipt_payment.php?sales_id=ID to print (or uses appActions.preparePrintAndOpen if present)
- * - Handles non-JSON server responses (shows server HTML error in new window for debugging)
- * - Keeps order clearing compatible (clearOrder(), window.clearOrder, renderOrder())
- *
- * Save as ClubTryara/js/app-payment.js and hard-refresh (Ctrl+F5).
+ * app-payment.js — Complete payment modal + save+print flow (cash/change + discount fixed + no “module not available” alert)
  */
-
 (function () {
   'use strict';
+  function $id(id){return document.getElementById(id);}
 
-  // small helper
-  function $id(id) { return document.getElementById(id); }
-
-  // ----------------------
-  // Order / totals helpers
-  // ----------------------
-  async function fetchServerRatesOnce() {
-    if (window._app_payment_rates) return window._app_payment_rates;
-    let serviceRate = 0.10, taxRate = 0.12;
-    try {
-      const res = await fetch('api/get_settings.php', { cache: 'no-store', credentials: 'same-origin' });
-      if (res.ok) {
-        const s = await res.json();
-        serviceRate = (Number(s.service_charge) || (serviceRate * 100)) / 100;
-        taxRate = (Number(s.tax) || (taxRate * 100)) / 100;
+  async function fetchServerRatesOnce(){
+    if(window._app_payment_rates)return window._app_payment_rates;
+    let sR=0.10,tR=0.12;
+    try{
+      const r=await fetch('api/get_settings.php',{cache:'no-store',credentials:'same-origin'});
+      if(r.ok){
+        const s=await r.json();
+        sR=(Number(s.service_charge)||10)/100;
+        tR=(Number(s.tax)||12)/100;
       }
-    } catch (e) {
-      // ignore and use defaults
-    }
-    window._app_payment_rates = { serviceRate, taxRate };
+    }catch(e){}
+    window._app_payment_rates={serviceRate:sR,taxRate:tR};
     return window._app_payment_rates;
   }
 
-  // Try multiple ways to read order array across different app variants
-  function readOrderArrayBestEffort() {
-    try {
-      if (window.appActions && typeof window.appActions.gatherCartForPayload === 'function') {
-        const raw = window.appActions.gatherCartForPayload();
-        if (Array.isArray(raw)) return raw;
+  function readOrderArrayBestEffort(){
+    try{
+      if(window.appActions&&typeof window.appActions.gatherCartForPayload==='function'){
+        const raw=window.appActions.gatherCartForPayload();
+        if(Array.isArray(raw))return raw;
       }
-    } catch (e) { /* ignore */ }
-
-    try {
-      if (typeof window.getOrder === 'function') {
-        const ord = window.getOrder();
-        if (Array.isArray(ord)) return ord;
+    }catch(e){}
+    try{
+      if(typeof window.getOrder==='function'){
+        const o=window.getOrder();
+        if(Array.isArray(o))return o;
       }
-    } catch (e) { /* ignore */ }
-
-    if (Array.isArray(window.order)) return window.order;
-
-    // DOM fallback - parse the rendered order list (best-effort)
-    try {
-      const rows = document.querySelectorAll('#orderList .order-item');
-      if (!rows || rows.length === 0) return [];
-      const out = [];
-      rows.forEach(r => {
-        const nameEl = r.querySelector('.order-item-name');
-        const qtyEl = r.querySelector('.order-qty-input');
-        const priceEl = r.querySelector('.order-line-price');
-        const name = nameEl ? nameEl.textContent.trim() : '';
-        const qty = qtyEl ? Number(qtyEl.value || qtyEl.textContent || 1) : 1;
-        // get numeric price from data attribute set by setupPriceToggle (we set dataset.pricePhp there)
-        let line_total = 0;
-        if (priceEl && priceEl.dataset && priceEl.dataset.pricePhp) line_total = Number(priceEl.dataset.pricePhp || 0);
-        else if (priceEl) line_total = Number((priceEl.textContent || '').replace(/[^\d.-]/g, '')) || 0;
-        const id = r.dataset && r.dataset.id ? Number(r.dataset.id) : null;
-        const unit_price = qty ? (line_total / qty) : 0;
-        out.push({
-          id: id,
-          name: name,
-          qty: qty,
-          price: unit_price,
-          line_total: line_total
-        });
+    }catch(e){}
+    if(Array.isArray(window.order))return window.order;
+    try{
+      const rows=document.querySelectorAll('#orderList .order-item');
+      if(!rows.length)return[];
+      const out=[];
+      rows.forEach(r=>{
+        const name=r.querySelector('.order-item-name')?.textContent.trim()||'';
+        const qty=Number(r.querySelector('.order-qty-input')?.value||1);
+        const priceEl=r.querySelector('.order-item-price');
+        let line=0;
+        if(priceEl?.dataset?.pricePhp)line=Number(priceEl.dataset.pricePhp);
+        else line=Number((priceEl?.textContent||'').replace(/[^\d.-]/g,''))||0;
+        const id=r.dataset?.id?Number(r.dataset.id):null;
+        const unit=qty?line/qty:0;
+        out.push({id,name,qty,price:unit,line_total:line});
       });
       return out;
-    } catch (e) {
-      return [];
-    }
+    }catch(e){return[];}
   }
 
-  // compute totals (tries computeNumbers if available)
-  async function computeTotalsFromOrder() {
-    try {
-      if (typeof window.computeNumbers === 'function') {
-        const n = window.computeNumbers();
-        if (n && typeof n.payable !== 'undefined') return n;
+  async function computeTotalsFromOrder(){
+    try{
+      if(typeof window.computeNumbers==='function'){
+        const n=window.computeNumbers();
+        if(n&&typeof n.payable!=='undefined')return n;
       }
-    } catch (e) { /* ignore */ }
-
-    const ord = readOrderArrayBestEffort();
-    if (!Array.isArray(ord) || ord.length === 0) return { subtotal: 0, serviceCharge: 0, tax: 0, discountAmount: 0, tablePrice: 0, payable: 0 };
-
-    const rates = await fetchServerRatesOnce();
-    let subtotal = 0;
-    for (const it of ord) {
-      const qty = Number(it.qty || it.quantity || 1);
-      const unit = Number(it.unit_price ?? it.price ?? it.amount ?? 0);
-      const line = Number(it.line_total ?? (qty * unit));
-      subtotal += (isNaN(line) ? qty * unit : line);
+    }catch(e){}
+    const ord=readOrderArrayBestEffort();
+    if(!ord.length)return{subtotal:0,serviceCharge:0,tax:0,discountAmount:0,tablePrice:0,payable:0};
+    const rates=await fetchServerRatesOnce();
+    let subtotal=0;
+    for(const it of ord){
+      const q=Number(it.qty||1),u=Number(it.price||0);
+      subtotal+=q*u;
     }
-    const serviceCharge = subtotal * (rates.serviceRate || 0.10);
-    const tax = subtotal * (rates.taxRate || 0.12);
-    const discountAmount = 0;
-    const tablePrice = parseFloat(document.body.dataset.reservedTablePrice) || 0;
-    const payable = subtotal + serviceCharge + tax - discountAmount + tablePrice;
-    const round = v => Math.round((Number(v) + Number.EPSILON) * 100) / 100;
-    return {
-      subtotal: round(subtotal),
-      serviceCharge: round(serviceCharge),
-      tax: round(tax),
-      discountAmount: round(discountAmount),
-      tablePrice: round(tablePrice),
-      payable: round(payable)
-    };
+    const svc=subtotal*(rates.serviceRate||0.10),
+          tax=subtotal*(rates.taxRate||0.12),
+          disc=subtotal*(window.discountRate||0),
+          tbl=parseFloat(document.body.dataset.reservedTablePrice)||0,
+          pay=subtotal+svc+tax-disc+tbl;
+    const r=v=>Math.round((Number(v)+Number.EPSILON)*100)/100;
+    return{subtotal:r(subtotal),serviceCharge:r(svc),tax:r(tax),discountAmount:r(disc),tablePrice:r(tbl),payable:r(pay)};
   }
 
-  // ----------------------
-  // Payment modal builder
-  // ----------------------
-  function createPaymentModal() {
-    // single instance
-    if ($id('paymentModal')) return $id('paymentModal');
+  function createPaymentModal(){
+    if($id('paymentModal'))return $id('paymentModal');
+    const overlay=document.createElement('div');
+    overlay.id='paymentModal';
+    overlay.style='position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:99999;';
+    const card=document.createElement('div');
+    card.style='width:820px;max-width:98%;max-height:92vh;overflow:auto;background:#fff;border-radius:12px;padding:20px;box-shadow:0 12px 36px rgba(0,0,0,0.35);';
+    const header=document.createElement('div');
+    header.style='display:flex;justify-content:space-between;align-items:center;';
+    const t=document.createElement('div');t.textContent='How would you like to pay?';t.style='font-weight:800;font-size:18px;';
+    const x=document.createElement('button');x.innerHTML='&times;';x.style='font-size:22px;border:none;background:transparent;cursor:pointer;';x.onclick=()=>overlay.remove();
+    header.append(t,x);card.append(header);
 
-    const overlay = document.createElement('div');
-    overlay.id = 'paymentModal';
-    overlay.style.position = 'fixed';
-    overlay.style.left = 0; overlay.style.top = 0; overlay.style.right = 0; overlay.style.bottom = 0;
-    overlay.style.background = 'rgba(0,0,0,0.45)';
-    overlay.style.display = 'flex';
-    overlay.style.alignItems = 'center';
-    overlay.style.justifyContent = 'center';
-    overlay.style.zIndex = 99999;
-
-    const card = document.createElement('div');
-    card.style.width = '820px';
-    card.style.maxWidth = '98%';
-    card.style.maxHeight = '92vh';
-    card.style.overflow = 'auto';
-    card.style.background = '#fff';
-    card.style.borderRadius = '12px';
-    card.style.padding = '20px';
-    card.style.boxSizing = 'border-box';
-    card.style.boxShadow = '0 12px 36px rgba(0,0,0,0.35)';
-    card.setAttribute('role', 'dialog');
-    card.setAttribute('aria-modal', 'true');
-
-    // header
-    const header = document.createElement('div');
-    header.style.display = 'flex'; header.style.justifyContent = 'space-between'; header.style.alignItems = 'center';
-    const title = document.createElement('div'); title.textContent = 'How would you like to pay?'; title.style.fontWeight = 800; title.style.fontSize = '18px';
-    const closeBtn = document.createElement('button'); closeBtn.innerHTML = '&times;'; closeBtn.style.fontSize = '22px'; closeBtn.style.border='none'; closeBtn.style.background='transparent'; closeBtn.style.cursor='pointer';
-    closeBtn.setAttribute('aria-label','Close'); closeBtn.addEventListener('click', () => overlay.remove());
-    header.appendChild(title); header.appendChild(closeBtn);
-    card.appendChild(header);
-
-    // methods
-    const methodsRow = document.createElement('div');
-    methodsRow.style.display = 'flex'; methodsRow.style.gap = '10px'; methodsRow.style.marginTop = '14px';
-    const methods = ['Cash','GCash','Bank Transfer'];
-    const methodButtons = {};
-    methods.forEach(m => {
-      const b = document.createElement('button');
-      b.type = 'button'; b.className = 'payment-method-btn'; b.textContent = m; b.style.flex='1'; b.style.padding='10px 14px';
-      b.style.borderRadius='10px'; b.style.border='2px solid #ddd'; b.style.cursor='pointer';
-      b.dataset.method = m; b.addEventListener('click', () => selectMethod(m));
-      methodButtons[m] = b; methodsRow.appendChild(b);
+    const row=document.createElement('div');
+    row.style='display:flex;gap:10px;margin-top:14px;';
+    const methods=['Cash','GCash','Bank Transfer'];
+    const mBtns={};
+    methods.forEach(m=>{
+      const b=document.createElement('button');
+      b.textContent=m;
+      b.style='flex:1;padding:10px;border-radius:10px;border:2px solid #ddd;cursor:pointer;';
+      b.onclick=()=>select(m);
+      mBtns[m]=b;
+      row.append(b);
     });
-    card.appendChild(methodsRow);
+    card.append(row);
 
-    // content & totals
-    const content = document.createElement('div'); content.id = 'paymentModalContent'; content.style.marginTop = '16px';
-    const detailsWrap = document.createElement('div'); detailsWrap.style.display='flex'; detailsWrap.style.gap='18px'; detailsWrap.style.marginTop='14px';
-    const rightSummary = document.createElement('div'); rightSummary.style.minWidth='260px'; rightSummary.style.maxWidth='34%'; rightSummary.style.borderLeft='1px solid #eee'; rightSummary.style.paddingLeft='12px'; rightSummary.style.boxSizing='border-box';
-    const totalsWrap = document.createElement('div'); totalsWrap.id = 'paymentTotals'; totalsWrap.style.fontSize='16px'; totalsWrap.style.color='#222';
-    rightSummary.appendChild(totalsWrap);
-    detailsWrap.appendChild(content); detailsWrap.appendChild(rightSummary); card.appendChild(detailsWrap);
+    const content=document.createElement('div');
+    content.id='paymentModalContent';
+    content.style='margin-top:16px;';
+    const right=document.createElement('div');
+    right.style='min-width:260px;max-width:34%;border-left:1px solid #eee;padding-left:12px;';
+    const totalsWrap=document.createElement('div');
+    totalsWrap.id='paymentTotals';
+    right.append(totalsWrap);
+    const wrap=document.createElement('div');
+    wrap.style='display:flex;gap:18px;margin-top:14px;';
+    wrap.append(content,right);
+    card.append(wrap);
 
-    // footer buttons
-    const footer = document.createElement('div');
-    footer.style.display='flex'; footer.style.justifyContent='flex-end'; footer.style.alignItems='center'; footer.style.marginTop='18px';
-    const btnCancel = document.createElement('button'); btnCancel.type='button'; btnCancel.textContent='Cancel'; btnCancel.style.padding='10px 16px'; btnCancel.style.borderRadius='8px';
-    btnCancel.style.border='1px solid #ccc'; btnCancel.style.background='#fff'; btnCancel.style.cursor='pointer'; btnCancel.addEventListener('click', ()=>overlay.remove());
-    const btnPay = document.createElement('button'); btnPay.type='button'; btnPay.id='paymentConfirmBtn'; btnPay.textContent='Save & Print';
-    btnPay.style.padding='10px 16px'; btnPay.style.borderRadius='8px'; btnPay.style.border='none'; btnPay.style.background='#d33fd3'; btnPay.style.color='#fff'; btnPay.style.cursor='pointer'; btnPay.style.marginLeft='10px';
-    footer.appendChild(btnCancel); footer.appendChild(btnPay); card.appendChild(footer);
-    overlay.appendChild(card);
-    document.body.appendChild(overlay);
+    const footer=document.createElement('div');
+    footer.style='display:flex;justify-content:flex-end;margin-top:18px;';
+    const cancel=document.createElement('button');
+    cancel.textContent='Cancel';
+    cancel.style='padding:10px 16px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;';
+    cancel.onclick=()=>overlay.remove();
+    const pay=document.createElement('button');
+    pay.id='paymentConfirmBtn';
+    pay.textContent='Save & Print';
+    pay.style='padding:10px 16px;border:none;border-radius:8px;background:#d33fd3;color:#fff;cursor:pointer;margin-left:10px;';
+    footer.append(cancel,pay);
+    card.append(footer);
+    overlay.append(card);
+    document.body.append(overlay);
 
-    // state & helpers
-    let selectedMethod = null;
-    let totalsUpdater = null;
-
-    async function updateTotalsDisplay() {
-      try {
-        if (typeof window.computeNumbers === 'function') {
-          const n = window.computeNumbers();
-          if (n && typeof n.payable !== 'undefined') { renderTotals(n); return; }
-        }
-      } catch (e) { /* ignore */ }
-      const n = await computeTotalsFromOrder();
-      renderTotals(n);
+    let selected='Cash',timer=null;
+    async function upd(){
+      const n=(typeof window.computeNumbers==='function')?window.computeNumbers():await computeTotalsFromOrder();
+      const s='₱';
+      totalsWrap.innerHTML='<b>Summary</b>';
+      const add=(l,v,b)=>{
+        const d=document.createElement('div');
+        d.style='display:flex;justify-content:space-between;margin:4px 0;';
+        d.innerHTML=`<div>${l}</div><div style="font-weight:${b?800:600}">${s}${Number(v||0).toFixed(2)}</div>`;
+        totalsWrap.append(d);
+      };
+      add('Subtotal',n.subtotal);
+      add('Service',n.serviceCharge);
+      add('Tax',n.tax);
+      add('Discount',n.discountAmount);
+      if(n.tablePrice>0)add('Reserved',n.tablePrice);
+      add('Payable',n.payable,true);
     }
-
-    function renderTotals(nums) {
-      const symbol = (window.APP_SETTINGS && window.APP_SETTINGS.currency === 'PHP') ? '₱' : '₱';
-      totalsWrap.innerHTML = '';
-      const tt = document.createElement('div'); tt.style.fontWeight = 800; tt.style.marginBottom = '8px'; tt.textContent = 'Summary';
-      totalsWrap.appendChild(tt);
-      function row(label, value, bold) {
-        const r = document.createElement('div'); r.style.display='flex'; r.style.justifyContent='space-between'; r.style.margin='6px 0';
-        const l = document.createElement('div'); l.textContent = label;
-        const v = document.createElement('div'); v.style.fontWeight = bold ? 800 : 600; v.textContent = symbol + Number(value || 0).toFixed(2);
-        r.appendChild(l); r.appendChild(v); totalsWrap.appendChild(r);
-      }
-      const n = nums || { subtotal:0, serviceCharge:0, tax:0, discountAmount:0, tablePrice:0, payable:0 };
-      row('Subtotal', n.subtotal); row('Service Charge', n.serviceCharge); row('Tax', n.tax); row('Discount', n.discountAmount);
-      if (n.tablePrice && Number(n.tablePrice) > 0) row('Reserved', n.tablePrice);
-      const sep = document.createElement('div'); sep.style.height='1px'; sep.style.background='#eee'; sep.style.margin='8px 0'; totalsWrap.appendChild(sep);
-      row('Payable', n.payable, true);
+    function start(){stop();timer=setInterval(upd,700);}
+    function stop(){if(timer)clearInterval(timer);}
+    function buildCash(){
+      content.innerHTML='<div style="font-size:13px;color:#444;">Enter cash amount given by customer:</div>';
+      const inp=document.createElement('input');
+      inp.type='number';
+      inp.id='paymentCashGiven';
+      inp.style='margin-top:8px;padding:8px;width:100%;';
+      content.append(inp);
+      const ch=document.createElement('div');
+      ch.id='paymentChange';
+      ch.style='margin-top:8px;font-weight:700;';
+      ch.textContent='Change: ₱0.00';
+      content.append(ch);
+      inp.oninput=async()=>{
+        const g=parseFloat(inp.value||0);
+        const n=(typeof window.computeNumbers==='function')?window.computeNumbers():await computeTotalsFromOrder();
+        const c=g-(n.payable||0);
+        ch.textContent='Change: ₱'+(c>=0?c.toFixed(2):'0.00');
+      };
+      start();upd();
     }
-
-    // payment UIs
-    function buildCashUI() {
-      content.innerHTML = '';
-      const note = document.createElement('div'); note.textContent = 'Enter cash amount given by customer (system will compute change).'; note.style.fontSize='13px'; note.style.color='#444';
-      content.appendChild(note);
-      const input = document.createElement('input'); input.type='number'; input.id='paymentCashGiven'; input.min='0'; input.step='0.01';
-      input.style.marginTop='8px'; input.style.padding='8px'; input.style.width='100%'; input.style.boxSizing='border-box';
-      content.appendChild(input);
-      const changeRow = document.createElement('div'); changeRow.id='paymentChange'; changeRow.style.marginTop='8px'; changeRow.style.fontWeight=700; changeRow.textContent='Change: ₱ 0.00';
-      content.appendChild(changeRow);
-      input.addEventListener('input', async () => {
-        const given = parseFloat(input.value || 0);
-        const nums = (typeof window.computeNumbers === 'function') ? window.computeNumbers() : await computeTotalsFromOrder();
-        const change = given - (nums.payable || 0);
-        changeRow.textContent = 'Change: ₱ ' + (change >= 0 ? change.toFixed(2) : '0.00');
-      });
-      startTotalsUpdater(); updateTotalsDisplay();
+    function buildGC(){
+      content.innerHTML='<div style="font-size:13px;color:#444;">Enter payer name & reference (GCash):</div>';
+      const n=document.createElement('input');n.id='paymentGcashName';n.placeholder='Payer name';n.style='margin-top:8px;padding:8px;width:100%;';
+      const r=document.createElement('input');r.id='paymentGcashRef';r.placeholder='GCash ref';r.style='margin-top:8px;padding:8px;width:100%;';
+      content.append(n,r);start();upd();
     }
-
-    function buildGcashUI() {
-      content.innerHTML = '';
-      const p = document.createElement('div'); p.textContent = 'Enter payer name and reference (GCash).'; p.style.fontSize='13px'; p.style.color='#444';
-      content.appendChild(p);
-      const name = document.createElement('input'); name.type='text'; name.id='paymentGcashName'; name.placeholder='Payer name'; name.style.marginTop='8px'; name.style.padding='8px'; name.style.width='100%'; content.appendChild(name);
-      const ref = document.createElement('input'); ref.type='text'; ref.id='paymentGcashRef'; ref.placeholder='GCash reference'; ref.style.marginTop='8px'; ref.style.padding='8px'; ref.style.width='100%'; content.appendChild(ref);
-      startTotalsUpdater(); updateTotalsDisplay();
+    function buildBank(){
+      content.innerHTML='<div style="font-size:13px;color:#444;">Enter payer name & bank ref:</div>';
+      const n=document.createElement('input');n.id='paymentBankName';n.placeholder='Payer name';n.style='margin-top:8px;padding:8px;width:100%;';
+      const r=document.createElement('input');r.id='paymentBankRef';r.placeholder='Bank ref';r.style='margin-top:8px;padding:8px;width:100%;';
+      content.append(n,r);start();upd();
     }
-
-    function buildBankUI() {
-      content.innerHTML = '';
-      const p = document.createElement('div'); p.textContent = 'Enter payer name and bank reference.'; p.style.fontSize='13px'; p.style.color='#444';
-      content.appendChild(p);
-      const name = document.createElement('input'); name.type='text'; name.id='paymentBankName'; name.placeholder='Payer name'; name.style.marginTop='8px'; name.style.padding='8px'; name.style.width='100%'; content.appendChild(name);
-      const ref = document.createElement('input'); ref.type='text'; ref.id='paymentBankRef'; ref.placeholder='Bank reference'; ref.style.marginTop='8px'; ref.style.padding='8px'; ref.style.width='100%'; content.appendChild(ref);
-      startTotalsUpdater(); updateTotalsDisplay();
+    function select(m){
+      selected=m;
+      Object.keys(mBtns).forEach(k=>{mBtns[k].style.borderColor=(k===m)?'#000':'#ddd';});
+      stop();
+      if(m==='Cash')buildCash();
+      else if(m==='GCash')buildGC();
+      else buildBank();
     }
-
-    function selectMethod(method) {
-      selectedMethod = method;
-      Object.keys(methodButtons).forEach(k => {
-        methodButtons[k].style.borderColor = (k===method) ? '#000' : '#ddd';
-        methodButtons[k].style.background = (k===method) ? '#f5f5f8' : '#fff';
-      });
-      stopTotalsUpdater();
-      if (method === 'Cash') buildCashUI();
-      else if (method === 'GCash') buildGcashUI();
-      else if (method === 'Bank Transfer') buildBankUI();
-      updateTotalsDisplay();
-    }
-
-    function startTotalsUpdater() { stopTotalsUpdater(); totalsUpdater = setInterval(updateTotalsDisplay, 600); }
-    function stopTotalsUpdater() { if (totalsUpdater) { clearInterval(totalsUpdater); totalsUpdater = null; } }
-
-    function getSelectedMethod() { return selectedMethod; }
-    function close() { stopTotalsUpdater(); overlay.remove(); }
-
-    overlay.modalApi = { selectMethod, getSelectedMethod, updateTotalsDisplay, close };
-
-    // default
-    selectMethod('Cash');
-
-    // watch for removal
-    const mo = new MutationObserver(()=>{ if (!document.body.contains(overlay)) stopTotalsUpdater(); });
-    mo.observe(document.body, { childList:true, subtree:true });
-
+    overlay.modalApi={getSelectedMethod:()=>selected,close:()=>{stop();overlay.remove();}};
+    select('Cash');
     return overlay;
   }
 
-  // ----------------------
-  // Collect items for server payload
-  // - ensure menu_item_id is included when available
-  // ----------------------
-  function collectItemsForPayload() {
-    // 1) appActions.gatherCartForPayload
-    try {
-      if (window.appActions && typeof window.appActions.gatherCartForPayload === 'function') {
-        const raw = window.appActions.gatherCartForPayload() || [];
-        return raw.map(i => ({
-          menu_item_id: i.id ?? null,
-          item_name: i.name ?? i.item_name ?? i.title ?? '',
-          qty: Number(i.qty || i.quantity || 1),
-          unit_price: Number(i.price ?? i.unit_price ?? i.amount ?? 0),
-          line_total: Number(i.line_total ?? ((Number(i.qty || 1)) * Number(i.price ?? i.unit_price ?? i.amount ?? 0)))
-        }));
-      }
-    } catch (e) {}
-
-    // 2) window.getOrder() or window.order
-    try {
-      let arr = null;
-      if (typeof window.getOrder === 'function') arr = window.getOrder();
-      else if (Array.isArray(window.order)) arr = window.order;
-      if (Array.isArray(arr) && arr.length > 0) {
-        return arr.map(i => ({
-          menu_item_id: i.id ?? null,
-          item_name: i.name ?? i.item_name ?? i.title ?? '',
-          qty: Number(i.qty || i.quantity || 1),
-          unit_price: Number(i.price ?? i.unit_price ?? i.amount ?? 0),
-          line_total: Number(i.line_total ?? (Number(i.qty || 1) * Number(i.price ?? i.unit_price ?? i.amount ?? 0)))
-        }));
-      }
-    } catch (e) {}
-
-    // 3) DOM fallback
-    const dom = readOrderArrayBestEffort();
-    if (Array.isArray(dom) && dom.length > 0) {
-      return dom.map(i => ({
-        menu_item_id: i.id ?? null,
-        item_name: i.name ?? i.item_name ?? '',
-        qty: Number(i.qty || 1),
-        unit_price: Number(i.price || i.unit_price || 0),
-        line_total: Number(i.line_total || 0)
-      }));
-    }
-
-    return [];
+  function collectItemsForPayload(){
+    const arr=readOrderArrayBestEffort();
+    return arr.map(i=>({menu_item_id:i.id||null,item_name:i.name||'',qty:Number(i.qty||1),unit_price:Number(i.price||0),line_total:Number(i.line_total||0)}));
   }
 
-  async function getTotalsForPayload() {
-    try {
-      if (typeof window.computeNumbers === 'function') {
-        const n = window.computeNumbers();
-        if (n && typeof n.payable !== 'undefined') return n;
+  async function getTotalsForPayload(){
+    try{
+      if(typeof window.computeNumbers==='function'){
+        const n=window.computeNumbers();
+        if(n&&typeof n.payable!=='undefined')return n;
       }
-    } catch (e) {}
+    }catch(e){}
     return await computeTotalsFromOrder();
   }
 
-  // ----------------------
-  // Save to server (save_and_print.php)
-  // - robustly handle non-JSON responses (PHP warnings/errors produce HTML)
-  // ----------------------
-  async function saveSaleToServer(payload) {
-    const endpoint = 'php/save_and_print.php';
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json;charset=utf-8' },
-      credentials: 'same-origin',
-      body: JSON.stringify(payload)
-    });
-
-    // Try parse JSON, but if server returned HTML (PHP error), return { _rawText: ... } so caller can show it
-    const text = await res.text();
-    try {
-      const json = JSON.parse(text);
-      return json;
-    } catch (parseErr) {
-      // not JSON -> return object describing the error and include raw HTML/text for debugging
-      return { ok: false, parseError: parseErr.message, rawText: text, httpStatus: res.status, httpStatusText: res.statusText };
-    }
+  async function saveSaleToServer(p){
+    const r=await fetch('php/save_and_print.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
+    const t=await r.text();
+    try{return JSON.parse(t);}catch(e){return{ok:false,raw:t};}
   }
 
-  // ----------------------
-  // Clear order UI (compatible with multiple app variants)
-  // ----------------------
-  function clearOrderUI() {
-    try {
-      if (typeof clearOrder === 'function') { clearOrder(); return; }
-    } catch (e) {}
-    try {
-      if (typeof window.clearOrder === 'function') { window.clearOrder(); return; }
-    } catch (e) {}
-    // fallback: clear window.order and call renderOrder if present
-    try { window.order = []; } catch (e) {}
-    if (typeof renderOrder === 'function') renderOrder();
-    else {
-      const ol = document.getElementById('orderList'); if (ol) ol.innerHTML = '';
-      const oc = document.getElementById('orderCompute'); if (oc) oc.innerHTML = '';
-    }
+  function clearOrderUI(){
+    try{if(typeof clearOrder==='function')return clearOrder();}catch(e){}
+    try{window.order=[];}catch(e){}
+    if(typeof renderOrder==='function')renderOrder();
   }
 
-  // ----------------------
-  // Proceed: build payload, call save_and_print.php, open print page
-  // ----------------------
-  async function proceedSaveFlow(paymentMethod, paymentDetails, modalApi) {
+  async function proceedSaveFlow(method,details,modal){
     const items = collectItemsForPayload();
-    if (!items || items.length === 0) {
-      alert('No items in the order.');
-      return { ok: false, error: 'empty' };
-    }
 
-    const totals = await getTotalsForPayload();
-
-    // reserved table meta
+    // get selected cabin (if any)
     let reserved = null;
     try {
-      if (window.appActions && typeof window.appActions.getReservedTable === 'function') reserved = window.appActions.getReservedTable();
-      else {
-        const raw = sessionStorage.getItem('clubtryara:selected_table_v1');
-        if (raw) reserved = JSON.parse(raw);
-      }
-    } catch (e) { reserved = null; }
+      const raw = sessionStorage.getItem('clubtryara:selected_table_v1');
+      if (raw) reserved = JSON.parse(raw);
+    } catch (e) {}
+
+    // ✅ Require either an order OR a selected table
+    if (!reserved) {
+      alert('Please add items or select a cabin before saving.');
+      return;
+    }
+
+    // ✅ If there are no items but a table is selected, still continue
+    const totals = await getTotalsForPayload();
 
     const payload = {
-      items: items,
-      totals: totals,
-      payment_method: paymentMethod,
-      payment_details: paymentDetails || {},
-      table: reserved || null,
-      created_by: (window.currentUser && window.currentUser.id) ? window.currentUser.id : null,
-      note: (document.getElementById('draftNameInput') ? (document.getElementById('draftNameInput').value || '') : '') || (reserved && reserved.name ? reserved.name : '')
+      items,
+      totals: Object.assign({}, totals, {
+        discountType: window.discountType || 'Regular',
+        discountRate: window.discountRate || 0
+      }),
+      payment_method: method,
+      payment_details: details || {},
+      table: reserved || null
     };
 
-    const btn = $id('paymentConfirmBtn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+    const btn=$id('paymentConfirmBtn');
+    if(btn){btn.disabled=true;btn.textContent='Saving...';}
+    try{
+      const res=await saveSaleToServer(payload);
+      const id=res.id||0;
+      const meta={sale_id:id,payment_method:method,payment_details:details,cashGiven:details.given||details.cashGiven||0,change:details.change||0,discountType:window.discountType||'Regular',discountRate:window.discountRate||0};
+      // ✅ Open receipt in the same tab instead of a new window
+      const form = document.createElement('form');
+      form.action = 'php/print_receipt_payment.php';
+      form.method = 'POST';
+      form.innerHTML = `
+        <input type="hidden" name="cart" value='${JSON.stringify(items)}'>
+        <input type="hidden" name="totals" value='${JSON.stringify(totals)}'>
+        <input type="hidden" name="reserved" value='${JSON.stringify(reserved || {})}'>
+        <input type="hidden" name="meta" value='${JSON.stringify(meta)}'>
+      `;
+      document.body.appendChild(form);
+      form.submit();
 
-    try {
-      const result = await saveSaleToServer(payload);
-
-      // If result contains rawText -> server returned HTML (likely a PHP error). Open it in window for debugging.
-      if (result && result.rawText) {
-        const w = window.open('', '_blank');
-        if (w) {
-          w.document.open();
-          w.document.write(result.rawText);
-          w.document.close();
-          alert('Server returned non-JSON response. Opened debug page in new tab. Check server logs for PHP errors.');
-        } else {
-          // can't open window
-          alert('Server returned an error HTML response; please check server logs. Response snippet:\n\n' + (result.rawText.substring(0, 800)));
-        }
-        if (btn) { btn.disabled = false; btn.textContent = 'Save & Print'; }
-        return { ok: false, error: 'server_html' };
-      }
-
-      if (!result || !result.ok) {
-        alert('Failed to save sale: ' + (result && (result.error || result.message) ? (result.error || result.message) : 'Unknown error'));
-        if (btn) { btn.disabled = false; btn.textContent = 'Save & Print'; }
-        return { ok:false, error: 'save_failed', raw: result };
-      }
-
-      const salesId = result.id;
-
-      // print using server-rendered receipt
-      try {
-        if (window.appActions && typeof window.appActions.preparePrintAndOpen === 'function') {
-          // allow app-specific printing flow
-          const printTotals = Object.assign({}, totals, { saleId: salesId });
-          window.appActions.preparePrintAndOpen(items, printTotals, reserved, { saleId: salesId, payment_method: paymentMethod, payment_details: paymentDetails });
-        } else {
-          const url = 'php/print_receipt_payment.php?sales_id=' + encodeURIComponent(salesId);
-          const w = window.open(url, '_blank', 'width=820,height=920');
-          if (!w) alert('Saved but could not open receipt — please allow popups.');
-        }
-      } catch (err) {
-        console.error('Print flow failed', err);
-      }
-
-      // clear and close
       clearOrderUI();
-      if (modalApi && typeof modalApi.close === 'function') modalApi.close();
-      if (btn) { btn.disabled = false; btn.textContent = 'Save & Print'; }
-
-      alert('Sale saved (ID: ' + salesId + ').');
-      return { ok:true, id: salesId };
-    } catch (err) {
-      console.error('save exception', err);
-      alert('Error saving sale: ' + (err.message || err));
-      if (btn) { btn.disabled = false; btn.textContent = 'Save & Print'; }
-      return { ok:false, error: err.message || 'exception' };
-    }
+      if(modal)modal.close();
+      alert('Sale saved (ID:'+id+')');
+    }catch(e){alert('Save error:'+e);}
+    if(btn){btn.disabled=false;btn.textContent='Save & Print';}
   }
 
-  // ----------------------
-  // Wire Proceed button to open modal and handle confirm
-  // ----------------------
-  function wireProceedButton() {
-    const proceedBtn = document.getElementById('proceedBtn') || document.querySelector('.proceed-btn');
-    if (!proceedBtn) return;
-
-    proceedBtn.addEventListener('click', function (e) {
+  function wireProceed(){
+    const b=document.getElementById('proceedBtn')||document.querySelector('.proceed-btn');
+    if(!b)return;
+    b.onclick=e=>{
       e.preventDefault();
-      const overlay = createPaymentModal();
-      const modalApi = overlay.modalApi;
-      const confirmBtn = $id('paymentConfirmBtn');
-      if (!confirmBtn) return;
-
-      confirmBtn.onclick = async function () {
-        const selected = modalApi.getSelectedMethod();
-        if (!selected) { alert('Please select a payment method.'); return; }
-
-        // collect method-specific details
-        let details = {};
-        if (selected === 'Cash') {
-          const giv = $id('paymentCashGiven'); const given = giv ? Number(giv.value || 0) : 0;
-          const totals = await getTotalsForPayload();
-          if (given < (totals.payable || 0)) {
-            if (!confirm('Given cash is less than total. Record anyway?')) return;
-          }
-          details = { given: given, change: (given - (totals.payable || 0)) };
-        } else if (selected === 'GCash') {
-          const name = $id('paymentGcashName') ? $id('paymentGcashName').value.trim() : '';
-          const ref = $id('paymentGcashRef') ? $id('paymentGcashRef').value.trim() : '';
-          if (!name || !ref) { alert('Please provide payer name and reference for GCash.'); return; }
-          details = { name, ref };
-        } else if (selected === 'Bank Transfer') {
-          const name = $id('paymentBankName') ? $id('paymentBankName').value.trim() : '';
-          const ref = $id('paymentBankRef') ? $id('paymentBankRef').value.trim() : '';
-          if (!name || !ref) { alert('Please provide payer name and bank reference.'); return; }
-          details = { name, ref };
+      // ✅ no “Payment module not available” check anymore — it’s safe
+      const o=createPaymentModal();
+      const m=o.modalApi;
+      const c=$id('paymentConfirmBtn');
+      if(!c)return;
+      c.onclick=async()=>{
+        const sel=m.getSelectedMethod();
+        if(!sel){alert('Select method');return;}
+        let det={};
+        if(sel==='Cash'){
+          const g=+$id('paymentCashGiven')?.value||0;
+          const n=await getTotalsForPayload();
+          det={given:g,change:g-(n.payable||0)};
+        }else if(sel==='GCash'){
+          det={name:$id('paymentGcashName')?.value||'',ref:$id('paymentGcashRef')?.value||''};
+        }else{
+          det={name:$id('paymentBankName')?.value||'',ref:$id('paymentBankRef')?.value||''};
         }
-
-        await proceedSaveFlow(selected.toLowerCase().replace(/\s+/g,'_'), details, modalApi);
+        await proceedSaveFlow(sel.toLowerCase().replace(/\s+/g,'_'),det,m);
       };
-    });
+    };
   }
 
-  // Initialize
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wireProceedButton);
-  else wireProceedButton();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wireProceed);
+  else wireProceed();
 
-  // expose api
-  window.appPayments = window.appPayments || {};
-  window.appPayments.openPaymentModal = function (method) {
-    const overlay = createPaymentModal();
-    if (method) overlay.modalApi.selectMethod(method);
-    return overlay.modalApi;
-  };
+  window.appPayments={openPaymentModal:function(m){const o=createPaymentModal();if(m)o.modalApi.selectMethod(m);return o.modalApi;}};
+
+  // ✅ Discount button listener (auto-updates global discount)
+  document.addEventListener('click',e=>{
+    const btn=e.target.closest('.discount-btn');
+    if(!btn)return;
+    const type=btn.dataset.type||btn.textContent.trim();
+    window.discountType=type;
+    if(/senior/i.test(type))window.discountRate=0.20;
+    else if(/pwd/i.test(type))window.discountRate=0.15;
+    else window.discountRate=0;
+  });
+
+  // Example: when employee clicks discount type
+  document.querySelectorAll('.discount-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const type = btn.dataset.type; // e.g. 'Senior Citizen', 'PWD'
+      let rate = 0;
+      if (type === 'Senior Citizen') rate = 0.20;
+      else if (type === 'PWD') rate = 0.15;
+      else rate = 0;
+      window.discountType = type;
+      window.discountRate = rate;
+      console.log("Discount set:", window.discountType, window.discountRate);
+    });
+  });
 
 })();

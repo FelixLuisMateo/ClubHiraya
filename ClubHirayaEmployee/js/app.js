@@ -137,6 +137,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let discountRate = DISCOUNT_TYPES['Regular'];
     let discountType = 'Regular';
     let noteValue = '';
+    window.discountType = discountType;
+    window.discountRate = discountRate;
+
 
     // computeNumbers is defined early so we can expose it right away
     function roundCurrency(n) {
@@ -459,12 +462,16 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.style.marginRight = '6px';
         if (type === discountType) btn.classList.add('active');
         btn.addEventListener('click', () => {
-          discountType = type;
-          discountRate = DISCOUNT_TYPES[type];
-          Array.from(discountPanel.children).forEach(c => c.classList.remove('active'));
-          btn.classList.add('active');
-          renderOrder();
-        });
+        discountType = type;
+        discountRate = DISCOUNT_TYPES[type];
+        // make globals accessible to payment/receipt scripts
+        window.discountType = discountType;
+        window.discountRate = discountRate;
+        Array.from(discountPanel.children).forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        renderOrder();
+      });
+
         discountPanel.appendChild(btn);
       });
 
@@ -696,17 +703,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (proceedBtnPage) {
-      proceedBtnPage.addEventListener('click', (e) => {
+      proceedBtnPage.addEventListener('click', async (e) => {
         e.preventDefault();
-        try {
-          if (window.appPayments && typeof window.appPayments.openPaymentModal === 'function') {
-            window.appPayments.openPaymentModal('proceed');
-            return;
-          }
-        } catch (err) {
-          console.warn('Payment module not available', err);
+
+        // Wait a short moment to ensure scripts fully loaded
+        for (let i = 0; i < 10; i++) {
+          if (window.appPayments && typeof window.appPayments.openPaymentModal === 'function') break;
+          await new Promise(r => setTimeout(r, 100));
         }
-        alert('Payment module is not available. Please enable the payment module (app-payment.js) to proceed.');
+
+        if (window.appPayments && typeof window.appPayments.openPaymentModal === 'function') {
+          window.appPayments.openPaymentModal('proceed');
+        } else {
+          alert('⚠️ Payment module failed to load. Please reload the page.');
+        }
       });
     }
 
