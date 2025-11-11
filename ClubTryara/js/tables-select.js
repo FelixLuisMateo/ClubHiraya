@@ -78,7 +78,7 @@
     summary.style.fontSize = '13px';
 
     summary.innerHTML =
-      'Selected table: <strong id="selected-table-name">—</strong> (Party size: <span id="selected-table-party">—</span>, Price: ₱<span id="selected-table-price">0.00</span>)';
+      'Selected cabin: <strong id="selected-table-name">—</strong> (Party size: <span id="selected-table-party">—</span>, Price: ₱<span id="selected-table-price">0.00</span>)';
 
     // Clear button (created here so handler can be attached or replaced)
     const clearBtn = document.createElement('button');

@@ -1,0 +1,109 @@
+/* ====== LOGIN PAGE LAYOUT ====== */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Poppins', sans-serif;
+    background: #000; /* dark background */
+    color: #fff;
+}
+
+/* Wrapper contains the full-screen hero area */
+.login-wrapper {
+    height: 100vh;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+/* ====== HERO / BACKGROUND (WELCOME) ====== */
+.login-center {
+    width: 100%;
+    height: 100%;
+    background: url('../assets/logos/loginbackground.png') no-repeat center center/cover;
+    position: relative; /* IMPORTANT: .login-content is positioned relative to this */
+    display: block;
+}
+
+/* ====== FORM (now positioned relative to .login-center) ====== */
+.login-content {
+    position: absolute;
+    /* adjust top and right to place the form under the WELCOME text.
+       Tweak these values to match the exact visual position you want. */
+    top: 38%;        /* vertical position (move down/up) */
+    right: 18%;      /* horizontal position from right edge (move left/right) */
+    transform: translateY(0);
+    text-align: left;
+    width: 340px;
+    background: rgba(0, 0, 0, 0.55); /* subtle background for readability */
+    padding: 24px;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+}
+
+/* ====== HEADINGS inside the form ====== */
+.login-content label {
+    display: block;
+    font-size: 12px;
+    color: #d4a017; /* accent color like the welcome heading */
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+/* ====== FORM FIELDS ====== */
+.login-content input[type="email"],
+.login-content input[type="password"] {
+    padding: 10px;
+    margin-bottom: 18px;
+    border: none;
+    border-radius: 5px;
+    outline: none;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+.login-content input::placeholder {
+    color: #ccc;
+}
+
+/* ====== BUTTON ====== */
+.login-content button {
+    width: 100%;
+    padding: 12px;
+    background: #d4a017;
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s ease, transform 0.08s ease;
+}
+
+.login-content button:hover {
+    background: #b98f0f;
+    transform: translateY(-1px);
+}
+
+/* ====== Responsive tweaks ====== */
+@media (max-width: 1024px) {
+    .login-content {
+        top: 45%;
+        right: 10%;
+        width: 300px;
+        padding: 18px;
+    }
+}
+
+@media (max-width: 700px) {
+    /* on small screens, move the form near the bottom and center it */
+    .login-content {
+        position: static;
+        margin: 24px auto;
+        width: calc(100% - 48px);
+        background: rgba(0,0,0,0.6);
+        transform: none;
+        top: auto;
+        right: auto;
+        left: auto;
+    }
+}

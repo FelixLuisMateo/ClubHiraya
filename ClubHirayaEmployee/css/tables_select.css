@@ -91,7 +91,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 15px;
+  font-size: 13px;
   margin-top: 6px;
   justify-content: space-between;
   width: 100%;
@@ -100,12 +100,11 @@
 .order-compute #selected-table-summary .left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
 }
 .order-compute #selected-table-price {
   font-weight: 800;
   font-size: 15px;
-
 }
 
 /* Clear link/button style */
@@ -113,25 +112,26 @@
 .order-compute #clear-selected-table {
   background: transparent;
   border: none;
-  text-decoration: underline;
+  text-decoration: none;
   cursor: pointer;
-  padding: 4px 6px;
-  font-size: 13px;
+  margin: -4px -6px;
+  font-size: 15px;
 }
 .order-compute .btn-link:hover,
 .order-compute #clear-selected-table:hover {
   color: #d51ecb;
 }
-body.dark-mode .selected-table-summary,
-body.dark-mode .btn-link{
-  background: #363636;
-  color: #fff;
-}
+
 /* Small responsive tweak */
 @media (max-width: 900px) {
   .order-compute .reserved-table-block {
     font-size: 13px;
   }
+}
+body.dark-mode .selected-table-summary,
+body.dark-mode .btn-link{
+  background: #363636;
+  color: #fff;
 }
 
 /* Dark mode variants (scoped) */
