@@ -1,0 +1,70 @@
+/* ../css/table-timepicker-small.css
+   Small, non-destructive overrides to make the date/time picker and time slots smaller.
+   Load this AFTER table.css and table-overrides.css.
+*/
+
+/* Make the picker pill more compact */
+.date-controls {
+  padding: 6px;                /* reduce vertical padding around controls */
+  gap: 8px;
+}
+
+/* Tighter picker wrap */
+.date-controls .picker-wrap {
+  padding: 4px 6px;
+  gap: 6px;
+  border-radius: 999px;
+}
+
+/* Smaller date/time inputs */
+.date-controls input[type="date"],
+.date-controls input[type="time"] {
+  min-width: 100px;           /* was 140px */
+  height: 30px;               /* was 36px */
+  padding: 6px 8px;           /* slightly reduced padding */
+  font-size: 13px;            /* slightly smaller text */
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+/* Reduce clear/search button sizes (if present) */
+#btnClearDateTime,
+.date-controls .btn {
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+/* Make the time-slot buttons more compact in the Time view */
+.time-container .time-slot,
+.time-slot {
+  padding: 6px 10px;          /* reduced padding */
+  font-size: 13px;            /* smaller text */
+  border-radius: 6px;
+  min-height: 34px;           /* slightly smaller height */
+  line-height: 1;
+}
+
+/* Reduce spacing between slots */
+.time-grid {
+  gap: 8px;                   /* was 12px */
+}
+
+/* Slightly smaller selected state */
+.time-slot.selected {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+/* On narrow screens further reduce widths */
+@media (max-width: 900px) {
+  .date-controls .picker-wrap input[type="date"],
+  .date-controls .picker-wrap input[type="time"] {
+    min-width: 100px;
+  }
+  .time-grid { gap: 6px; }
+  .time-slot { padding: 5px 8px; font-size: 12px; min-height: 30px; }
+}
+
+/* Optionally scope to Time view by adding .view-time to a parent and using:
+   .view-time .date-controls input[type="time"] { ... }
+   If you prefer that, let me know and I will scope these rules for you. */
