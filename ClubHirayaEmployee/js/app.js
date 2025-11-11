@@ -139,6 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let noteValue = '';
     window.discountType = discountType;
     window.discountRate = discountRate;
+    window.orderNote = noteValue; // ✅ initialize global note
 
 
     // computeNumbers is defined early so we can expose it right away
@@ -482,7 +483,10 @@ document.addEventListener('DOMContentLoaded', () => {
       noteInput.style.minHeight = '48px';
       noteInput.style.borderRadius = '6px';
       noteInput.style.border = '1px solid #ccc';
-      noteInput.addEventListener('input', () => { noteValue = noteInput.value; });
+      noteInput.addEventListener('input', () => { 
+      noteValue = noteInput.value; 
+      window.orderNote = noteValue; // ✅ sync global note
+    });
 
       discountPanel.style.display = 'none';
       noteInput.style.display = 'none';

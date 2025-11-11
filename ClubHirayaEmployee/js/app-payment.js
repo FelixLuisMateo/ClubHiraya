@@ -1,5 +1,5 @@
 /**
- * app-payment.js — Complete payment modal + save+print flow (cash/change + discount fixed + no “module not available” alert)
+ * app-payment.js — Payment modal + save/print flow (with note + cabin optional)
  */
 (function () {
   'use strict';
@@ -227,20 +227,20 @@
   async function proceedSaveFlow(method,details,modal){
     const items = collectItemsForPayload();
 
-    // get selected cabin (if any)
     let reserved = null;
     try {
       const raw = sessionStorage.getItem('clubtryara:selected_table_v1');
       if (raw) reserved = JSON.parse(raw);
     } catch (e) {}
 
-    // ✅ Require either an order OR a selected table
-    if (!reserved) {
+    const hasItems = items && items.length > 0;
+    const hasCabin = !!reserved;
+
+    if (!hasItems && !hasCabin) {
       alert('Please add items or select a cabin before saving.');
       return;
     }
 
-    // ✅ If there are no items but a table is selected, still continue
     const totals = await getTotalsForPayload();
 
     const payload = {
@@ -251,7 +251,8 @@
       }),
       payment_method: method,
       payment_details: details || {},
-      table: reserved || null
+      table: reserved || null,
+      note: window.orderNote || '' // ✅ include note
     };
 
     const btn=$id('paymentConfirmBtn');
@@ -259,16 +260,24 @@
     try{
       const res=await saveSaleToServer(payload);
       const id=res.id||0;
-      const meta={sale_id:id,payment_method:method,payment_details:details,cashGiven:details.given||details.cashGiven||0,change:details.change||0,discountType:window.discountType||'Regular',discountRate:window.discountRate||0};
-      // ✅ Open receipt in the same tab instead of a new window
-      const form = document.createElement('form');
-      form.action = 'php/print_receipt_payment.php';
-      form.method = 'POST';
-      form.innerHTML = `
+      const meta={
+        sale_id:id,
+        payment_method:method,
+        payment_details:details,
+        cashGiven:details.given||details.cashGiven||0,
+        change:details.change||0,
+        discountType:window.discountType||'Regular',
+        discountRate:window.discountRate||0
+      };
+      const form=document.createElement('form');
+      form.action='php/print_receipt_payment.php';
+      form.method='POST';
+      form.innerHTML=`
         <input type="hidden" name="cart" value='${JSON.stringify(items)}'>
         <input type="hidden" name="totals" value='${JSON.stringify(totals)}'>
         <input type="hidden" name="reserved" value='${JSON.stringify(reserved || {})}'>
         <input type="hidden" name="meta" value='${JSON.stringify(meta)}'>
+        <input type="hidden" name="note" value='${(window.orderNote || "").replace(/'/g,"&#39;").replace(/"/g,"&quot;")}'>
       `;
       document.body.appendChild(form);
       form.submit();
@@ -285,7 +294,6 @@
     if(!b)return;
     b.onclick=e=>{
       e.preventDefault();
-      // ✅ no “Payment module not available” check anymore — it’s safe
       const o=createPaymentModal();
       const m=o.modalApi;
       const c=$id('paymentConfirmBtn');
@@ -313,7 +321,6 @@
 
   window.appPayments={openPaymentModal:function(m){const o=createPaymentModal();if(m)o.modalApi.selectMethod(m);return o.modalApi;}};
 
-  // ✅ Discount button listener (auto-updates global discount)
   document.addEventListener('click',e=>{
     const btn=e.target.closest('.discount-btn');
     if(!btn)return;
@@ -324,17 +331,16 @@
     else window.discountRate=0;
   });
 
-  // Example: when employee clicks discount type
-  document.querySelectorAll('.discount-btn').forEach(btn => {
-    btn.addEventListener('click', e => {
-      const type = btn.dataset.type; // e.g. 'Senior Citizen', 'PWD'
-      let rate = 0;
-      if (type === 'Senior Citizen') rate = 0.20;
-      else if (type === 'PWD') rate = 0.15;
-      else rate = 0;
-      window.discountType = type;
-      window.discountRate = rate;
-      console.log("Discount set:", window.discountType, window.discountRate);
+  document.querySelectorAll('.discount-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const type=btn.dataset.type;
+      let rate=0;
+      if(type==='Senior Citizen')rate=0.20;
+      else if(type==='PWD')rate=0.15;
+      else rate=0;
+      window.discountType=type;
+      window.discountRate=rate;
+      console.log('Discount set:',window.discountType,window.discountRate);
     });
   });
 

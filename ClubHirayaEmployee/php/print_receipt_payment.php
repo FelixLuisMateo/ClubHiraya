@@ -19,6 +19,14 @@ $totals   = json_decode($totalsJson, true)   ?: [];
 $reserved = json_decode($reservedJson, true) ?: [];
 $meta     = json_decode($metaJson, true)     ?: [];
 
+/* ✅ Note — can come from POST or meta (ensure both are supported) */
+$note = '';
+if (!empty($_POST['note'])) {
+  $note = trim($_POST['note']);
+} elseif (!empty($meta['note'])) {
+  $note = trim($meta['note']);
+}
+
 /* --------------------------
    SAFE DATA EXTRACTION
 --------------------------- */
@@ -36,10 +44,17 @@ if (isset($meta['discountRate'])) {
 }
 
 # ✅ Cabin/Reservation
-$cabinName  = $reserved['name'] ?? ($reserved['table'] ?? ($reserved['table_number'] ?? 'N/A'));
-$cabinPrice = isset($reserved['price']) ? floatval($reserved['price']) : 0;
+if (!empty($reserved['name']) || !empty($reserved['table']) || !empty($reserved['table_number'])) {
+  $cabinName  = $reserved['name'] ?? ($reserved['table'] ?? ($reserved['table_number'] ?? ''));
+  $cabinPrice = isset($reserved['price']) ? floatval($reserved['price']) : 0;
+  $hasCabin   = true;
+} else {
+  $cabinName  = 'No Cabin Selected';
+  $cabinPrice = 0;
+  $hasCabin   = false;
+}
 
-# ✅ Payment Details (cash/change) — check both direct and nested keys
+# ✅ Payment Details (cash/change)
 $cashGiven = 0;
 if (isset($meta['cashGiven'])) $cashGiven = floatval($meta['cashGiven']);
 elseif (isset($meta['payment_details']['given'])) $cashGiven = floatval($meta['payment_details']['given']);
@@ -93,7 +108,9 @@ button{margin:4px;padding:8px 16px;border:none;border-radius:6px;cursor:pointer;
   <tr><td>Payment:</td><td class="right"><?= htmlspecialchars($paymentMethod) ?></td></tr>
   <tr><td>Discount:</td><td class="right"><?= htmlspecialchars($discountType) ?> (<?= number_format($discountRate, 0) ?>%)</td></tr>
   <tr><td>Cabin:</td><td class="right"><?= htmlspecialchars($cabinName) ?></td></tr>
+  <?php if ($hasCabin && $cabinPrice > 0): ?>
   <tr><td>Cabin Price:</td><td class="right"><?= fmt($cabinPrice) ?></td></tr>
+  <?php endif; ?>
 </table>
 <hr>
 
@@ -120,6 +137,20 @@ button{margin:4px;padding:8px 16px;border:none;border-radius:6px;cursor:pointer;
   </tbody>
 </table>
 <hr>
+
+<?php if (!empty($note)): ?>
+  <div style="
+    margin:10px 0;
+    padding:6px 10px;
+    border-left:3px solid #999;
+    font-size:15px;
+    font-style:italic;
+    color:#444;
+    background:#f9f9f9;
+  ">
+    <strong>Note:</strong> <?= nl2br(htmlspecialchars($note)) ?>
+  </div>
+<?php endif; ?>
 
 <table class="summary" width="100%">
   <tr><td>Subtotal</td><td class="right"><?= fmt($totals['subtotal'] ?? 0) ?></td></tr>
