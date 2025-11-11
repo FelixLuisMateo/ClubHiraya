@@ -128,6 +128,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Time monitor utilities ---
   // Keep a single interval for updating monitors to avoid duplicates
   let _timeMonitorInterval = null;
+  // track which reservations we've already notified about (so we don't notify repeatedly)
+  const notifiedReservations = new Set();
+
   function startTimeMonitors() {
     stopTimeMonitors();
     updateTimeMonitors(); // immediate
@@ -162,6 +165,101 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${mins}m`;
   }
 
+  // show a small on-page toast for notifications
+  function showToast(message, opts = {}) {
+    const id = 'tables-toast-container';
+    let container = document.getElementById(id);
+    if (!container) {
+      container = document.createElement('div');
+      container.id = id;
+      container.style.position = 'fixed';
+      container.style.right = '16px';
+      container.style.top = '16px';
+      container.style.zIndex = 10000;
+      document.body.appendChild(container);
+    }
+    const t = document.createElement('div');
+    t.className = 'tables-toast';
+    t.style.background = opts.background || 'rgba(0,0,0,0.85)';
+    t.style.color = '#fff';
+    t.style.padding = '10px 12px';
+    t.style.marginTop = '8px';
+    t.style.borderRadius = '8px';
+    t.style.boxShadow = '0 6px 18px rgba(0,0,0,0.2)';
+    t.style.fontWeight = '700';
+    t.textContent = message;
+    container.appendChild(t);
+    setTimeout(() => {
+      t.style.transition = 'opacity 300ms ease, transform 300ms ease';
+      t.style.opacity = '0';
+      t.style.transform = 'translateY(-6px)';
+    }, 4000);
+    setTimeout(() => t.remove(), 4400);
+  }
+
+  // Try to play a short beep. Uses AudioContext where available.
+  function playBeep() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = 880;
+      g.gain.value = 0.0001;
+      o.connect(g);
+      g.connect(ctx.destination);
+      const now = ctx.currentTime;
+      g.gain.exponentialRampToValueAtTime(0.12, now + 0.01);
+      o.start(now);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+      o.stop(now + 0.25);
+      // close context after a bit
+      setTimeout(() => {
+        try { ctx.close(); } catch (e) {}
+      }, 400);
+    } catch (e) {
+      // ignore audio errors
+    }
+  }
+
+  // Request notification permission if not granted
+  function ensureNotificationPermission() {
+    if (!('Notification' in window)) return Promise.resolve(false);
+    if (Notification.permission === 'granted') return Promise.resolve(true);
+    if (Notification.permission === 'denied') return Promise.resolve(false);
+    // Ask for permission (user gesture preferred, but still try)
+    return Notification.requestPermission().then(p => p === 'granted');
+  }
+
+  // Trigger a desktop + in-page notification for a reservation that ended
+  async function triggerEndNotification(reservationId, cabinName, endDtStr) {
+    // avoid duplicate notifications
+    if (reservationId && notifiedReservations.has(String(reservationId))) return;
+    if (reservationId) notifiedReservations.add(String(reservationId));
+
+    const title = `Cabin time ended`;
+    const body = cabinName ? `${cabinName} reservation has ended${endDtStr ? ' at ' + endDtStr : ''}.` : `A reservation has ended.`;
+    // show in-page toast immediately
+    showToast(`${body}`, { background: '#c62828' });
+
+    // play beep if possible
+    playBeep();
+
+    // desktop notification
+    try {
+      const allowed = await ensureNotificationPermission();
+      if (allowed) {
+        const n = new Notification(title, { body, tag: 'cabin-end-' + (reservationId || Math.random()) });
+        // click behavior: focus the window
+        n.onclick = () => { try { window.focus(); } catch (e) {} };
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
   // update all elements with class 'time-monitor'
   function updateTimeMonitors() {
     const nodes = document.querySelectorAll('.time-monitor');
@@ -169,6 +267,8 @@ document.addEventListener('DOMContentLoaded', () => {
     nodes.forEach(el => {
       const start = el.dataset.start; // e.g. "2025-11-05 19:00:00"
       const end = el.dataset.end;
+      const resId = el.dataset.reservationId || el.dataset.resId || '';
+      const cabinName = el.dataset.cabinName || el.dataset.tableName || '';
       if (!start && !end) {
         el.textContent = '';
         return;
@@ -194,6 +294,20 @@ document.addEventListener('DOMContentLoaded', () => {
         el.textContent = `Ended ${formatDuration(ms)} ago`;
         el.classList.remove('ongoing');
         el.classList.add('ended');
+        // Notify once when it transitions to ended
+        if (resId) {
+          // if not already notified, trigger notification
+          if (!notifiedReservations.has(String(resId))) {
+            triggerEndNotification(resId, cabinName, (dEnd ? dEnd.toLocaleString() : ''));
+          }
+        } else {
+          // fallback notify by cabin name (may repeat across reloads but okay)
+          const key = `no-res-${cabinName}-${el.dataset.end}`;
+          if (!notifiedReservations.has(key)) {
+            notifiedReservations.add(key);
+            triggerEndNotification(key, cabinName, (dEnd ? dEnd.toLocaleString() : ''));
+          }
+        }
       } else {
         el.textContent = '';
         el.classList.remove('ongoing');
@@ -445,8 +559,11 @@ document.addEventListener('DOMContentLoaded', () => {
           const card = document.createElement('div');
           card.className = 'table-card';
           // Build time monitor attributes (if start_time/end_time exist)
-          const startAttr = (t.start_time ? `${date} ${t.start_time}` : '');
-          const endAttr = (t.end_time ? `${date} ${t.end_time}` : '');
+          const startAttr = (t.start_time ? `${date} ${t.start_time}` : (t.start_dt ? t.start_dt : ''));
+          const endAttr = (t.end_time ? `${date} ${t.end_time}` : (t.end_dt ? t.end_dt : ''));
+          // include reservation id and cabin name for notification tracking
+          const resId = t.reservation_id ? escapeHtml(String(t.reservation_id)) : '';
+          const cabinName = escapeHtml(t.name || '');
           card.innerHTML = `
             <div class="title">${escapeHtml(t.name)}</div>
             <div class="seats-row"><span>🛏️</span> ${escapeHtml(t.seats)} Beds</div>
@@ -456,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             ${t.guest ? `<div class="guest">${escapeHtml(t.guest)}</div>` : ''}
             ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}</div>` : ''}
-            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}"></div>
+            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}" data-reservation-id="${resId}" data-cabin-name="${cabinName}"></div>
             <div class="card-actions" aria-hidden="false">
               <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
             </div>
@@ -512,8 +629,10 @@ document.addEventListener('DOMContentLoaded', () => {
           const card = document.createElement('div');
           card.className = 'table-card';
           // Availability API may not include start/end; leave time-monitor empty if not present
-          const startAttr = (t.start_time ? `${date} ${t.start_time}` : '');
-          const endAttr = (t.end_time ? `${date} ${t.end_time}` : '');
+          const startAttr = (t.start_time ? `${date} ${t.start_time}` : (t.start || ''));
+          const endAttr = (t.end_time ? `${date} ${t.end_time}` : (t.end || ''));
+          const resId = t.reservation_id ? escapeHtml(String(t.reservation_id)) : '';
+          const cabinName = escapeHtml(t.name || '');
           card.innerHTML = `
             <div class="title">${escapeHtml(t.name)}</div>
             <div class="seats-row"><span>🛏️</span> ${escapeHtml(t.seats)} Beds</div>
@@ -522,7 +641,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="status-label">${capitalize(status)}</span>
             </div>
             ${t.guest ? `<div class="guest">${escapeHtml(t.guest)}</div>` : ''}
-            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}"></div>
+            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}" data-reservation-id="${resId}" data-cabin-name="${cabinName}"></div>
             <div class="card-actions" aria-hidden="false">
               <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
             </div>
@@ -769,7 +888,7 @@ document.addEventListener('DOMContentLoaded', () => {
     openEditModal({});
   }
 
-  // New reservation modal (date/time already filled)
+  // New reservation modal (date/time already filled) - fetch available cabins for chosen slot
   function openNewReservationModal() {
     if (!state.date || !state.time) return alert('Please select date and time first!');
     // Fetch available cabins for chosen slot
@@ -778,7 +897,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(json => {
         if (!json.success) throw new Error(json.error || 'API failed');
         const available = json.data.filter(t => t.status === 'available');
-        // Modal HTML
+        // Modal HTML with duration input (minutes)
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `
@@ -797,6 +916,10 @@ document.addEventListener('DOMContentLoaded', () => {
               <label>Time</label><input type="time" id="modalTime" value="${state.time}" readonly />
             </div>
             <div class="form-row">
+              <label for="modalDuration">Duration (minutes)</label>
+              <input id="modalDuration" type="number" min="15" max="1440" value="90" />
+            </div>
+            <div class="form-row">
               <label for="modalGuest">Guest Name</label><input id="modalGuest" type="text" />
             </div>
             <div class="modal-actions">
@@ -811,6 +934,7 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.querySelector('#modalSave').addEventListener('click', () => {
           const table_id = overlay.querySelector('#modalTableSelect').value;
           const guest = overlay.querySelector('#modalGuest').value.trim();
+          const duration = parseInt(overlay.querySelector('#modalDuration').value, 10) || 90;
           // POST reservation to backend (requires api/create_reservation.php)
           fetch('../api/create_reservation.php', {
             method: 'POST',
@@ -819,7 +943,8 @@ document.addEventListener('DOMContentLoaded', () => {
               table_id,
               date: state.date,
               start_time: state.time,
-              guest
+              guest,
+              duration
             })
           }).then(res => res.json()).then(j => {
             if (!j.success) throw new Error(j.error || 'Create reservation failed');
@@ -898,10 +1023,12 @@ document.addEventListener('DOMContentLoaded', () => {
       .modal h3 { margin:0 0 12px 0; font-size:18px;}
       .form-row { margin-bottom:10px; display:flex; flex-direction:column; gap:6px;}
       .form-row label { font-weight:700; font-size:13px;}
-      .form-row input { padding:8px 10px; font-size:14px; border-radius:6px; border:1px solid #ddd;}
+      .form-row input, .form-row select { padding:8px 10px; font-size:14px; border-radius:6px; border:1px solid #ddd;}
       .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:8px;}
       .btn { padding:8px 12px; border-radius:8px; border:1px solid #ccc; background:#f5f5f5; cursor:pointer;}
       .btn.primary { background:#001b89; color:#fff; border-color:#001b89;}
+      /* small toast style */
+      #tables-toast-container { font-family: Inter, Poppins, sans-serif; }
     `;
     const s = document.createElement('style');
     s.id = 'modal-styles';
