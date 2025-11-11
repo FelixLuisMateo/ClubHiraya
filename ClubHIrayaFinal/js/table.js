@@ -1,6 +1,5 @@
 // ../js/table.js
-// Full replacement with defensive fixes and duration support.
-// Adds data-duration on .time-monitor and shows minutes in the time-range when available.
+// Full replacement with defensive fixes, duration support, and reservation cancel button.
 
 document.addEventListener('DOMContentLoaded', () => {
   // small global error logging to surface client errors quickly
@@ -18,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const API_DELETE = '../api/delete_table.php';
   const API_CREATE = '../api/create_table.php';
   const API_GET_STATUS_BY_DATE = '../api/get_table_status_by_date.php';
+  const API_CREATE_RESERVATION = '../api/create_reservation.php';
+  const API_DELETE_RESERVATION = '../api/delete_reservation.php';
 
   let tablesData = [];
 
@@ -115,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
       duration: Number(minutes),
       guest: guest || ''
     };
-    const res = await fetch('../api/create_reservation.php', {
+    const res = await fetch(API_CREATE_RESERVATION, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -123,6 +124,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const j = await res.json().catch(e => { throw new Error('Invalid JSON response from create_reservation.php: ' + e.message); });
     if (!j.success) throw new Error(j.error || 'Create reservation failed');
     return j;
+  }
+
+  // Cancel reservation helper - call api/delete_reservation.php and refresh current view
+  async function cancelReservation(reservationId, tableId) {
+    if (!reservationId) return;
+    if (!confirm('Cancel this reservation?')) return;
+    try {
+      const res = await fetch(API_DELETE_RESERVATION, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: Number(reservationId) })
+      });
+      const j = await res.json().catch(e => { throw new Error('Invalid JSON from delete_reservation.php: ' + e.message); });
+      if (!j.success) throw new Error(j.error || 'Cancel failed');
+      showToast('Reservation cancelled', { background: '#c62828' });
+      // Refresh the page data depending on current view
+      if (state.filter === 'date') {
+        if (state.time) loadTableStatusForDateTime(state.date, state.time);
+        else loadTableStatusForDate(state.date);
+      } else if (state.filter === 'time') {
+        loadTableStatusForDateTime(state.date, state.time);
+      } else {
+        await loadTables();
+      }
+    } catch (err) {
+      console.error('cancelReservation error', err);
+      alert('Failed to cancel reservation: ' + (err && err.message ? err.message : err));
+    }
   }
 
   // --- Time monitors ---
@@ -567,8 +596,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
           const startAttr = (t.start_time ? `${date} ${t.start_time}` : (t.start_dt ? t.start_dt : ''));
           const endAttr = (t.end_time ? `${date} ${t.end_time}` : (t.end_dt ? t.end_dt : ''));
-          const resId = t.reservation_id ? escapeHtml(String(t.reservation_id)) : '';
+          const rawResId = t.reservation_id || '';
+          const resIdEscaped = rawResId ? escapeHtml(String(rawResId)) : '';
           const cabinName = escapeHtml(t.name || '');
+          const statusDotColor = status==='available'?'#00b256':status==='reserved'?'#ffd400':'#d20000';
 
           // compute duration (minutes) if API didn't provide it
           let duration = '';
@@ -590,19 +621,22 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="title">${escapeHtml(t.name)}</div>
             <div class="seats-row"><span>🛏️</span> ${escapeHtml(t.seats)} Beds</div>
             <div class="status-row">
-              <span class="status-dot" style="background:${status==='available'?'#00b256':status==='reserved'?'#ffd400':'#d20000'}"></span>
+              <span class="status-dot" style="background:${statusDotColor}"></span>
               <span class="status-label">${capitalize(status)}</span>
             </div>
             ${t.guest ? `<div class="guest">${escapeHtml(t.guest)}</div>` : ''}
             ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}${duration ? ' • ' + duration + ' min' : ''}</div>` : ''}
-            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}" data-duration="${escapeHtml(String(duration))}" data-reservation-id="${resId}" data-cabin-name="${cabinName}"></div>
+            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}" data-duration="${escapeHtml(String(duration))}" data-reservation-id="${resIdEscaped}" data-cabin-name="${cabinName}"></div>
             <div class="card-actions" aria-hidden="false">
               <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
+              ${rawResId ? `<button class="icon-btn cancel-res-btn" aria-label="Cancel reservation" title="Cancel reservation">🗑</button>` : ''}
             </div>
           `;
           grid.appendChild(card);
 
           const statusBtn = card.querySelector('.status-btn');
+          const cancelBtn = card.querySelector('.cancel-res-btn');
+
           if (statusBtn) {
             // Handler for Date view (t variable)
             statusBtn.addEventListener('click', async (ev) => {
@@ -662,6 +696,15 @@ document.addEventListener('DOMContentLoaded', () => {
               }
             });
           }
+
+          if (cancelBtn) {
+            cancelBtn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              const reservationId = rawResId || null;
+              const tableId = t.table_id || t.id || null;
+              cancelReservation(reservationId, tableId);
+            });
+          }
         });
       });
       // call updateTimeMonitors safely
@@ -707,8 +750,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
           const startAttr = (t.start_time ? `${date} ${t.start_time}` : (t.start || ''));
           const endAttr = (t.end_time ? `${date} ${t.end_time}` : (t.end || ''));
-          const resId = t.reservation_id ? escapeHtml(String(t.reservation_id)) : '';
+          const rawResId = t.reservation_id || '';
+          const resIdEscaped = rawResId ? escapeHtml(String(rawResId)) : '';
           const cabinName = escapeHtml(t.name || '');
+          const statusDotColor = status==='available'?'#00b256':status==='reserved'?'#ffd400':'#d20000';
 
           // compute duration (minutes) if API didn't provide it
           let duration = '';
@@ -730,19 +775,22 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="title">${escapeHtml(t.name)}</div>
             <div class="seats-row"><span>🛏️</span> ${escapeHtml(t.seats)} Beds</div>
             <div class="status-row">
-              <span class="status-dot" style="background:${status==='available'?'#00b256':status==='reserved'?'#ffd400':'#d20000'}"></span>
+              <span class="status-dot" style="background:${statusDotColor}"></span>
               <span class="status-label">${capitalize(status)}</span>
             </div>
             ${t.guest ? `<div class="guest">${escapeHtml(t.guest)}</div>` : ''}
             ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}${duration ? ' • ' + duration + ' min' : ''}</div>` : ''}
-            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}" data-duration="${escapeHtml(String(duration))}" data-reservation-id="${resId}" data-cabin-name="${cabinName}"></div>
+            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}" data-duration="${escapeHtml(String(duration))}" data-reservation-id="${resIdEscaped}" data-cabin-name="${cabinName}"></div>
             <div class="card-actions" aria-hidden="false">
               <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
+              ${rawResId ? `<button class="icon-btn cancel-res-btn" aria-label="Cancel reservation" title="Cancel reservation">🗑</button>` : ''}
             </div>
           `;
           grid.appendChild(card);
 
           const statusBtn = card.querySelector('.status-btn');
+          const cancelBtn = card.querySelector('.cancel-res-btn');
+
           if (statusBtn) {
             // Handler for Time view (t variable)
             statusBtn.addEventListener('click', async (ev) => {
@@ -788,6 +836,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('status button handler error (Time view):', err);
                 alert('An error occurred: ' + (err && err.message ? err.message : err));
               }
+            });
+          }
+
+          if (cancelBtn) {
+            cancelBtn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              const reservationId = rawResId || null;
+              const tableId = t.id || null;
+              cancelReservation(reservationId, tableId);
             });
           }
         });
@@ -1043,7 +1100,7 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.querySelector('#modalSave').addEventListener('click', () => {
           const table_id = overlay.querySelector('#modalTableSelect').value;
           const guest = overlay.querySelector('#modalGuest').value.trim();
-          fetch('../api/create_reservation.php', {
+          fetch(API_CREATE_RESERVATION, {
             method: 'POST',
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
