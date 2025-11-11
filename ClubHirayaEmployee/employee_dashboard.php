@@ -41,7 +41,7 @@
         </div>
 
         <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
-            <a href="../ClubHirayaEmployee /admin_dashboard.php" class="sidebar-btn active" aria-current="page">
+            <a href="../ClubHirayaEmployee/employee_dashboard.php" class="sidebar-btn active" aria-current="page">
                 <span class="sidebar-icon"><img src="../ClubHirayaEmployee/assets/logos/home.png" alt="Home icon"></span>
                 <span>Home</span>
             </a>
