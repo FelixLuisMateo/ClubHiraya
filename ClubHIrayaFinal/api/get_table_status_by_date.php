@@ -11,7 +11,7 @@ if (!$date) {
 }
 
 // Return one (the nearest) reservation for each table on that date (if any).
-// We alias fields to the names the frontend expects: id, table_id, reservation_id, start_dt, end_dt, start_time, end_time.
+// We alias fields to the names the frontend expects and include duration_minutes.
 $sql = "
 SELECT
   t.id AS id,
@@ -25,12 +25,13 @@ SELECT
   r.id AS reservation_id,
   r.`start` AS start_dt,
   r.`end` AS end_dt,
-  -- compute duration in minutes so frontend can show it directly
   CASE WHEN r.`start` IS NOT NULL AND r.`end` IS NOT NULL
        THEN TIMESTAMPDIFF(MINUTE, r.`start`, r.`end`)
-       ELSE NULL END AS duration_minutes
+       ELSE r.duration_minutes
+  END AS duration_minutes
 FROM `tables` t
 LEFT JOIN (
+    -- pick one reservation for the table on the requested date (if any).
     SELECT r1.*
     FROM reservations r1
     WHERE r1.date = :date AND r1.status IN ('reserved','occupied')

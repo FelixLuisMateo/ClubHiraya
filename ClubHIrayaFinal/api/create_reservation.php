@@ -79,6 +79,7 @@ $start_dt = $dtStart->format('Y-m-d H:i:00'); // datetime
 $end_dt   = $dtEnd->format('Y-m-d H:i:00');
 $start_time_only = $dtStart->format('H:i:00');
 $end_time_only   = $dtEnd->format('H:i:00');
+$duration_minutes = max(1, (int)$duration);
 
 try {
     // ensure table exists
@@ -112,12 +113,12 @@ try {
         exit;
     }
 
-    // insert (populate both time-only and datetime columns)
+    // insert (populate both time-only and datetime columns and duration_minutes)
     $sqlInsert = "
         INSERT INTO reservations
-          (table_id, date, start_time, end_time, `start`, `end`, guest, party_size, status, created_at)
+          (table_id, date, start_time, end_time, `start`, `end`, guest, party_size, status, duration_minutes, created_at)
         VALUES
-          (:table_id, :date, :start_time, :end_time, :start_dt, :end_dt, :guest, :party_size, :status, NOW())
+          (:table_id, :date, :start_time, :end_time, :start_dt, :end_dt, :guest, :party_size, :status, :duration_minutes, NOW())
     ";
     $stmt = $pdo->prepare($sqlInsert);
     $stmt->execute([
@@ -129,7 +130,8 @@ try {
         ':end_dt'     => $end_dt,
         ':guest'      => $guest,
         ':party_size' => $party_size ?: null,
-        ':status'     => $status
+        ':status'     => $status,
+        ':duration_minutes' => $duration_minutes
     ]);
 
     $newId = (int)$pdo->lastInsertId();
@@ -147,3 +149,4 @@ try {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     exit;
 }
+?>
