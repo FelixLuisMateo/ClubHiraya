@@ -10,7 +10,7 @@ $metaJson     = $_POST['meta']     ?? null;
 if ($cartJson === null) {
   header('X-Robots-Tag: noindex, nofollow', true);
   ?>
-  <!doctype html><html><body><h1>No receipt data</h1><a href="../employee_dashboard.php">Back</a></body></html>
+  <!doctype html><html><body><h1>No receipt data</h1><a href="../admin_dashboard.php">Back</a></body></html>
   <?php exit;
 }
 
@@ -167,7 +167,7 @@ button{margin:4px;padding:8px 16px;border:none;border-radius:6px;cursor:pointer;
 
 <div class="no-print">
   <button class="print-btn" onclick="window.print()">Print</button>
-  <button class="close-btn" onclick="window.location.href='../employee_dashboard.php'">Close</button>
+  <button class="close-btn" onclick="window.location.href='../admin_dashboard.php'">Close</button>
 </div>
 
 <footer>

@@ -77,7 +77,7 @@ $ings = $conn->query("SELECT ingredient_id, name FROM ingredient ORDER BY name D
   <aside class="sidebar">
     <div class="sidebar-header"><img src="../assets/logos/logo1.png" class="sidebar-header-img"></div>
     <nav class="sidebar-menu">
-      <a href="../index.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/home.png"></span><span>Home</span></a>
+      <a href="../employee_dashboard.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/home.png"></span><span>Home</span></a>
       <a href="../php/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/table.png"></span><span>Tables</span></a>
       <a href="inventory.php" class="sidebar-btn active "><span class="sidebar-icon"><img src="../assets/logos/inventory.png"></span><span>Inventory</span></a>
       <a href="../SalesReport/sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/sales.png"></span><span>Sales</span></a>

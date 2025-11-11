@@ -60,7 +60,7 @@ require_once __DIR__ . '/ChangePassword.php';
         </div>
 
         <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
-            <a href="../employee_dashboard.php" class="sidebar-btn" aria-current="page">
+            <a href="../admin_dashboard.php" class="sidebar-btn" aria-current="page">
                 <span class="sidebar-icon"><img src="../../ClubHirayaEmployee/assets/logos/home.png" alt="Home icon"></span>
                 <span>Home</span>
             </a>

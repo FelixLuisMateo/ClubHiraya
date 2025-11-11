@@ -30,7 +30,7 @@ if ($cartJson === null) {
       <div class="card">
         <h1>No receipt data</h1>
         <p>This page was opened without receipt data. Open the Bill Out/Print Receipt function from the POS (index.php) to print a receipt.</p>
-        <p><a class="button" href="index.php">Back to POS</a></p>
+        <p><a class="button" href="admin_dashboard.php">Back to POS</a></p>
       </div>
     </body>
     </html>
@@ -121,7 +121,7 @@ function fmt($n) {
 
   <div class="controls no-print">
     <button id="printBtn" class="btn btn-print" type="button" onclick="window.print();">Print</button>
-    <a id="backToPos" class="btn btn-back" href="index.php" onclick="event.preventDefault(); returnToPOS();">Back to POS</a>
+    <a id="backToPos" class="btn btn-back" href="admin_dashboard.php" onclick="event.preventDefault(); returnToPOS();">Back to POS</a>
     <a id="closeBtn" class="btn btn-close" href="#" onclick="event.preventDefault(); returnToPOS();">Close</a>
   </div>
 
