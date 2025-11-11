@@ -9,6 +9,8 @@
   <link rel="stylesheet" href="../css/table.css">
   <!-- small overrides (pins filters to top, hides search topbar) -->
   <link rel="stylesheet" href="../css/table-overrides.css">
+  <!-- Compact timepicker / time-slot overrides (load last so it can override defaults) -->
+  <link rel="stylesheet" href="../css/table-timepicker-small.css">
   <!-- flatpickr for inline calendar (required by calendar.js) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 </head>
