@@ -52,6 +52,8 @@ $reserved = $order['table_price'] ?? 0;
 $total = $order['total_amount'] ?? 0;
 $cash = $order['cash_given'] ?? 0;
 $change = $order['change_amount'] ?? 0;
+$isVoided = $order['is_voided'] ?? 0;
+
 
 // 🔹 Try to extract payment details JSON from note
 $paymentDetailsHTML = '';
@@ -122,9 +124,45 @@ if (preg_match('/Payment Details:\s*(\{.*\})/s', $note, $m)) {
   </table>
 
   <div style="margin-top:16px; display:flex; justify-content:flex-end; gap:10px;">
-    <button style="padding:8px 14px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer;"
-      onclick="window.open('print_receipt_payment.php?id=<?= $id ?>', '_blank')">🧾 Reprint</button>
-    <button style="padding:8px 14px; background:#dc2626; color:#fff; border:none; border-radius:6px; cursor:pointer;"
-      onclick="alert('Void action for Order #<?= $id ?> (to be implemented)')">❌ Void</button>
+    <button
+      style="padding:8px 14px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer;"
+      onclick="window.open('../php/print_receipt_reprint.php?id=<?= $id ?>', '_blank')"
+      <?= $isVoided ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '' ?>>
+      🧾 Reprint<?= $isVoided ? ' (Voided)' : '' ?>
+    </button>
+
+    <button id="voidBtn" data-id="<?= $id ?>"
+      style="padding:8px 14px; background:#dc2626; color:#fff; border:none; border-radius:6px; cursor:pointer;"
+      <?= $isVoided ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '' ?>>
+      ❌ Void<?= $isVoided ? 'ed' : '' ?>
+    </button>
   </div>
 </div>
+
+<script>
+// ✅ Attach the event properly AFTER the content loads
+document.addEventListener('click', async function(e) {
+  if (e.target && e.target.id === 'voidBtn') {
+    const id = e.target.getAttribute('data-id');
+    if (!confirm('Are you sure you want to VOID Order #' + id + '?')) return;
+
+    try {
+      const res = await fetch('void_sale.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'id=' + encodeURIComponent(id)
+      });
+      const data = await res.json();
+      if (data.ok) {
+        alert(data.message || 'Order voided successfully.');
+        location.reload();
+      } else {
+        alert('Failed to void: ' + (data.error || 'Unknown error.'));
+      }
+    } catch (err) {
+      alert('Error connecting to server.');
+      console.error(err);
+    }
+  }
+});
+</script>

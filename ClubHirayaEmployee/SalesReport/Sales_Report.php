@@ -202,10 +202,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
         .left-panel { width: 320px; background: #e8e8ea; padding:14px; border-radius:12px; max-height: calc(100vh - 160px); overflow-y:auto; box-sizing:border-box; }
         .orders-list { display:flex; flex-direction:column; gap:12px; }
         .order-card { background:#fff; border-radius:10px; padding:10px 12px; box-shadow: 0 6px 12px rgba(0,0,0,0.06); cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start; border:1px solid #ddd; }
-        .order-card .meta { display:flex; flex-direction:column; gap:6px; font-size:13px; color:#222; max-width: 220px; }
-        .order-card .meta .label { font-weight:700; color:#333; white-space:normal; word-break:break-word; }
-        .order-card .meta .sub { font-size:12px; color:#666; }
-        .order-card .amount { font-size:16px; font-weight:800; color:#111; padding-left:8px; white-space:nowrap; }
+        .order-card .meta { display:flex; flex-direction:column; gap:6px; font-size:13px; max-width: 220px; }
+        .order-card .meta .label { font-weight:700; white-space:normal; word-break:break-word; }
+        .order-card .meta .sub { font-size:12px; }
+        .order-card .amount { font-size:16px; font-weight:800 padding-left:8px; white-space:nowrap; }
         .order-card.active { border-color:#d33fd3; box-shadow:0 10px 18px rgba(0,0,0,0.12); transform:translateY(-2px); }
         .right-panel { flex:1; padding:18px; background:#e8e8ea; border-radius:12px; min-height:420px; box-sizing:border-box; }
         .right-card { background:#fff; border-radius:10px; padding:18px; border:1px solid #eee; min-height:260px; box-sizing:border-box; }
@@ -245,6 +245,26 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
             background: linear-gradient(135deg, #d33fd3, #a2058f);
             color: #fff;
             }
+            .order-card.voided {
+            opacity: 0.5;
+            pointer-events: none;
+            position: relative;
+            }
+            .order-card.voided::after {
+            content: "VOIDED";
+            position: absolute;
+            top: 6px;
+            right: 10px;
+            background: #dc2626;
+            color: white;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            box-shadow: 0 1px 4px rgba(255, 0, 0, 0.73);
+            }
+
+
 
     </style>
 </head>
@@ -281,11 +301,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
     <main class="main-content" role="main" aria-label="Main content" style="padding:22px;">
         <div class="topbar" style="left: 160px; right: 40px; display: flex; justify-content: space-between; align-items: center;">
             <div class="search-section">
-                <input type="text" class="search-input" placeholder="Search orders" id="searchBox" aria-label="Search orders">
+                <input type="text" class="search-input" placeholder="Search order ID" id="searchBox" aria-label="Search orders">
             </div>
             <div class="topbar-buttons">
                 <a href="Sales_Report.php" class="active">Sales Report</a>
                 <a href="report_sales.php">Summary Report</a>
+                <a href="void_logs.php" style="background:#dc2626; color:#fff;">Void Logs</a>
             </div>
         </div>
 
@@ -342,7 +363,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
                         $amount = number_format(floatval($o['total_amount'] ?? 0), 2);
 
                         $time = date('h:i A', strtotime($o['created_at'] ?? date('Y-m-d H:i:s')));
-                        echo '<div class="order-card" data-id="'.$id.'">';
+                        $voidClass = (!empty($o['is_voided'])) ? ' voided' : '';
+                        echo '<div class="order-card'.$voidClass.'" data-id="'.$id.'">';
+
                         echo '<div class="meta">';
                         echo '<span class="label">Order ID: '.$id.'</span>';
                         echo '<span class="sub">'.htmlspecialchars($date).' — '.$time.'</span>';
@@ -419,12 +442,41 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
             const text = await res.text();
 
             // Inject the returned HTML into the right panel
-            document.getElementById('orderItems').innerHTML = text;
+            const orderItemsDiv = document.getElementById('orderItems');
+            orderItemsDiv.innerHTML = text;
 
             // Optional: Set the title above
             detailTitle.textContent = 'Order #' + id;
             detailDate.textContent = '';
             detailTotal.textContent = '';
+
+            // ✅ Rebind the Void button if it exists
+            const voidBtn = orderItemsDiv.querySelector('#voidBtn');
+            if (voidBtn) {
+            voidBtn.addEventListener('click', async function () {
+                const orderId = this.getAttribute('data-id');
+                if (!confirm('Are you sure you want to VOID Order #' + orderId + '?')) return;
+
+                try {
+                const res = await fetch('void_sale.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'id=' + encodeURIComponent(orderId)
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    alert(data.message || 'Order voided successfully.');
+                    location.reload();
+                } else {
+                    alert('Failed to void: ' + (data.error || 'Unknown error.'));
+                }
+                } catch (err) {
+                alert('Error connecting to server.');
+                console.error(err);
+                }
+            });
+            }
+
         } catch (e) {
             detailTitle.textContent = 'Error loading order';
             orderItems.innerHTML = '<div class="order-item-empty">Failed to retrieve order details.</div>';
