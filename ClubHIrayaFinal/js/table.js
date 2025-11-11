@@ -1,8 +1,6 @@
 // ../js/table.js
-// Full replacement with defensive fixes for two common runtime errors:
-// - guard calls to updateTimeMonitors() in case it's undefined or throws
-// - ensure DOM nodes (grid) exist before using .innerHTML in catch blocks
-// Also adds global error logging to make debugging easier.
+// Full replacement with defensive fixes and duration support.
+// Adds data-duration on .time-monitor and shows minutes in the time-range when available.
 
 document.addEventListener('DOMContentLoaded', () => {
   // small global error logging to surface client errors quickly
@@ -555,7 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const tables = json.data;
       grid.innerHTML = '';
 
-      ['available', 'reserved', 'occupied'].forEach(  status => {
+      ['available', 'reserved', 'occupied'].forEach(status => {
         const list = tables.filter(t => t.status === status);
         if (!list.length) return;
         const header = document.createElement('div');
@@ -566,10 +564,28 @@ document.addEventListener('DOMContentLoaded', () => {
         list.forEach(t => {
           const card = document.createElement('div');
           card.className = 'table-card';
+
           const startAttr = (t.start_time ? `${date} ${t.start_time}` : (t.start_dt ? t.start_dt : ''));
           const endAttr = (t.end_time ? `${date} ${t.end_time}` : (t.end_dt ? t.end_dt : ''));
           const resId = t.reservation_id ? escapeHtml(String(t.reservation_id)) : '';
           const cabinName = escapeHtml(t.name || '');
+
+          // compute duration (minutes) if API didn't provide it
+          let duration = '';
+          if (typeof t.duration_minutes !== 'undefined' && t.duration_minutes !== null) {
+            duration = t.duration_minutes;
+          } else if (startAttr && endAttr) {
+            try {
+              const sIso = startAttr.replace(' ', 'T');
+              const eIso = endAttr.replace(' ', 'T');
+              const d1 = new Date(sIso);
+              const d2 = new Date(eIso);
+              if (!isNaN(d1) && !isNaN(d2)) {
+                duration = Math.round((d2 - d1) / 60000); // minutes
+              }
+            } catch (e) { duration = ''; }
+          }
+
           card.innerHTML = `
             <div class="title">${escapeHtml(t.name)}</div>
             <div class="seats-row"><span>🛏️</span> ${escapeHtml(t.seats)} Beds</div>
@@ -578,8 +594,8 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="status-label">${capitalize(status)}</span>
             </div>
             ${t.guest ? `<div class="guest">${escapeHtml(t.guest)}</div>` : ''}
-            ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}</div>` : ''}
-            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}" data-reservation-id="${resId}" data-cabin-name="${cabinName}"></div>
+            ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}${duration ? ' • ' + duration + ' min' : ''}</div>` : ''}
+            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}" data-duration="${escapeHtml(String(duration))}" data-reservation-id="${resId}" data-cabin-name="${cabinName}"></div>
             <div class="card-actions" aria-hidden="false">
               <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
             </div>
@@ -688,10 +704,28 @@ document.addEventListener('DOMContentLoaded', () => {
         list.forEach(t => {
           const card = document.createElement('div');
           card.className = 'table-card';
+
           const startAttr = (t.start_time ? `${date} ${t.start_time}` : (t.start || ''));
           const endAttr = (t.end_time ? `${date} ${t.end_time}` : (t.end || ''));
           const resId = t.reservation_id ? escapeHtml(String(t.reservation_id)) : '';
           const cabinName = escapeHtml(t.name || '');
+
+          // compute duration (minutes) if API didn't provide it
+          let duration = '';
+          if (typeof t.duration_minutes !== 'undefined' && t.duration_minutes !== null) {
+            duration = t.duration_minutes;
+          } else if (startAttr && endAttr) {
+            try {
+              const sIso = startAttr.replace(' ', 'T');
+              const eIso = endAttr.replace(' ', 'T');
+              const d1 = new Date(sIso);
+              const d2 = new Date(eIso);
+              if (!isNaN(d1) && !isNaN(d2)) {
+                duration = Math.round((d2 - d1) / 60000); // minutes
+              }
+            } catch (e) { duration = ''; }
+          }
+
           card.innerHTML = `
             <div class="title">${escapeHtml(t.name)}</div>
             <div class="seats-row"><span>🛏️</span> ${escapeHtml(t.seats)} Beds</div>
@@ -700,7 +734,8 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="status-label">${capitalize(status)}</span>
             </div>
             ${t.guest ? `<div class="guest">${escapeHtml(t.guest)}</div>` : ''}
-            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}" data-reservation-id="${resId}" data-cabin-name="${cabinName}"></div>
+            ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}${duration ? ' • ' + duration + ' min' : ''}</div>` : ''}
+            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}" data-duration="${escapeHtml(String(duration))}" data-reservation-id="${resId}" data-cabin-name="${cabinName}"></div>
             <div class="card-actions" aria-hidden="false">
               <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
             </div>
