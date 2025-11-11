@@ -348,9 +348,16 @@ body.dark-mode .sidebar-btn{
 }
 
 
-body.dark-mode .compute-row .label,
-body.dark-mode .compute-row .value{
+body.dark-mode .order-items,
+body.dark-mode .order-title.main,
+
+body.dark-mode .right-panel{
 background: #363636;
+  color: #fff;
+}
+body.dark-mode .right-card,
+body.dark-mode .right-panel{
+background: #222;
   color: #fff;
 }
 

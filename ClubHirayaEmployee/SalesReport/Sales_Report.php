@@ -210,7 +210,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
         .right-panel { flex:1; padding:18px; background:#e8e8ea; border-radius:12px; min-height:420px; box-sizing:border-box; }
         .right-card { background:#fff; border-radius:10px; padding:18px; border:1px solid #eee; min-height:260px; box-sizing:border-box; }
         .order-title { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
-        .order-title .main { font-weight:800; font-size:20px; color:#222; }
+        .order-title .main { font-weight:800; font-size:20px;  }
         .order-title .meta { font-size:13px; color:#666; }
         .order-items { margin-top:12px; border-radius:8px; padding:12px; background:#faf9fb; border:1px solid #f0e8ef; }
         .order-item-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #eee; color:#222; }
@@ -220,6 +220,32 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
         .order-item-row .qty { color:#555; font-size:13px; }
         .order-item-row .price { font-weight:700; color:#111; min-width:120px; text-align:right; }
         .small-muted { color:#666; font-size:13px; }
+        .topbar-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-left: auto;
+            }
+
+            .topbar-buttons a {
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: #ddd;
+            color: #222;
+            font-weight: 600;
+            transition: 0.2s;
+            }
+
+            .topbar-buttons a:hover {
+            background: #ccc;
+            }
+
+            .topbar-buttons a.active {
+            background: linear-gradient(135deg, #d33fd3, #a2058f);
+            color: #fff;
+            }
+
     </style>
 </head>
 <body <?php
@@ -253,11 +279,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
     </aside>
 
     <main class="main-content" role="main" aria-label="Main content" style="padding:22px;">
-        <div class="topbar" style="left: 160px; right: 40px; position:relative;">
+        <div class="topbar" style="left: 160px; right: 40px; display: flex; justify-content: space-between; align-items: center;">
             <div class="search-section">
                 <input type="text" class="search-input" placeholder="Search orders" id="searchBox" aria-label="Search orders">
             </div>
+            <div class="topbar-buttons">
+                <a href="Sales_Report.php" class="active">Sales Report</a>
+                <a href="report_sales.php">Summary Report</a>
+            </div>
         </div>
+
 
         <div style="height: 18px;"></div>
 
@@ -310,12 +341,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
                         $displayLabel = htmlspecialchars($labelSource);
                         $amount = number_format(floatval($o['total_amount'] ?? 0), 2);
 
+                        $time = date('h:i A', strtotime($o['created_at'] ?? date('Y-m-d H:i:s')));
                         echo '<div class="order-card" data-id="'.$id.'">';
-                        echo '<div class="meta"><span class="label">'.$displayLabel.'</span>';
+                        echo '<div class="meta">';
+                        echo '<span class="label">Order ID: '.$id.'</span>';
+                        echo '<span class="sub">'.htmlspecialchars($date).' — '.$time.'</span>';
                         if ($shortSummary) echo '<span class="sub">'.htmlspecialchars($shortSummary).'</span>';
-                        echo '<span class="sub">' . htmlspecialchars($date) . '</span></div>';
+                        echo '</div>';
                         echo '<div class="amount">₱ '.$amount.'</div>';
                         echo '</div>';
+
                     }
 
                     if (empty($orders)) {
@@ -339,7 +374,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
 
                     <div style="height:12px;"></div>
                     <div style="display:flex; justify-content:flex-end; gap:8px; align-items:center;">
-                        <div class="small-muted">Discount:</div><div id="detailDiscount">-</div>
+                        <div class="small-muted">:</div><div id="detailDiscount">-</div>
                     </div>
                 </div>
             </div>
@@ -348,29 +383,29 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
     </main>
 
 <script>
-(function(){
-    const detailTitle = document.getElementById('detailTitle');
-    const detailDate = document.getElementById('detailDate');
-    const detailTotal = document.getElementById('detailTotal');
-    const orderItems = document.getElementById('orderItems');
-    const detailDiscount = document.getElementById('detailDiscount');
+    (function(){
+        const detailTitle = document.getElementById('detailTitle');
+        const detailDate = document.getElementById('detailDate');
+        const detailTotal = document.getElementById('detailTotal');
+        const orderItems = document.getElementById('orderItems');
+        const detailDiscount = document.getElementById('detailDiscount');
 
-    function setActiveCard(card) {
-        document.querySelectorAll('.order-card').forEach(c => c.classList.remove('active'));
-        if (card) card.classList.add('active');
-    }
+        function setActiveCard(card) {
+            document.querySelectorAll('.order-card').forEach(c => c.classList.remove('active'));
+            if (card) card.classList.add('active');
+        }
 
-    function getDetailUrl(id) {
-        const base = window.location.href.split('?')[0].split('#')[0];
-        if (base.endsWith('/')) return base + 'Sales_Report.php?action=detail&id=' + encodeURIComponent(id);
-        return base + '?action=detail&id=' + encodeURIComponent(id);
-    }
+        function getDetailUrl(id) {
+            const base = window.location.href.split('?')[0].split('#')[0];
+            if (base.endsWith('/')) return base + 'Sales_Report.php?action=detail&id=' + encodeURIComponent(id);
+            return base + '?action=detail&id=' + encodeURIComponent(id);
+        }
 
-    function formatCurrency(n) {
-        return '₱ ' + Number(n || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
-    }
+        function formatCurrency(n) {
+            return '₱ ' + Number(n || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+        }
 
-    async function loadDetail(id, cardElement) {
+        async function loadDetail(id, cardElement) {
         setActiveCard(cardElement);
         detailTitle.textContent = 'Loading...';
         detailDate.textContent = '';
@@ -379,112 +414,24 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
         detailDiscount.textContent = '';
 
         try {
-            const url = getDetailUrl(id);
-            const res = await fetch(url, { credentials: 'same-origin' });
+            // Fetch the order detail HTML
+            const res = await fetch('sales_order_detail.php?id=' + encodeURIComponent(id));
             const text = await res.text();
 
-            let payload;
-            try {
-                payload = JSON.parse(text);
-            } catch (e) {
-                orderItems.innerHTML = '<div class="order-item-empty">Failed to retrieve order details.<br/><small>Server returned non-JSON response. See debug below.</small></div>';
-                const dbg = document.createElement('div');
-                dbg.style.marginTop = '8px';
-                dbg.style.padding = '8px';
-                dbg.style.background = '#fff7f7';
-                dbg.style.border = '1px solid #ffd6d6';
-                dbg.style.color = '#900';
-                dbg.style.maxHeight = '320px';
-                dbg.style.overflow = 'auto';
-                dbg.innerHTML = '<pre style="white-space:pre-wrap;">' + text.substring(0, 800) + (text.length > 800 ? '\n\n(truncated...)' : '') + '</pre>';
-                const rc = document.getElementById('orderItems');
-                rc.innerHTML = '';
-                rc.appendChild(dbg);
-                detailTitle.textContent = 'Error loading order';
-                return;
-            }
+            // Inject the returned HTML into the right panel
+            document.getElementById('orderItems').innerHTML = text;
 
-            if (!payload.ok) {
-                detailTitle.textContent = 'Order not found';
-                orderItems.innerHTML = '<div class="order-item-empty">No details available for this order.</div>';
-                return;
-            }
-
-            const o = payload.order;
-            const title = (o.table_no ? o.note : (o.note ? (o.note.split(/\r\n|\n/)[0] || ('Order ' + o.id)) : ('Order ' + o.id)));
-            detailTitle.textContent = title;
-            detailDate.textContent = new Date(o.created_at).toLocaleString();
-            detailTotal.textContent = formatCurrency(o.total_amount || 0);
-            detailDiscount.textContent = (o.discount ? formatCurrency(o.discount) : '₱ 0.00');
-
-            // show reservation info if table_no present
-            let reserveHtml = '';
-            if (o.table_no) {
-                reserveHtml += '<div style="margin-top:8px;color:#444"><strong>Reservation / Table:</strong> ' + (o.table_no) + '</div>';
-            }
-
-            // build items table
-            const items = payload.items || [];
-            if (items.length === 0) {
-                // fallback: show note lines or "No items"
-                if (o.note && o.note.indexOf('\n') !== -1) {
-                    const lines = o.note.split('\n');
-                    orderItems.innerHTML = '';
-                    lines.forEach(line => {
-                        const row = document.createElement('div');
-                        row.className = 'order-item-row';
-                        row.innerHTML = '<div class="left"><div class="name">'+line+'</div></div><div class="price"></div>';
-                        orderItems.appendChild(row);
-                    });
-                } else {
-                    orderItems.innerHTML = '<div class="order-item-empty">No line items recorded for this order.</div>';
-                }
-            } else {
-                orderItems.innerHTML = '';
-                items.forEach(it => {
-                    // support various column names returned
-                    const name = it.item_name || it.name || it.product_name || it.title || ('Item #' + (it.id || ''));
-                    const qty = (typeof it.qty !== 'undefined') ? it.qty : (it.quantity || 1);
-                    const unitPrice = (typeof it.unit_price !== 'undefined') ? it.unit_price : (it.price || it.amount || 0);
-                    const lineTotal = (typeof it.line_total !== 'undefined' && Number(it.line_total) !== 0) ? it.line_total : (qty * unitPrice);
-
-                    const row = document.createElement('div');
-                    row.className = 'order-item-row';
-                    const left = document.createElement('div');
-                    left.className = 'left';
-                    const nameEl = document.createElement('div');
-                    nameEl.className = 'name';
-                    nameEl.textContent = name;
-                    const qtyEl = document.createElement('div');
-                    qtyEl.className = 'qty';
-                    qtyEl.textContent = 'x' + qty;
-                    left.appendChild(nameEl);
-                    left.appendChild(qtyEl);
-
-                    const right = document.createElement('div');
-                    right.className = 'price';
-                    right.textContent = formatCurrency(lineTotal);
-
-                    row.appendChild(left);
-                    row.appendChild(right);
-                    orderItems.appendChild(row);
-                });
-
-                // show reservation block under items if present
-                if (o.table_no) {
-                    const row = document.createElement('div');
-                    row.style.marginTop = '10px';
-                    row.innerHTML = '<div class="small-muted"><strong>Reservation:</strong> ' + (o.table_no) + '</div>';
-                    orderItems.appendChild(row);
-                }
-            }
-
+            // Optional: Set the title above
+            detailTitle.textContent = 'Order #' + id;
+            detailDate.textContent = '';
+            detailTotal.textContent = '';
         } catch (e) {
             detailTitle.textContent = 'Error loading order';
             orderItems.innerHTML = '<div class="order-item-empty">Failed to retrieve order details.</div>';
             console.error(e);
         }
     }
+
 
     document.querySelectorAll('.order-card').forEach(card => {
         card.addEventListener('click', function(){
