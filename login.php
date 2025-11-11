@@ -1,17 +1,16 @@
 <?php
 session_start();
-include '../ClubHiraya/ClubHirayaFinal/php/db_connect.php';
+require_once '../ClubHiraya/ClubHirayaFinal/php/db_connect.php';
 
-// Check if the form was submitted
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Get the form data
+// Handle form submission
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
 
     if (empty($email) || empty($password)) {
-        echo "<script>alert('Please enter email and password.');</script>";
+        echo "<script>alert('Please enter both email and password.');</script>";
     } else {
-        // Prepare the SQL query to find the user
+        // Check if user exists
         $sql = "SELECT id, email, password, role FROM users WHERE email = ? LIMIT 1";
         if ($stmt = $conn->prepare($sql)) {
             $stmt->bind_param("s", $email);
@@ -22,21 +21,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $user = $result->fetch_assoc();
                 $dbPass = $user['password'];
 
-                // Plain-text comparison (insecure). Only for local testing.
+                // ⚠️ For now: plain password check (use password_hash in production)
                 if ($password === $dbPass) {
-                    // Set session variables
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['user_email'] = $user['email'];
-                    $_SESSION['user_role'] = $user['role'];
+                    $_SESSION['user_role'] = strtolower($user['role']);
 
-                    // Redirect based on role
+                    // Redirect by role
                     $role = strtolower($user['role']);
                     if ($role === 'admin' || $role === 'manager') {
                         header("Location: ../ClubHiraya/ClubHirayaFinal/admin_dashboard.php");
-                        exit();
+                        exit;
+                    } elseif ($role === 'staff' || $role === 'employee') {
+                        header("Location: ../ClubHiraya/ClubHirayaEmployee/employee_dashboard.php");
+                        exit;
                     } else {
-                        header("Location: ../ClubHiraya/ClubHirayaFinal/admin_dashboard.php");
-                        exit();
+                        echo "<script>alert('Unknown role: $role');</script>";
                     }
                 } else {
                     echo "<script>alert('Incorrect password!');</script>";
@@ -47,14 +47,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             $stmt->close();
         } else {
-            echo "<script>alert('Database error.');</script>";
+            echo "<script>alert('Database error: ".$conn->error."');</script>";
         }
     }
-
     $conn->close();
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -67,7 +65,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div class="login-wrapper">
         <div class="login-center">
             <div class="login-content">
-                <form action="employee_dashboard.php" method="POST">
+                <form action="" method="POST">
                     <label for="email">EMPLOYEE LOGIN</label>
                     <input type="email" id="email" name="email" placeholder="Email" required>
                     <input type="password" id="password" name="password" placeholder="Password" required>

@@ -249,7 +249,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
             <a href="../settings/settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/setting.png" alt="Settings"></span><span>Settings</span></a>
         </nav>
         <div style="flex:1" aria-hidden="true"></div>
-        <button class="sidebar-logout" type="button" aria-label="Logout"><span>Logout</span></button>
+        <form method="post" action="../logout.php" style="margin:0;">
+            <button class="sidebar-logout" type="submit" aria-label="Logout">
+            <span>Logout</span>
+        </button>
+        </form>
     </aside>
 
     <main class="main-content" role="main" aria-label="Main content" style="padding:22px;">

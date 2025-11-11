@@ -120,7 +120,7 @@ body {
   width: 120px;
   height: 49px;
   margin: 32px auto 18px auto;
-  background: #001B89;
+  background: red;
   color: #fff;
   border: none;
   border-radius: 12px;
@@ -660,18 +660,18 @@ body.dark-mode {
 }
 body.dark-mode .main-content,
 body.dark-mode .foods-grid,
-body.dark-mode .food-label,
+body.dark-mode .table-card,
 body.dark-mode .products-section,
 body.dark-mode .order-section{
   background: #222;
   color: #fff;
 }
 
-body.dark-mode .order-item,
+body.dark-mode .cards-backdrop,
 body.dark-mode .food-label,
 body.dark-mode .order-list,
 body.dark-mode .food-price,
-body.dark-mode .order-compute,
+body.dark-mode .filters,
 body.dark-mode .food-card{
   background: #363636;
   color: #fff;

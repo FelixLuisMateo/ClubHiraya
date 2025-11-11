@@ -202,15 +202,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
         .left-panel { width: 320px; background: #e8e8ea; padding:14px; border-radius:12px; max-height: calc(100vh - 160px); overflow-y:auto; box-sizing:border-box; }
         .orders-list { display:flex; flex-direction:column; gap:12px; }
         .order-card { background:#fff; border-radius:10px; padding:10px 12px; box-shadow: 0 6px 12px rgba(0,0,0,0.06); cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start; border:1px solid #ddd; }
-        .order-card .meta { display:flex; flex-direction:column; gap:6px; font-size:13px; color:#222; max-width: 220px; }
-        .order-card .meta .label { font-weight:700; color:#333; white-space:normal; word-break:break-word; }
-        .order-card .meta .sub { font-size:12px; color:#666; }
-        .order-card .amount { font-size:16px; font-weight:800; color:#111; padding-left:8px; white-space:nowrap; }
+        .order-card .meta { display:flex; flex-direction:column; gap:6px; font-size:13px; max-width: 220px; }
+        .order-card .meta .label { font-weight:700; white-space:normal; word-break:break-word; }
+        .order-card .meta .sub { font-size:12px; }
+        .order-card .amount { font-size:16px; font-weight:800 padding-left:8px; white-space:nowrap; }
         .order-card.active { border-color:#d33fd3; box-shadow:0 10px 18px rgba(0,0,0,0.12); transform:translateY(-2px); }
         .right-panel { flex:1; padding:18px; background:#e8e8ea; border-radius:12px; min-height:420px; box-sizing:border-box; }
         .right-card { background:#fff; border-radius:10px; padding:18px; border:1px solid #eee; min-height:260px; box-sizing:border-box; }
         .order-title { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
-        .order-title .main { font-weight:800; font-size:20px; color:#222; }
+        .order-title .main { font-weight:800; font-size:20px;  }
         .order-title .meta { font-size:13px; color:#666; }
         .order-items { margin-top:12px; border-radius:8px; padding:12px; background:#faf9fb; border:1px solid #f0e8ef; }
         .order-item-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #eee; color:#222; }
@@ -220,6 +220,52 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
         .order-item-row .qty { color:#555; font-size:13px; }
         .order-item-row .price { font-weight:700; color:#111; min-width:120px; text-align:right; }
         .small-muted { color:#666; font-size:13px; }
+        .topbar-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-left: auto;
+            }
+
+            .topbar-buttons a {
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: #ddd;
+            color: #222;
+            font-weight: 600;
+            transition: 0.2s;
+            }
+
+            .topbar-buttons a:hover {
+            background: #ccc;
+            }
+
+            .topbar-buttons a.active {
+            background: linear-gradient(135deg, #d33fd3, #a2058f);
+            color: #fff;
+            }
+            .order-card.voided {
+            opacity: 0.5;
+            pointer-events: none;
+            position: relative;
+            }
+            .order-card.voided::after {
+            content: "VOIDED";
+            position: absolute;
+            top: 6px;
+            right: 10px;
+            background: #dc2626;
+            color: white;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            box-shadow: 0 1px 4px rgba(255, 0, 0, 0.73);
+            }
+
+
+
     </style>
 </head>
 <body <?php
@@ -242,22 +288,32 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
             <img src="../../clubtryara/assets/logos/logo1.png" alt="Club Hiraya logo" class="sidebar-header-img">
         </div>
         <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
-            <a href="../admin_dashboard.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/home.png" alt="Home"></span><span>Home</span></a>
-            <a href="../../ClubTryara/tables/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/cabin.png" alt="Tables icon"></span><span>Cabins</span></a>
+            <a href="../employee_dashboard.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/home.png" alt="Home"></span><span>Home</span></a>
+            <a href="../tables/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/cabin.png" alt="Tables icon"></span><span>Cabins</span></a>
             <a href="../inventory/inventory.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
             <a href="Sales_Report.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/sales.png" alt="Sales report"></span><span>Sales Report</span></a>
             <a href="../settings/settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/setting.png" alt="Settings"></span><span>Settings</span></a>
         </nav>
         <div style="flex:1" aria-hidden="true"></div>
-        <button class="sidebar-logout" type="button" aria-label="Logout"><span>Logout</span></button>
+        <form method="post" action="../logout.php" style="margin:0;">
+            <button class="sidebar-logout" type="submit" aria-label="Logout">
+            <span>Logout</span>
+        </button>
+        </form>
     </aside>
 
     <main class="main-content" role="main" aria-label="Main content" style="padding:22px;">
-        <div class="topbar" style="left: 160px; right: 40px; position:relative;">
+        <div class="topbar" style="left: 160px; right: 40px; display: flex; justify-content: space-between; align-items: center;">
             <div class="search-section">
-                <input type="text" class="search-input" placeholder="Search orders" id="searchBox" aria-label="Search orders">
+                <input type="text" class="search-input" placeholder="Search order ID" id="searchBox" aria-label="Search orders">
+            </div>
+            <div class="topbar-buttons">
+                <a href="Sales_Report.php" class="active">Sales Report</a>
+                <a href="report_sales.php">Summary Report</a>
+                <a href="void_logs.php" style="background:#dc2626; color:#fff;">Void Logs</a>
             </div>
         </div>
+
 
         <div style="height: 18px;"></div>
 
@@ -286,13 +342,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
                     foreach ($orders as $o) {
                         $id = htmlspecialchars($o['id']);
                         $date = date('M d, Y', strtotime($o['created_at'] ?? date('Y-m-d')));
-                        $rawNote = $o['note'] ?? '';
+                        $rawNote = $o['id'] ?? '';
                         $pm = $o['payment_method'] ?? null;
                         $parsed = parse_note_and_payment($rawNote, $pm);
 
                         // Prefer table_no if present for the label
                         $labelSource = '';
-                        if (!empty($o['table_no'])) {
+                        if (!empty($o['sale_id'])) {
                             $labelSource = $o['table_no'];
                         } elseif (!empty($parsed['label'])) {
                             $labelSource = $parsed['label'];
@@ -310,12 +366,18 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
                         $displayLabel = htmlspecialchars($labelSource);
                         $amount = number_format(floatval($o['total_amount'] ?? 0), 2);
 
-                        echo '<div class="order-card" data-id="'.$id.'">';
-                        echo '<div class="meta"><span class="label">'.$displayLabel.'</span>';
+                        $time = date('h:i A', strtotime($o['created_at'] ?? date('Y-m-d H:i:s')));
+                        $voidClass = (!empty($o['is_voided'])) ? ' voided' : '';
+                        echo '<div class="order-card'.$voidClass.'" data-id="'.$id.'">';
+
+                        echo '<div class="meta">';
+                        echo '<span class="label">Order ID: '.$id.'</span>';
+                        echo '<span class="sub">'.htmlspecialchars($date).' — '.$time.'</span>';
                         if ($shortSummary) echo '<span class="sub">'.htmlspecialchars($shortSummary).'</span>';
-                        echo '<span class="sub">' . htmlspecialchars($date) . '</span></div>';
+                        echo '</div>';
                         echo '<div class="amount">₱ '.$amount.'</div>';
                         echo '</div>';
+
                     }
 
                     if (empty($orders)) {
@@ -339,7 +401,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
 
                     <div style="height:12px;"></div>
                     <div style="display:flex; justify-content:flex-end; gap:8px; align-items:center;">
-                        <div class="small-muted">Discount:</div><div id="detailDiscount">-</div>
+                        <div class="small-muted">:</div><div id="detailDiscount">-</div>
                     </div>
                 </div>
             </div>
@@ -348,29 +410,29 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
     </main>
 
 <script>
-(function(){
-    const detailTitle = document.getElementById('detailTitle');
-    const detailDate = document.getElementById('detailDate');
-    const detailTotal = document.getElementById('detailTotal');
-    const orderItems = document.getElementById('orderItems');
-    const detailDiscount = document.getElementById('detailDiscount');
+    (function(){
+        const detailTitle = document.getElementById('detailTitle');
+        const detailDate = document.getElementById('detailDate');
+        const detailTotal = document.getElementById('detailTotal');
+        const orderItems = document.getElementById('orderItems');
+        const detailDiscount = document.getElementById('detailDiscount');
 
-    function setActiveCard(card) {
-        document.querySelectorAll('.order-card').forEach(c => c.classList.remove('active'));
-        if (card) card.classList.add('active');
-    }
+        function setActiveCard(card) {
+            document.querySelectorAll('.order-card').forEach(c => c.classList.remove('active'));
+            if (card) card.classList.add('active');
+        }
 
-    function getDetailUrl(id) {
-        const base = window.location.href.split('?')[0].split('#')[0];
-        if (base.endsWith('/')) return base + 'Sales_Report.php?action=detail&id=' + encodeURIComponent(id);
-        return base + '?action=detail&id=' + encodeURIComponent(id);
-    }
+        function getDetailUrl(id) {
+            const base = window.location.href.split('?')[0].split('#')[0];
+            if (base.endsWith('/')) return base + 'Sales_Report.php?action=detail&id=' + encodeURIComponent(id);
+            return base + '?action=detail&id=' + encodeURIComponent(id);
+        }
 
-    function formatCurrency(n) {
-        return '₱ ' + Number(n || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
-    }
+        function formatCurrency(n) {
+            return '₱ ' + Number(n || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+        }
 
-    async function loadDetail(id, cardElement) {
+        async function loadDetail(id, cardElement) {
         setActiveCard(cardElement);
         detailTitle.textContent = 'Loading...';
         detailDate.textContent = '';
@@ -379,104 +441,44 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
         detailDiscount.textContent = '';
 
         try {
-            const url = getDetailUrl(id);
-            const res = await fetch(url, { credentials: 'same-origin' });
+            // Fetch the order detail HTML
+            const res = await fetch('sales_order_detail.php?id=' + encodeURIComponent(id));
             const text = await res.text();
 
-            let payload;
-            try {
-                payload = JSON.parse(text);
-            } catch (e) {
-                orderItems.innerHTML = '<div class="order-item-empty">Failed to retrieve order details.<br/><small>Server returned non-JSON response. See debug below.</small></div>';
-                const dbg = document.createElement('div');
-                dbg.style.marginTop = '8px';
-                dbg.style.padding = '8px';
-                dbg.style.background = '#fff7f7';
-                dbg.style.border = '1px solid #ffd6d6';
-                dbg.style.color = '#900';
-                dbg.style.maxHeight = '320px';
-                dbg.style.overflow = 'auto';
-                dbg.innerHTML = '<pre style="white-space:pre-wrap;">' + text.substring(0, 800) + (text.length > 800 ? '\n\n(truncated...)' : '') + '</pre>';
-                const rc = document.getElementById('orderItems');
-                rc.innerHTML = '';
-                rc.appendChild(dbg);
-                detailTitle.textContent = 'Error loading order';
-                return;
-            }
+            // Inject the returned HTML into the right panel
+            const orderItemsDiv = document.getElementById('orderItems');
+            orderItemsDiv.innerHTML = text;
 
-            if (!payload.ok) {
-                detailTitle.textContent = 'Order not found';
-                orderItems.innerHTML = '<div class="order-item-empty">No details available for this order.</div>';
-                return;
-            }
+            // Optional: Set the title above
+            detailTitle.textContent = 'Order #' + id;
+            detailDate.textContent = '';
+            detailTotal.textContent = '';
 
-            const o = payload.order;
-            const title = (o.table_no ? o.table_no : (o.note ? (o.note.split(/\r\n|\n/)[0] || ('Order ' + o.id)) : ('Order ' + o.id)));
-            detailTitle.textContent = title;
-            detailDate.textContent = new Date(o.created_at).toLocaleString();
-            detailTotal.textContent = formatCurrency(o.total_amount || 0);
-            detailDiscount.textContent = (o.discount ? formatCurrency(o.discount) : '₱ 0.00');
+            // ✅ Rebind the Void button if it exists
+            const voidBtn = orderItemsDiv.querySelector('#voidBtn');
+            if (voidBtn) {
+            voidBtn.addEventListener('click', async function () {
+                const orderId = this.getAttribute('data-id');
+                if (!confirm('Are you sure you want to VOID Order #' + orderId + '?')) return;
 
-            // show reservation info if table_no present
-            let reserveHtml = '';
-            if (o.table_no) {
-                reserveHtml += '<div style="margin-top:8px;color:#444"><strong>Reservation / Table:</strong> ' + (o.table_no) + '</div>';
-            }
-
-            // build items table
-            const items = payload.items || [];
-            if (items.length === 0) {
-                // fallback: show note lines or "No items"
-                if (o.note && o.note.indexOf('\n') !== -1) {
-                    const lines = o.note.split('\n');
-                    orderItems.innerHTML = '';
-                    lines.forEach(line => {
-                        const row = document.createElement('div');
-                        row.className = 'order-item-row';
-                        row.innerHTML = '<div class="left"><div class="name">'+line+'</div></div><div class="price"></div>';
-                        orderItems.appendChild(row);
-                    });
-                } else {
-                    orderItems.innerHTML = '<div class="order-item-empty">No line items recorded for this order.</div>';
-                }
-            } else {
-                orderItems.innerHTML = '';
-                items.forEach(it => {
-                    // support various column names returned
-                    const name = it.item_name || it.name || it.product_name || it.title || ('Item #' + (it.id || ''));
-                    const qty = (typeof it.qty !== 'undefined') ? it.qty : (it.quantity || 1);
-                    const unitPrice = (typeof it.unit_price !== 'undefined') ? it.unit_price : (it.price || it.amount || 0);
-                    const lineTotal = (typeof it.line_total !== 'undefined' && Number(it.line_total) !== 0) ? it.line_total : (qty * unitPrice);
-
-                    const row = document.createElement('div');
-                    row.className = 'order-item-row';
-                    const left = document.createElement('div');
-                    left.className = 'left';
-                    const nameEl = document.createElement('div');
-                    nameEl.className = 'name';
-                    nameEl.textContent = name;
-                    const qtyEl = document.createElement('div');
-                    qtyEl.className = 'qty';
-                    qtyEl.textContent = 'x' + qty;
-                    left.appendChild(nameEl);
-                    left.appendChild(qtyEl);
-
-                    const right = document.createElement('div');
-                    right.className = 'price';
-                    right.textContent = formatCurrency(lineTotal);
-
-                    row.appendChild(left);
-                    row.appendChild(right);
-                    orderItems.appendChild(row);
+                try {
+                const res = await fetch('void_sale.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'id=' + encodeURIComponent(orderId)
                 });
-
-                // show reservation block under items if present
-                if (o.table_no) {
-                    const row = document.createElement('div');
-                    row.style.marginTop = '10px';
-                    row.innerHTML = '<div class="small-muted"><strong>Reservation:</strong> ' + (o.table_no) + '</div>';
-                    orderItems.appendChild(row);
+                const data = await res.json();
+                if (data.ok) {
+                    alert(data.message || 'Order voided successfully.');
+                    location.reload();
+                } else {
+                    alert('Failed to void: ' + (data.error || 'Unknown error.'));
                 }
+                } catch (err) {
+                alert('Error connecting to server.');
+                console.error(err);
+                }
+            });
             }
 
         } catch (e) {
@@ -485,6 +487,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'detail' && isset($_GET['id'])
             console.error(e);
         }
     }
+
 
     document.querySelectorAll('.order-card').forEach(card => {
         card.addEventListener('click', function(){

@@ -41,7 +41,7 @@
         </div>
 
         <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
-            <a href="../ClubHirayaFinal /admin_dashboard.php" class="sidebar-btn active" aria-current="page">
+            <a href="../ClubHirayaFinal/admin_dashboard.php" class="sidebar-btn active" aria-current="page">
                 <span class="sidebar-icon"><img src="../ClubHirayaFinal/assets/logos/home.png" alt="Home icon"></span>
                 <span>Home</span>
             </a>
@@ -66,7 +66,7 @@
         <div style="flex:1" aria-hidden="true"></div>
 
         <!-- Logout form: uses POST to call logout.php -->
-        <form method="post" action="logout.php" style="margin:0;">
+        <form method="post" action="../ClubHirayaFinal/logout.php" style="margin:0;">
             <button class="sidebar-logout" type="submit" aria-label="Logout">
             <span>Logout</span>
         </button>
@@ -135,7 +135,7 @@
     <div class="modal hidden" id="tablesModal" role="dialog" aria-modal="true" aria-labelledby="tablesModalTitle" tabindex="-1">
         <div class="modal-content" role="document" style="max-width:900px;">
             <button class="close-btn" id="closeTablesModal" aria-label="Close dialog">&times;</button>
-            <h3 id="tablesModalTitle">Reserved Tables</h3>
+            <h3 id="tablesModalTitle">Reserved Cabins</h3>
 
             <div id="tables-loading" style="padding:12px 0;">Loading...</div>
 
