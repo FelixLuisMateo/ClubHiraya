@@ -180,9 +180,7 @@ if ($search !== '') {
                       <div><?php echo htmlspecialchars($item['name']); ?></div>
                       <div>₱<?php echo number_format($item['price'], 2); ?></div>
                       <div><?php echo htmlspecialchars($item['category']); ?></div>
-
-                      <!-- Image filename cell (hidden by default) -->
-                      <div class="col-image"><?php echo htmlspecialchars($item['image']); ?></div>
+                      <div><?php echo htmlspecialchars($item['image']); ?></div>
 
                       <div class="action-buttons">
                           <!-- Updated: View Ingredients button linking to menu_item_ingredients.php with the item id -->
@@ -210,25 +208,6 @@ if ($search !== '') {
       const noResults = document.getElementById('noResults');
       const serverEmpty = document.getElementById('noResultsServer');
 
-      function updateButton(isShown) {
-        toggleBtn.textContent = isShown ? 'Hide File Name' : 'Show File Name';
-        toggleBtn.setAttribute('aria-pressed', isShown ? 'true' : 'false');
-      }
-
-      // initialize image column visibility from localStorage
-      const saved = localStorage.getItem('inventory_show_images');
-      if (saved === '1') {
-        container.classList.add('show-images');
-        updateButton(true);
-      } else {
-        updateButton(false);
-      }
-
-      toggleBtn.addEventListener('click', function() {
-        const isShown = container.classList.toggle('show-images');
-        updateButton(isShown);
-        localStorage.setItem('inventory_show_images', isShown ? '1' : '0');
-      });
 
       window.confirmDelete = function(id) {
         if (confirm('Are you sure you want to delete this item?')) {

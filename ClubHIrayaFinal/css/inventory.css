@@ -339,7 +339,7 @@ body {
 .table-row:hover { transform: translateY(-4px); box-shadow: 0 14px 40px rgba(0,0,0,0.06); }
 
 /* Action buttons */
-.action-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-right: -220px ;}
+.action-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-right: -20px ;}
 .btn-edit {
   background: linear-gradient(180deg,#fde047 0%,#f6c90b 100%);
   color: #111;
