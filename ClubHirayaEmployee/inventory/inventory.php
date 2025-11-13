@@ -184,8 +184,7 @@ if ($search !== '') {
 
                       <div class="action-buttons">
                           <!-- Updated: View Ingredients button linking to menu_item_ingredients.php with the item id -->
-                          <a class="btn-edit" href="menu_item_ingredients.php?id=<?php echo urlencode($item['id']); ?>" title="View Ingredients">View Ingredients</a>
-
+                          <a class="btn-view" href="menu_item_ingredients.php?id=<?php echo urlencode($item['id']); ?>" title="View Ingredients">View Ingredients</a>
                           <a href="edit.php?id=<?php echo urlencode($item['id']); ?>" class="btn-edit">Edit</a>
                           <button onclick="confirmDelete(<?php echo htmlspecialchars($item['id']); ?>)" class="btn-delete">Delete</button>
                       </div>

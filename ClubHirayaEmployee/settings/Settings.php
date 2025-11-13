@@ -30,9 +30,6 @@ require_once __DIR__ . '/NotificationsSettings.php';
 require_once __DIR__ . '/BackupRestore.php';
 require_once __DIR__ . '/ChangePassword.php';
 ?>
-
-?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
