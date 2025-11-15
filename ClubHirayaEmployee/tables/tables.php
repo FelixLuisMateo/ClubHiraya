@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Club Hiraya — Tables</title>
+  <title>Club Hiraya — Cabins</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
   <link rel="stylesheet" href="../css/table.css">
@@ -74,7 +74,7 @@
     <!-- Filters row (now pinned to top by CSS) -->
   <div class="filters-row" aria-hidden="false">
     <div class="filters" role="tablist" aria-label="Table filters">
-      <button class="filter-btn active" data-filter="all" id="filterAll" role="tab" aria-selected="true">🏠 All Table</button>
+      <button class="filter-btn active" data-filter="all" id="filterAll" role="tab" aria-selected="true">🏠 All Cabins</button>
       <button class="filter-btn" data-filter="party" id="filterParty" role="tab" aria-selected="false">👥 Party Size</button>
       <button class="filter-btn" data-filter="date" id="filterDate" role="tab" aria-selected="false">📅 Date</button>
       <button class="filter-btn" data-filter="time" id="filterTime" role="tab" aria-selected="false">⏲️ Time</button>
