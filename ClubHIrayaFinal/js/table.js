@@ -930,7 +930,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    const slots = generateTimeSlots('10:00', '18:00', 30);
+    const slots = generateTimeSlots('10:00', '15:00', 30);
     const grid = document.getElementById('timeGrid');
     if (grid) {
       grid.innerHTML = '';
