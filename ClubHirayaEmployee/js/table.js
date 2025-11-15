@@ -627,7 +627,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Generate default time slots (you can change start/end/interval as needed)
-    const slots = generateTimeSlots('10:00', '23:00', 30); // every 30 mins
+    const slots = generateTimeSlots('10:00', '18:00', 30); // every 30 mins
 
     const grid = document.getElementById('timeGrid');
     if (grid) {
