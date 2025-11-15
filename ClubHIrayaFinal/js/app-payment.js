@@ -565,7 +565,7 @@
      Server call
   ----------------------*/
   async function saveSaleToServer(p) {
-    const r = await fetch('php/save_and_print.php', {
+    const r = await fetch('php/save_sale.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(p)
