@@ -376,7 +376,7 @@ if ($conn) {
 
                     <div style="height:12px;"></div>
                     <div style="display:flex; justify-content:flex-end; gap:8px; align-items:center;">
-                        <div class="small-muted">Discount:</div><div id="detailDiscount">-</div>
+                        <div class="small-muted"></div><div id="detailDiscount">-</div>
                     </div>
                 </div>
             </div>

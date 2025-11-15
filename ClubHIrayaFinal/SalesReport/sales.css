@@ -150,6 +150,7 @@ body {
 
 /* Topbar */
 .topbar {
+  width: 88%;
   height: 52px;
   background: #121212;
   display: flex;
@@ -182,6 +183,7 @@ body {
     justify-content: space-between;
     padding: 0 36px 0 38px;
     box-shadow: 0 4px 16px #0001;
+    margin-left: -10px;
 }
 .search-section {
     position: relative;
