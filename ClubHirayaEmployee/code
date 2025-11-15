@@ -1,0 +1,54 @@
+<?php
+if (isset($_POST['open_cabins'])) {
+    // Full path to Java and your JAR file
+    $java = '"C:\\Program Files\\Apache NetBeans\\jdk\\bin\\java.exe"';
+    $jar  = '"C:\\Users\\ALDRIN REGASPI\\Documents\\NetBeansProjects\\ClubHiraya\\target\\ClubHiraya-1.0-SNAPSHOT-shaded.jar"';
+
+    // ✅ Use start (to open new window) without /B so Java GUI stays open
+    $cmd = 'start "" ' . $java . ' -jar ' . $jar;
+
+    // ✅ Launch Reservation window
+    pclose(popen("cmd /c " . $cmd, "r"));
+
+    // ✅ Redirect immediately to prevent resubmission
+    header("Location: employee_dashboard.php");
+    exit;
+}
+?>
+<form method="post">
+    <button type="submit" name="open_cabins">Select Cabins</button>
+</form>
+
+
+
+<?php
+if (isset($_POST['open_cabins'])) {
+    // ✅ Full path to your shaded JAR file
+    $jarPath = 'C:\\Users\\ALDRIN REGASPI\\Documents\\NetBeansProjects\\ClubHiraya\\target\\ClubHiraya-1.0-SNAPSHOT-shaded.jar';
+    $javaPath = 'C:\\Program Files\\Apache NetBeans\\jdk\\bin\\java.exe';
+
+    // ✅ Run Java silently in background
+    $cmd = 'start /B "" "' . $javaPath . '" -jar "' . $jarPath . '"';
+    exec($cmd);
+
+    // ✅ Redirect back to employee dashboard (prevents form resubmission)
+    header("Location: employee_dashboard.php");
+    exit;
+}
+?>
+<form method="post">
+    <button type="submit" name="open_cabins">Select Cabins</button>
+</form>
+
+
+
+
+<?php
+            if (isset($_POST['open_cabins'])) {
+                // Run the batch file silently
+                exec('start "" "C:\\xampp\\htdocs\\ClubHiraya\\ClubHirayaEmployee\\tables\\runReservation.bat"');
+            }
+            ?>
+            <form method="post">
+                <button type="submit" name="open_cabins">Select Cabins</button>
+            </form>
