@@ -1,19 +1,38 @@
 // ../js/table.js
-// Tables UI adapted for "Cabins" + beds label + per-cabin time monitor.
-// Requirements: expects API endpoints under ../api/ (get_tables.php, create_table.php,
-// update_table.php, delete_table.php, get_table_status_by_date.php, get_availability.php, create_reservation.php)
+// Time-slot range is controlled by the constants below.
+// Set START / END / INTERVAL to control visible slots.
+//
+// NOTE: After replacing this file, do a hard refresh (Ctrl+F5) or open DevTools -> Network -> Disable cache -> Reload.
 
 document.addEventListener('DOMContentLoaded', () => {
+  // small global error logging to surface client errors quickly
+  window.addEventListener('error', (ev) => {
+    console.error('Uncaught error:', ev.message, ev.filename, ev.lineno, ev.colno, ev.error);
+  });
+  window.addEventListener('unhandledrejection', (ev) => {
+    console.error('Unhandled promise rejection:', ev.reason);
+  });
+
   // API endpoints
   const API_GET = '../api/get_tables.php';
   const API_UPDATE = '../api/update_table.php';
   const API_DELETE = '../api/delete_table.php';
   const API_CREATE = '../api/create_table.php';
   const API_GET_STATUS_BY_DATE = '../api/get_table_status_by_date.php';
+  const API_CREATE_RESERVATION = '../api/create_reservation.php';
+  const API_DELETE_RESERVATION = '../api/delete_reservation.php';
 
-  let tablesData = []; // keeps the existing name for compatibility
+  // CONFIG: change these to control the Time view slots
+  const TIME_SLOT_START = '10:00';   // first slot shown
+  const TIME_SLOT_END   = '16:00';   // last slot shown (inclusive)
+  const TIME_SLOT_INTERVAL = 30;     // minutes between slots (30 = half-hour, 60 = hourly)
 
-  // DOM references
+  // Debug: print the effective slot configuration to console
+  console.info('Time slots config:', TIME_SLOT_START, '→', TIME_SLOT_END, '@', TIME_SLOT_INTERVAL, 'min');
+
+  let tablesData = [];
+
+  // DOM refs
   const viewHeader = document.getElementById('viewHeader');
   const viewContent = document.getElementById('viewContent');
   let cardsGrid = document.getElementById('cardsGrid');
@@ -25,7 +44,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const partySortControl = document.getElementById('partySortControl');
   const partySortSelect = document.getElementById('partySortSelect');
 
-  // State - include time so date/time view doesn't read undefined
   const state = {
     filter: 'all',
     search: '',
@@ -36,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedId: null,
   };
 
-  // Ensure default date/time on initial load (today & current time)
+  // init default date/time
   (function ensureDefaultDateTime() {
     if (!state.date) {
       const now = new Date();
@@ -50,13 +68,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })();
 
-  // Helpers
+  // helpers
   function capitalize(s) { return s && s.length ? s[0].toUpperCase() + s.slice(1) : ''; }
   function escapeHtml(text = '') {
     return String(text).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
   }
-
-  // Friendly formatted subtitle for date/time display
   function formatDateForHeader(dateIso, timeStr) {
     try {
       if (!dateIso) return '';
@@ -70,8 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Status utilities
-  // cycle: available -> reserved -> occupied -> available
+  // status utilities
   function nextStatusFor(current) {
     const order = ['available', 'reserved', 'occupied'];
     const idx = order.indexOf(current);
@@ -79,7 +94,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return order[(idx + 1) % order.length];
   }
 
-  // send status update to server (uses api/update_table.php)
   async function changeTableStatus(tableId, newStatus, refreshCallback) {
     try {
       const res = await fetch(API_UPDATE, {
@@ -87,68 +101,93 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: Number(tableId), status: newStatus })
       });
-      const j = await res.json();
+      const j = await res.json().catch(e => { throw new Error('Invalid JSON response from update_table.php: ' + e.message); });
       if (!j.success) throw new Error(j.error || 'Update failed');
-      // Refresh main tables data
       await loadTables();
       if (typeof refreshCallback === 'function') refreshCallback();
     } catch (err) {
+      console.error('changeTableStatus error', err);
       alert('Failed to change cabin status: ' + err.message);
     }
   }
 
-  // Load cabins list from API
-  async function loadTables() {
+  // Create reservation starting now for X minutes
+  async function createReservationNow(tableId, minutes, guest = '') {
+    if (!tableId) throw new Error('Invalid table id');
+    const now = new Date();
+    const date = now.toISOString().slice(0, 10);
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const startTime = `${hh}:${mm}`;
+    const payload = {
+      table_id: Number(tableId),
+      date,
+      start_time: startTime,
+      duration: Number(minutes),
+      guest: guest || ''
+    };
+    const res = await fetch(API_CREATE_RESERVATION, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const j = await res.json().catch(e => { throw new Error('Invalid JSON response from create_reservation.php: ' + e.message); });
+    if (!j.success) throw new Error(j.error || 'Create reservation failed');
+    return j;
+  }
+
+  // Cancel reservation helper - call api/delete_reservation.php and refresh current view
+  async function cancelReservation(reservationId, tableId) {
+    if (!reservationId) return;
+    if (!confirm('Cancel this reservation?')) return;
     try {
-      const res = await fetch(API_GET, { cache: 'no-store' });
-      if (!res.ok) throw new Error('Network response was not ok: ' + res.status);
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || 'Failed to load cabins');
-      tablesData = json.data.map(t => ({
-        id: Number(t.id),
-        name: t.name,
-        status: t.status,
-        seats: Number(t.seats),
-        guest: t.guest || ""
-      }));
-      renderView();
+      const res = await fetch(API_DELETE_RESERVATION, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: Number(reservationId) })
+      });
+      const j = await res.json().catch(e => { throw new Error('Invalid JSON from delete_reservation.php: ' + e.message); });
+      if (!j.success) throw new Error(j.error || 'Cancel failed');
+      showToast('Reservation cancelled', { background: '#c62828' });
+      // Refresh the page data depending on current view
+      if (state.filter === 'date') {
+        if (state.time) loadTableStatusForDateTime(state.date, state.time);
+        else loadTableStatusForDate(state.date);
+      } else if (state.filter === 'time') {
+        loadTableStatusForDateTime(state.date, state.time);
+      } else {
+        await loadTables();
+      }
     } catch (err) {
-      // Fallback sample data if API fails (renamed to Cabins & Beds)
-      tablesData = [
-        { id: 1, name: 'Cabin 1', status: 'occupied', seats: 6, guest: 'Taenamo Jiro' },
-        { id: 2, name: 'Cabin 2', status: 'reserved', seats: 4, guest: 'WOwmsi' },
-        { id: 3, name: 'Cabin 3', status: 'available', seats: 2, guest: '' },
-      ];
-      const grid = document.getElementById('cardsGrid');
-      if (grid) grid.innerHTML = `<div style="padding:18px;color:#900">Local fallback data (API failed).</div>`;
-      renderView();
+      console.error('cancelReservation error', err);
+      alert('Failed to cancel reservation: ' + (err && err.message ? err.message : err));
     }
   }
 
-  // --- Time monitor utilities ---
-  // Keep a single interval for updating monitors to avoid duplicates
+  // --- Time monitors ---
   let _timeMonitorInterval = null;
+  const notifiedReservations = new Set();
+
   function startTimeMonitors() {
     stopTimeMonitors();
-    updateTimeMonitors(); // immediate
-    _timeMonitorInterval = setInterval(updateTimeMonitors, 30 * 1000); // every 30s
+    try {
+      if (typeof updateTimeMonitors === 'function') updateTimeMonitors();
+    } catch (e) {
+      console.error('updateTimeMonitors call failed during startTimeMonitors:', e);
+    }
+    _timeMonitorInterval = setInterval(() => {
+      try {
+        if (typeof updateTimeMonitors === 'function') updateTimeMonitors();
+      } catch (e) {
+        console.error('updateTimeMonitors threw in interval:', e);
+      }
+    }, 30 * 1000);
   }
   function stopTimeMonitors() {
     if (_timeMonitorInterval) {
       clearInterval(_timeMonitorInterval);
       _timeMonitorInterval = null;
     }
-  }
-
-  // parse datetime strings in format "YYYY-MM-DD" and "HH:MM[:SS]" into Date
-  function parseDateTime(dateStr, timeStr) {
-    if (!dateStr || !timeStr) return null;
-    // make sure time has seconds
-    const t = timeStr.length === 5 ? timeStr + ':00' : timeStr;
-    const iso = `${dateStr}T${t}`;
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return null;
-    return d;
   }
 
   function formatDuration(ms) {
@@ -162,47 +201,143 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${mins}m`;
   }
 
-  // update all elements with class 'time-monitor'
+  function showToast(message, opts = {}) {
+    const id = 'tables-toast-container';
+    let container = document.getElementById(id);
+    if (!container) {
+      container = document.createElement('div');
+      container.id = id;
+      container.style.position = 'fixed';
+      container.style.right = '16px';
+      container.style.top = '16px';
+      container.style.zIndex = 10000;
+      document.body.appendChild(container);
+    }
+    const t = document.createElement('div');
+    t.className = 'tables-toast';
+    t.style.background = opts.background || 'rgba(0,0,0,0.85)';
+    t.style.color = '#fff';
+    t.style.padding = '10px 12px';
+    t.style.marginTop = '8px';
+    t.style.borderRadius = '8px';
+    t.style.boxShadow = '0 6px 18px rgba(0,0,0,0.2)';
+    t.style.fontWeight = '700';
+    t.textContent = message;
+    container.appendChild(t);
+    setTimeout(() => {
+      t.style.transition = 'opacity 300ms ease, transform 300ms ease';
+      t.style.opacity = '0';
+      t.style.transform = 'translateY(-6px)';
+    }, 4000);
+    setTimeout(() => t.remove(), 4400);
+  }
+
+  function playBeep() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = 880;
+      g.gain.value = 0.0001;
+      o.connect(g);
+      g.connect(ctx.destination);
+      const now = ctx.currentTime;
+      g.gain.exponentialRampToValueAtTime(0.12, now + 0.01);
+      o.start(now);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+      o.stop(now + 0.25);
+      setTimeout(() => {
+        try { ctx.close(); } catch (e) {}
+      }, 400);
+    } catch (e) {}
+  }
+
+  async function ensureNotificationPermission() {
+    if (!('Notification' in window)) return false;
+    if (Notification.permission === 'granted') return true;
+    if (Notification.permission === 'denied') return false;
+    return Notification.requestPermission().then(p => p === 'granted');
+  }
+
+  async function triggerEndNotification(reservationId, cabinName, endDtStr) {
+    try {
+      if (reservationId && notifiedReservations.has(String(reservationId))) return;
+      if (reservationId) notifiedReservations.add(String(reservationId));
+
+      const title = `Cabin time ended`;
+      const body = cabinName ? `${cabinName} reservation has ended${endDtStr ? ' at ' + endDtStr : ''}.` : `A reservation has ended.`;
+      showToast(`${body}`, { background: '#c62828' });
+      playBeep();
+
+      const allowed = await ensureNotificationPermission();
+      if (allowed) {
+        const n = new Notification(title, { body, tag: 'cabin-end-' + (reservationId || Math.random()) });
+        n.onclick = () => { try { window.focus(); } catch (e) {} };
+      }
+    } catch (e) {
+      console.error('triggerEndNotification error', e);
+    }
+  }
+
   function updateTimeMonitors() {
     const nodes = document.querySelectorAll('.time-monitor');
     const now = new Date();
     nodes.forEach(el => {
-      const start = el.dataset.start; // e.g. "2025-11-05 19:00:00"
-      const end = el.dataset.end;
-      if (!start && !end) {
-        el.textContent = '';
-        return;
-      }
-      // support start/end either as ISO or "YYYY-MM-DD HH:MM:SS"
-      const startIso = start ? start.replace(' ', 'T') : null;
-      const endIso = end ? end.replace(' ', 'T') : null;
-      const dStart = startIso ? new Date(startIso) : null;
-      const dEnd = endIso ? new Date(endIso) : null;
+      try {
+        const start = el.dataset.start;
+        const end = el.dataset.end;
+        if (!start && !end) {
+          el.textContent = '';
+          return;
+        }
+        const startIso = start ? start.replace(' ', 'T') : null;
+        const endIso = end ? end.replace(' ', 'T') : null;
+        const dStart = startIso ? new Date(startIso) : null;
+        const dEnd = endIso ? new Date(endIso) : null;
 
-      if (dStart && now < dStart) {
-        const ms = dStart - now;
-        el.textContent = `Starts in ${formatDuration(ms)}`;
-        el.classList.remove('ongoing');
-        el.classList.remove('ended');
-      } else if (dStart && dEnd && now >= dStart && now <= dEnd) {
-        const ms = dEnd - now;
-        el.textContent = `Ends in ${formatDuration(ms)}`;
-        el.classList.add('ongoing');
-        el.classList.remove('ended');
-      } else if (dEnd && now > dEnd) {
-        const ms = now - dEnd;
-        el.textContent = `Ended ${formatDuration(ms)} ago`;
-        el.classList.remove('ongoing');
-        el.classList.add('ended');
-      } else {
-        el.textContent = '';
-        el.classList.remove('ongoing');
-        el.classList.remove('ended');
+        if (dStart && now < dStart) {
+          const ms = dStart - now;
+          el.textContent = `Starts in ${formatDuration(ms)}`;
+          el.classList.remove('ongoing');
+          el.classList.remove('ended');
+        } else if (dStart && dEnd && now >= dStart && now <= dEnd) {
+          const ms = dEnd - now;
+          el.textContent = `Ends in ${formatDuration(ms)}`;
+          el.classList.add('ongoing');
+          el.classList.remove('ended');
+        } else if (dEnd && now > dEnd) {
+          const ms = now - dEnd;
+          el.textContent = `Ended ${formatDuration(ms)} ago`;
+          el.classList.remove('ongoing');
+          el.classList.add('ended');
+          const resId = el.dataset.reservationId || el.dataset.resId || '';
+          const cabinName = el.dataset.cabinName || el.dataset.tableName || '';
+          if (resId) {
+            if (!notifiedReservations.has(String(resId))) {
+              triggerEndNotification(resId, cabinName, (dEnd ? dEnd.toLocaleString() : ''));
+            }
+          } else {
+            const key = `no-res-${cabinName}-${el.dataset.end}`;
+            if (!notifiedReservations.has(key)) {
+              notifiedReservations.add(key);
+              triggerEndNotification(key, cabinName, (dEnd ? dEnd.toLocaleString() : ''));
+            }
+          }
+        } else {
+          el.textContent = '';
+          el.classList.remove('ongoing');
+          el.classList.remove('ended');
+        }
+      } catch (e) {
+        console.error('Error while updating single time-monitor element:', e, el);
       }
     });
   }
 
-  // Renders a list of cabin cards into a container
+  // --- Renderers ---
   function renderCardsInto(container, data) {
     container.innerHTML = '';
     if (!data.length) {
@@ -222,14 +357,13 @@ document.addEventListener('DOMContentLoaded', () => {
       card.dataset.id = tbl.id;
       if (state.selectedId === tbl.id) card.classList.add('active');
 
-      // Note: show "Beds" instead of "Seats" in UI
       card.innerHTML = `
         <div class="title">${escapeHtml(tbl.name)}</div>
         <div class="status-row">
           <span class="status-dot" style="background:${statusDotColor}"></span>
           <span class="status-label">${capitalize(status)}</span>
         </div>
-        <div class="seats-row"><span>🛏️</span> ${escapeHtml(String(tbl.seats))} Beds</div>
+        <div class="seats-row"><span>🛏️</span> ${escapeHtml(String(tbl.seats || tbl.party_size || ''))} Beds</div>
         ${tbl.guest ? `<div class="guest">${escapeHtml(tbl.guest)}</div>` : ''}
         <div class="card-actions" aria-hidden="false">
           <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
@@ -238,31 +372,63 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      // Interaction bindings
       card.addEventListener('click', () => setSelected(tbl.id));
       card.addEventListener('keydown', ev => {
         if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setSelected(tbl.id); }
       });
+
       const editBtn = card.querySelector('.edit-btn');
       const deleteBtn = card.querySelector('.delete-btn');
       const statusBtn = card.querySelector('.status-btn');
 
       if (editBtn) editBtn.addEventListener('click', e => { e.stopPropagation(); openEditModal(tbl); });
       if (deleteBtn) deleteBtn.addEventListener('click', e => { e.stopPropagation(); confirmDelete(tbl); });
+
       if (statusBtn) {
         statusBtn.addEventListener('click', async (e) => {
           e.stopPropagation();
-          const current = tbl.status || 'available';
-          const next = nextStatusFor(current);
-          if (!confirm(`Change status of "${tbl.name}" from "${current}" to "${next}" ?`)) return;
-          await changeTableStatus(tbl.id, next, () => {
-            if (state.filter === 'date' && state.date) {
-              if (state.time) loadTableStatusForDateTime(state.date, state.time);
-              else loadTableStatusForDate(state.date);
+          try {
+            const current = tbl.status || 'available';
+            const choice = prompt('Change status to: (r)eserved, (o)ccupied (set timer), (a)vailable? Enter r / o / a and press OK. Cancel to abort.');
+            if (choice === null) return;
+            const c = String(choice).trim().toLowerCase();
+            const tableId = tbl.id;
+
+            if (c === 'r') {
+              if (!confirm(`Change status of "${tbl.name}" from "${current}" to "reserved"?`)) return;
+              await changeTableStatus(tableId, 'reserved', () => renderView());
+              return;
+            } else if (c === 'o') {
+              const durInput = prompt('Set occupied duration in minutes (e.g. 90). Leave blank to mark occupied without timer:');
+              if (durInput === null) return;
+              const minutes = durInput.trim() === '' ? 0 : parseInt(durInput.trim(), 10);
+              if (!isNaN(minutes) && minutes > 0) {
+                const guest = prompt('Guest name (optional):') || '';
+                try {
+                  await createReservationNow(tableId, minutes, guest);
+                  await changeTableStatus(tableId, 'occupied', () => renderView());
+                } catch (err) {
+                  console.error('createReservationNow failed', err);
+                  alert('Failed to create reservation and mark occupied: ' + err.message);
+                }
+                return;
+              } else {
+                if (!confirm(`Mark "${tbl.name}" as occupied without timer?`)) return;
+                await changeTableStatus(tableId, 'occupied', () => renderView());
+                return;
+              }
+            } else if (c === 'a') {
+              if (!confirm(`Change status of "${tbl.name}" from "${current}" to "available"?`)) return;
+              await changeTableStatus(tableId, 'available', () => renderView());
+              return;
             } else {
-              renderView();
+              alert('No action taken. Enter r, o, or a next time (or cancel).');
+              return;
             }
-          });
+          } catch (err) {
+            console.error('status button handler error (All view):', err);
+            alert('An error occurred: ' + (err && err.message ? err.message : err));
+          }
         });
       }
 
@@ -282,7 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
     viewHeader.innerHTML = '<h1>All Cabins</h1>';
     viewContent.innerHTML = `<div class="cards-grid" id="cardsGrid" role="list"></div>`;
     cardsGrid = document.getElementById('cardsGrid');
-    // hide party controls
+
     if (partyControl) {
       partyControl.setAttribute('aria-hidden', 'true');
       partyControl.classList.remove('visible');
@@ -292,12 +458,12 @@ document.addEventListener('DOMContentLoaded', () => {
       partySortControl.setAttribute('aria-hidden', 'true');
       partySortControl.style.display = 'none';
     }
-    // Search filter
+
     const s = state.search.trim().toLowerCase();
     let filtered = tablesData;
     if (s) filtered = tablesData.filter(t => t.name.toLowerCase().includes(s));
     renderCardsInto(cardsGrid, filtered);
-    // Start monitors if any (All view doesn't have reservations times, but harmless)
+
     startTimeMonitors();
   }
 
@@ -305,7 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
     viewHeader.innerHTML = '<h1>Party Size</h1>';
     if (partyControl) {
       partyControl.setAttribute('aria-hidden', 'false');
-      partyControl.classList.add('visible'); // CSS: .party-size-control.visible -> display:flex
+      partyControl.classList.add('visible');
       partyControl.style.display = '';
     }
     if (partySortControl) {
@@ -314,25 +480,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     viewContent.innerHTML = `<div class="cards-grid" id="cardsGrid" role="list"></div>`;
     cardsGrid = document.getElementById('cardsGrid');
+
     let filtered = tablesData;
     if (state.partySeats !== 'any') {
       const v = Number(state.partySeats);
       const [min, max] = v === 2 ? [1, 2] : v === 4 ? [3, 4] : v === 6 ? [5, 6] : [0, 0];
       filtered = tablesData.filter(t => t.seats >= min && t.seats <= max);
     }
-    // Sorting
-    if (state.partySort === 'asc') {
-      filtered = filtered.slice().sort((a, b) => a.seats - b.seats);
-    } else if (state.partySort === 'desc') {
-      filtered = filtered.slice().sort((a, b) => b.seats - a.seats);
-    }
+    if (state.partySort === 'asc') filtered = filtered.slice().sort((a, b) => a.seats - b.seats);
+    else if (state.partySort === 'desc') filtered = filtered.slice().sort((a, b) => b.seats - a.seats);
+
     renderCardsInto(cardsGrid, filtered);
     stopTimeMonitors();
   }
 
-  // Date view (single authoritative definition)
   function renderDateView() {
-    // header with subtitle showing the currently selected date/time
     const subtitle = formatDateForHeader(state.date, state.time);
     viewHeader.innerHTML = `<h1>Date</h1>${subtitle ? `<div class="view-subtitle">${escapeHtml(subtitle)}</div>` : ''}`;
 
@@ -346,7 +508,6 @@ document.addEventListener('DOMContentLoaded', () => {
       partySortControl.style.display = 'none';
     }
 
-    // Render the date-controls markup that matches the CSS
     viewContent.innerHTML = `
       <div class="date-controls" role="region" aria-label="Date and time controls">
         <div class="picker-wrap" aria-hidden="false">
@@ -367,13 +528,11 @@ document.addEventListener('DOMContentLoaded', () => {
       <div id="tableStatusGrid" class="cards-grid"></div>
     `;
 
-    // Wire up inputs and buttons
     const datePicker = document.getElementById('viewDatePicker');
     if (datePicker) {
       datePicker.value = state.date || '';
       datePicker.addEventListener('change', e => {
         state.date = e.target.value;
-        // update header subtitle immediately
         const vs = viewHeader.querySelector('.view-subtitle');
         if (vs) vs.textContent = formatDateForHeader(state.date, state.time);
         loadTableStatusForDate(state.date);
@@ -415,22 +574,21 @@ document.addEventListener('DOMContentLoaded', () => {
       loadTableStatusForDate(state.date);
     });
 
-    // Start time monitors for date view because this view can include reservation start/end times
     startTimeMonitors();
   }
 
-  // Date-only status loading
   async function loadTableStatusForDate(date) {
     const grid = document.getElementById('tableStatusGrid');
-    if (!grid) return;
+    if (!grid) {
+      console.error('loadTableStatusForDate: #tableStatusGrid not found in DOM');
+      return;
+    }
     grid.innerHTML = 'Loading...';
     try {
       const res = await fetch(`${API_GET_STATUS_BY_DATE}?date=${encodeURIComponent(date)}`);
-      const json = await res.json();
+      const json = await res.json().catch(e => { throw new Error('Invalid JSON from get_table_status_by_date.php: ' + e.message); });
       if (!json.success) throw new Error(json.error || 'API failed');
       const tables = json.data;
-
-      // Clear the loading text before rendering results
       grid.innerHTML = '';
 
       ['available', 'reserved', 'occupied'].forEach(status => {
@@ -444,60 +602,146 @@ document.addEventListener('DOMContentLoaded', () => {
         list.forEach(t => {
           const card = document.createElement('div');
           card.className = 'table-card';
-          // Build time monitor attributes (if start_time/end_time exist)
-          const startAttr = (t.start_time ? `${date} ${t.start_time}` : '');
-          const endAttr = (t.end_time ? `${date} ${t.end_time}` : '');
+
+          const startAttr = (t.start_time ? `${date} ${t.start_time}` : (t.start_dt ? t.start_dt : ''));
+          const endAttr = (t.end_time ? `${date} ${t.end_time}` : (t.end_dt ? t.end_dt : ''));
+          const rawResId = t.reservation_id || '';
+          const resIdEscaped = rawResId ? escapeHtml(String(rawResId)) : '';
+          const cabinName = escapeHtml(t.name || '');
+          const statusDotColor = status==='available'?'#00b256':status==='reserved'?'#ffd400':'#d20000';
+
+          // compute duration (minutes) if API didn't provide it
+          let duration = '';
+          if (typeof t.duration_minutes !== 'undefined' && t.duration_minutes !== null) {
+            duration = t.duration_minutes;
+          } else if (startAttr && endAttr) {
+            try {
+              const sIso = startAttr.replace(' ', 'T');
+              const eIso = endAttr.replace(' ', 'T');
+              const d1 = new Date(sIso);
+              const d2 = new Date(eIso);
+              if (!isNaN(d1) && !isNaN(d2)) {
+                duration = Math.round((d2 - d1) / 60000); // minutes
+              }
+            } catch (e) { duration = ''; }
+          }
+
           card.innerHTML = `
             <div class="title">${escapeHtml(t.name)}</div>
             <div class="seats-row"><span>🛏️</span> ${escapeHtml(t.seats)} Beds</div>
             <div class="status-row">
-              <span class="status-dot" style="background:${status==='available'?'#00b256':status==='reserved'?'#ffd400':'#d20000'}"></span>
+              <span class="status-dot" style="background:${statusDotColor}"></span>
               <span class="status-label">${capitalize(status)}</span>
             </div>
             ${t.guest ? `<div class="guest">${escapeHtml(t.guest)}</div>` : ''}
-            ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}</div>` : ''}
-            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}"></div>
+            ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}${duration ? ' • ' + duration + ' min' : ''}</div>` : ''}
+            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}" data-duration="${escapeHtml(String(duration))}" data-reservation-id="${resIdEscaped}" data-cabin-name="${cabinName}"></div>
             <div class="card-actions" aria-hidden="false">
               <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
+              ${rawResId ? `<button class="icon-btn cancel-res-btn" aria-label="Cancel reservation" title="Cancel reservation">🗑</button>` : ''}
             </div>
           `;
           grid.appendChild(card);
 
           const statusBtn = card.querySelector('.status-btn');
+          const cancelBtn = card.querySelector('.cancel-res-btn');
+
           if (statusBtn) {
             statusBtn.addEventListener('click', async (ev) => {
               ev.stopPropagation();
-              const current = t.status || 'available';
-              const next = nextStatusFor(current);
-              if (!confirm(`Change status of "${t.name}" from "${current}" to "${next}" ?`)) return;
-              await changeTableStatus(t.table_id || t.id, next, () => {
-                if (state.time) loadTableStatusForDateTime(state.date, state.time);
-                else loadTableStatusForDate(state.date);
-              });
+              try {
+                const current = t.status || 'available';
+                const choice = prompt('Change status to: (r)eserved, (o)ccupied (set timer), (a)vailable? Enter r / o / a and press OK. Cancel to abort.');
+                if (choice === null) return;
+                const c = String(choice).trim().toLowerCase();
+                const tableId = t.table_id || t.id;
+                if (c === 'r') {
+                  if (!confirm(`Change status of "${t.name}" from "${current}" to "reserved"?`)) return;
+                  await changeTableStatus(tableId, 'reserved', () => {
+                    if (state.time) loadTableStatusForDateTime(state.date, state.time);
+                    else loadTableStatusForDate(state.date);
+                  });
+                  return;
+                } else if (c === 'o') {
+                  const durInput = prompt('Set occupied duration in minutes (e.g. 90). Leave blank to mark occupied without timer:');
+                  if (durInput === null) return;
+                  const minutes = durInput.trim() === '' ? 0 : parseInt(durInput.trim(), 10);
+                  if (!isNaN(minutes) && minutes > 0) {
+                    const guest = prompt('Guest name (optional):') || '';
+                    try {
+                      await createReservationNow(tableId, minutes, guest);
+                      await changeTableStatus(tableId, 'occupied', () => {
+                        if (state.time) loadTableStatusForDateTime(state.date, state.time);
+                        else loadTableStatusForDate(state.date);
+                      });
+                    } catch (err) {
+                      console.error('createReservationNow failed (Date view)', err);
+                      alert('Failed to create reservation and mark occupied: ' + err.message);
+                    }
+                    return;
+                  } else {
+                    if (!confirm(`Mark "${t.name}" as occupied without timer?`)) return;
+                    await changeTableStatus(tableId, 'occupied', () => {
+                      if (state.time) loadTableStatusForDateTime(state.date, state.time);
+                      else loadTableStatusForDate(state.date);
+                    });
+                    return;
+                  }
+                } else if (c === 'a') {
+                  if (!confirm(`Change status of "${t.name}" from "${current}" to "available"?`)) return;
+                  await changeTableStatus(tableId, 'available', () => {
+                    if (state.time) loadTableStatusForDateTime(state.date, state.time);
+                    else loadTableStatusForDate(state.date);
+                  });
+                  return;
+                } else {
+                  alert('No action taken. Enter r, o, or a next time (or cancel).');
+                  return;
+                }
+              } catch (err) {
+                console.error('status button handler error (Date view):', err);
+                alert('An error occurred: ' + (err && err.message ? err.message : err));
+              }
+            });
+          }
+
+          if (cancelBtn) {
+            cancelBtn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              const reservationId = rawResId || null;
+              const tableId = t.table_id || t.id || null;
+              cancelReservation(reservationId, tableId);
             });
           }
         });
       });
-
-      // After rendering, ensure monitors update immediately
-      updateTimeMonitors();
+      // call updateTimeMonitors safely
+      try {
+        if (typeof updateTimeMonitors === 'function') updateTimeMonitors();
+      } catch (e) {
+        console.error('updateTimeMonitors threw after rendering date view:', e);
+      }
     } catch (err) {
-      grid.innerHTML = `<div style="color:#900">Error loading cabins for date: ${escapeHtml(err.message)}</div>`;
+      if (grid) {
+        grid.innerHTML = `<div style="color:#900">Error loading cabins for date: ${escapeHtml(err.message)}</div>`;
+      } else {
+        console.error('Error loading cabins for date and grid missing:', err);
+      }
     }
   }
 
-  // Date+time availability loading
   async function loadTableStatusForDateTime(date, time) {
     const grid = document.getElementById('tableStatusGrid');
-    if (!grid) return;
+    if (!grid) {
+      console.error('loadTableStatusForDateTime: #tableStatusGrid not found in DOM');
+      return;
+    }
     grid.innerHTML = 'Loading...';
     try {
       const res = await fetch(`../api/get_availability.php?date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`);
-      const json = await res.json();
+      const json = await res.json().catch(e => { throw new Error('Invalid JSON from get_availability.php: ' + e.message); });
       if (!json.success) throw new Error(json.error || 'API failed');
       const tables = json.data;
-
-      // Clear the loading text before rendering results
       grid.innerHTML = '';
 
       ['available', 'reserved', 'occupied'].forEach(status => {
@@ -511,50 +755,125 @@ document.addEventListener('DOMContentLoaded', () => {
         list.forEach(t => {
           const card = document.createElement('div');
           card.className = 'table-card';
-          // Availability API may not include start/end; leave time-monitor empty if not present
-          const startAttr = (t.start_time ? `${date} ${t.start_time}` : '');
-          const endAttr = (t.end_time ? `${date} ${t.end_time}` : '');
+
+          const startAttr = (t.start_time ? `${date} ${t.start_time}` : (t.start || ''));
+          const endAttr = (t.end_time ? `${date} ${t.end_time}` : (t.end || ''));
+          const rawResId = t.reservation_id || '';
+          const resIdEscaped = rawResId ? escapeHtml(String(rawResId)) : '';
+          const cabinName = escapeHtml(t.name || '');
+          const statusDotColor = status==='available'?'#00b256':status==='reserved'?'#ffd400':'#d20000';
+
+          // compute duration (minutes) if API didn't provide it
+          let duration = '';
+          if (typeof t.duration_minutes !== 'undefined' && t.duration_minutes !== null) {
+            duration = t.duration_minutes;
+          } else if (startAttr && endAttr) {
+            try {
+              const sIso = startAttr.replace(' ', 'T');
+              const eIso = endAttr.replace(' ', 'T');
+              const d1 = new Date(sIso);
+              const d2 = new Date(eIso);
+              if (!isNaN(d1) && !isNaN(d2)) {
+                duration = Math.round((d2 - d1) / 60000); // minutes
+              }
+            } catch (e) { duration = ''; }
+          }
+
           card.innerHTML = `
             <div class="title">${escapeHtml(t.name)}</div>
             <div class="seats-row"><span>🛏️</span> ${escapeHtml(t.seats)} Beds</div>
             <div class="status-row">
-              <span class="status-dot" style="background:${status==='available'?'#00b256':status==='reserved'?'#ffd400':'#d20000'}"></span>
+              <span class="status-dot" style="background:${statusDotColor}"></span>
               <span class="status-label">${capitalize(status)}</span>
             </div>
             ${t.guest ? `<div class="guest">${escapeHtml(t.guest)}</div>` : ''}
-            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}"></div>
+            ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}${duration ? ' • ' + duration + ' min' : ''}</div>` : ''}
+            <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}" data-duration="${escapeHtml(String(duration))}" data-reservation-id="${resIdEscaped}" data-cabin-name="${cabinName}"></div>
             <div class="card-actions" aria-hidden="false">
               <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
+              ${rawResId ? `<button class="icon-btn cancel-res-btn" aria-label="Cancel reservation" title="Cancel reservation">🗑</button>` : ''}
             </div>
           `;
           grid.appendChild(card);
 
           const statusBtn = card.querySelector('.status-btn');
+          const cancelBtn = card.querySelector('.cancel-res-btn');
+
           if (statusBtn) {
             statusBtn.addEventListener('click', async (ev) => {
               ev.stopPropagation();
-              const current = t.status || 'available';
-              const next = nextStatusFor(current);
-              if (!confirm(`Change status of "${t.name}" from "${current}" to "${next}" ?`)) return;
-              await changeTableStatus(t.id, next, () => {
-                loadTableStatusForDateTime(state.date, state.time);
-              });
+              try {
+                const current = t.status || 'available';
+                const choice = prompt('Change status to: (r)eserved, (o)ccupied (set timer), (a)vailable? Enter r / o / a and press OK. Cancel to abort.');
+                if (choice === null) return;
+                const c = String(choice).trim().toLowerCase();
+                const tableId = t.id;
+                if (c === 'r') {
+                  if (!confirm(`Change status of "${t.name}" from "${current}" to "reserved"?`)) return;
+                  await changeTableStatus(tableId, 'reserved', () => loadTableStatusForDateTime(state.date, state.time));
+                  return;
+                } else if (c === 'o') {
+                  const durInput = prompt('Set occupied duration in minutes (e.g. 90). Leave blank to mark occupied without timer:');
+                  if (durInput === null) return;
+                  const minutes = durInput.trim() === '' ? 0 : parseInt(durInput.trim(), 10);
+                  if (!isNaN(minutes) && minutes > 0) {
+                    const guest = prompt('Guest name (optional):') || '';
+                    try {
+                      await createReservationNow(tableId, minutes, guest);
+                      await changeTableStatus(tableId, 'occupied', () => loadTableStatusForDateTime(state.date, state.time));
+                    } catch (err) {
+                      console.error('createReservationNow failed (Time view)', err);
+                      alert('Failed to create reservation and mark occupied: ' + err.message);
+                    }
+                    return;
+                  } else {
+                    if (!confirm(`Mark "${t.name}" as occupied without timer?`)) return;
+                    await changeTableStatus(tableId, 'occupied', () => loadTableStatusForDateTime(state.date, state.time));
+                    return;
+                  }
+                } else if (c === 'a') {
+                  if (!confirm(`Change status of "${t.name}" from "${current}" to "available"?`)) return;
+                  await changeTableStatus(tableId, 'available', () => loadTableStatusForDateTime(state.date, state.time));
+                  return;
+                } else {
+                  alert('No action taken. Enter r, o, or a next time (or cancel).');
+                  return;
+                }
+              } catch (err) {
+                console.error('status button handler error (Time view):', err);
+                alert('An error occurred: ' + (err && err.message ? err.message : err));
+              }
+            });
+          }
+
+          if (cancelBtn) {
+            cancelBtn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              const reservationId = rawResId || null;
+              const tableId = t.id || null;
+              cancelReservation(reservationId, tableId);
             });
           }
         });
       });
 
-      // After rendering, update monitors
-      updateTimeMonitors();
+      // call updateTimeMonitors safely
+      try {
+        if (typeof updateTimeMonitors === 'function') updateTimeMonitors();
+      } catch (e) {
+        console.error('updateTimeMonitors threw after rendering time view:', e);
+      }
     } catch (err) {
-      grid.innerHTML = `<div style="color:#900">Error loading cabins for date/time: ${escapeHtml(err.message)}</div>`;
+      if (grid) {
+        grid.innerHTML = `<div style="color:#900">Error loading cabins for date/time: ${escapeHtml(err.message)}</div>`;
+      } else {
+        console.error('Error loading cabins for date/time and grid missing:', err);
+      }
     }
   }
 
-  // Time view helpers and renderer
-
-  // Helper: generate an array of time strings between start and end (inclusive) at interval minutes
-  function generateTimeSlots(start = '10:00', end = '23:00', interval = 30) {
+  // Time view helpers
+  function generateTimeSlots(start = TIME_SLOT_START, end = TIME_SLOT_END, interval = TIME_SLOT_INTERVAL) {
     function toMinutes(hhmm) {
       const [h, m] = String(hhmm).split(':').map(Number);
       return h * 60 + m;
@@ -564,7 +883,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const m = mins % 60;
       return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     }
-
     const startMin = toMinutes(start);
     const endMin = toMinutes(end);
     const slots = [];
@@ -574,13 +892,10 @@ document.addEventListener('DOMContentLoaded', () => {
     return slots;
   }
 
-  // Render the Time view: date picker + grid of time slots
   function renderTimeView() {
-    // header subtitle uses the same helper as date view
     const subtitle = formatDateForHeader(state.date, state.time);
     viewHeader.innerHTML = `<h1>Time</h1>${subtitle ? `<div class="view-subtitle">${escapeHtml(subtitle)}</div>` : ''}`;
 
-    // hide party controls same as date view
     if (partyControl) {
       partyControl.setAttribute('aria-hidden', 'true');
       partyControl.classList.remove('visible');
@@ -591,7 +906,6 @@ document.addEventListener('DOMContentLoaded', () => {
       partySortControl.style.display = 'none';
     }
 
-    // Build markup: date picker + time grid
     viewContent.innerHTML = `
       <div class="date-controls" role="region" aria-label="Date and time controls">
         <div class="picker-wrap" aria-hidden="false" style="align-items:center;">
@@ -613,22 +927,18 @@ document.addEventListener('DOMContentLoaded', () => {
       <div id="tableStatusGrid" class="cards-grid" style="margin-top:12px;"></div>
     `;
 
-    // Wire up date picker
     const datePicker = document.getElementById('viewDatePicker');
     if (datePicker) {
       datePicker.value = state.date || '';
       datePicker.addEventListener('change', e => {
         state.date = e.target.value;
-        // update header subtitle immediately
         const vs = viewHeader.querySelector('.view-subtitle');
         if (vs) vs.textContent = formatDateForHeader(state.date, state.time);
-        // don't auto-load availability here; wait for time selection or Show Availability
       });
     }
 
-    // Generate default time slots (you can change start/end/interval as needed)
-    const slots = generateTimeSlots('10:00', '23:00', 30); // every 30 mins
-
+    // Use the configured slot range
+    const slots = generateTimeSlots(TIME_SLOT_START, TIME_SLOT_END, TIME_SLOT_INTERVAL);
     const grid = document.getElementById('timeGrid');
     if (grid) {
       grid.innerHTML = '';
@@ -638,26 +948,21 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.className = 'time-slot';
         btn.dataset.time = ts;
         btn.textContent = ts;
-        // mark selected if matches state.time
         if (state.time === ts) btn.classList.add('selected');
         btn.addEventListener('click', (ev) => {
           ev.preventDefault();
-          // deselect previous and select current
           const prev = grid.querySelector('.time-slot.selected');
           if (prev) prev.classList.remove('selected');
           btn.classList.add('selected');
           state.time = ts;
-          // update header subtitle
           const vs = viewHeader.querySelector('.view-subtitle');
           if (vs) vs.textContent = formatDateForHeader(state.date, state.time);
-          // auto-load availability when selecting a time (optional)
           if (state.date && state.time) loadTableStatusForDateTime(state.date, state.time);
         });
         grid.appendChild(btn);
       });
     }
 
-    // wire up Show Availability and New Reservation buttons
     document.getElementById('btnSearchSlot')?.addEventListener('click', () => {
       if (!state.date) return alert('Please select a date first.');
       if (!state.time) return alert('Please select a time first.');
@@ -669,11 +974,10 @@ document.addEventListener('DOMContentLoaded', () => {
       openNewReservationModal();
     });
 
-    // stop monitors for this view until availability is loaded (they'll be started after render)
     stopTimeMonitors();
   }
 
-  // Modal for creating/editing a cabin
+  // Modals & actions (unchanged)...
   function openEditModal(table) {
     const isNew = !table || !table.id;
     const overlay = document.createElement('div');
@@ -747,7 +1051,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => modalName.focus(), 50);
   }
 
-  // Delete cabin
   async function confirmDelete(table) {
     if (!confirm(`Delete ${table.name}? This action cannot be undone.`)) return;
     try {
@@ -764,21 +1067,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Add Cabin modal
-  function openNewTableModal() {
-    openEditModal({});
-  }
+  function openNewTableModal() { openEditModal({}); }
 
-  // New reservation modal (date/time already filled)
   function openNewReservationModal() {
     if (!state.date || !state.time) return alert('Please select date and time first!');
-    // Fetch available cabins for chosen slot
     fetch(`../api/get_availability.php?date=${encodeURIComponent(state.date)}&time=${encodeURIComponent(state.time)}`)
       .then(res => res.json())
       .then(json => {
         if (!json.success) throw new Error(json.error || 'API failed');
         const available = json.data.filter(t => t.status === 'available');
-        // Modal HTML
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `
@@ -811,8 +1108,7 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.querySelector('#modalSave').addEventListener('click', () => {
           const table_id = overlay.querySelector('#modalTableSelect').value;
           const guest = overlay.querySelector('#modalGuest').value.trim();
-          // POST reservation to backend (requires api/create_reservation.php)
-          fetch('../api/create_reservation.php', {
+          fetch(API_CREATE_RESERVATION, {
             method: 'POST',
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
@@ -824,7 +1120,6 @@ document.addEventListener('DOMContentLoaded', () => {
           }).then(res => res.json()).then(j => {
             if (!j.success) throw new Error(j.error || 'Create reservation failed');
             overlay.remove();
-            // reload that date/time's status
             loadTableStatusForDateTime(state.date, state.time);
           }).catch(err => alert("Create reservation failed: " + err.message));
         });
@@ -833,33 +1128,24 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(err => alert('Failed to fetch availability: ' + err.message));
   }
 
-  // Search box (if still present)
+  // Search & filters
   if (searchInput) {
     searchInput.addEventListener('input', e => { state.search = e.target.value; renderView(); });
   }
   if (searchClear) {
     searchClear.addEventListener('click', () => { if (searchInput) searchInput.value = ''; state.search = ''; renderView(); });
   }
-
-  // Wire up filter buttons
   if (filterButtons && filterButtons.length) {
     filterButtons.forEach(btn => {
       btn.addEventListener('click', () => {
-        // Update active visual state and aria-selected for accessibility
-        filterButtons.forEach(b => {
-          b.classList.remove('active');
-          b.setAttribute('aria-selected', 'false');
-        });
+        filterButtons.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
         btn.classList.add('active');
         btn.setAttribute('aria-selected', 'true');
-
         state.filter = btn.dataset.filter;
         renderView();
       });
     });
   }
-
-  // Party size control
   if (partySelect) {
     partySelect.addEventListener('change', e => { state.partySeats = e.target.value; renderView(); });
     state.partySeats = partySelect.value || 'any';
@@ -869,7 +1155,6 @@ document.addEventListener('DOMContentLoaded', () => {
     state.partySort = partySortSelect.value || 'default';
   }
 
-  // Main view router (handle 'time' with dedicated view)
   function renderView() {
     switch (state.filter) {
       case 'party': renderPartyView(); break;
@@ -879,29 +1164,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Add buttons
-  document.getElementById('btnAddReservation')?.addEventListener('click', e => {
-    e.preventDefault(); openNewTableModal();
-  });
-  document.getElementById('fabNew')?.addEventListener('click', e => {
-    e.preventDefault(); openNewTableModal();
-  });
+  document.getElementById('btnAddReservation')?.addEventListener('click', e => { e.preventDefault(); openNewTableModal(); });
+  document.getElementById('fabNew')?.addEventListener('click', e => { e.preventDefault(); openNewTableModal(); });
 
-  // Modal CSS injection (keeps modal styling available if not present)
+  // modal CSS injection (unchanged)
   (function injectModalCss() {
     if (document.getElementById('modal-styles')) return;
     const css = `
-      .modal-overlay {
-        position: fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.45);
-        display:flex; align-items:center; justify-content:center; z-index:9999;}
-      .modal {background: #fff; padding:18px; border-radius:10px; width:420px; max-width:95%; box-shadow:0 8px 28px rgba(0,0,0,0.4);}
-      .modal h3 { margin:0 0 12px 0; font-size:18px;}
-      .form-row { margin-bottom:10px; display:flex; flex-direction:column; gap:6px;}
-      .form-row label { font-weight:700; font-size:13px;}
-      .form-row input { padding:8px 10px; font-size:14px; border-radius:6px; border:1px solid #ddd;}
-      .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:8px;}
-      .btn { padding:8px 12px; border-radius:8px; border:1px solid #ccc; background:#f5f5f5; cursor:pointer;}
-      .btn.primary { background:#001b89; color:#fff; border-color:#001b89;}
+      .modal-overlay { position: fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.45);
+        display:flex; align-items:center; justify-content:center; z-index:9999; }
+      .modal { background: #fff; padding:18px; border-radius:10px; width:420px; max-width:95%;
+        box-shadow:0 8px 28px rgba(0,0,0,0.4); }
+      .modal h3 { margin:0 0 12px 0; font-size:18px; }
+      .form-row { margin-bottom:10px; display:flex; flex-direction:column; gap:6px; }
+      .form-row label { font-weight:700; font-size:13px; }
+      .form-row input, .form-row select { padding:8px 10px; font-size:14px; border-radius:6px; border:1px solid #ddd; }
+      .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
+      .btn { padding:8px 12px; border-radius:8px; border:1px solid #ccc; background:#f5f5f5; cursor:pointer; }
+      .btn.primary { background:#001b89; color:#fff; border-color:#001b89; }
+      #tables-toast-container { font-family: Inter, Poppins, sans-serif; }
     `;
     const s = document.createElement('style');
     s.id = 'modal-styles';
@@ -909,7 +1190,35 @@ document.addEventListener('DOMContentLoaded', () => {
     document.head.appendChild(s);
   })();
 
-  // Initial load
+  // initial load
+  async function loadTables() {
+    try {
+      const res = await fetch(API_GET, { cache: 'no-store' });
+      const json = await res.json().catch(e => { throw new Error('Invalid JSON from get_tables.php: ' + e.message); });
+      if (!json.success) throw new Error(json.error || 'Failed to load cabins');
+      tablesData = json.data.map(t => ({
+        id: Number(t.id),
+        name: t.name,
+        status: t.status,
+        seats: Number(t.seats),
+        guest: t.guest || ""
+      }));
+      renderView();
+    } catch (err) {
+      console.error('loadTables error', err);
+      tablesData = [
+        { id: 1, name: 'Cabin 1', status: 'occupied', seats: 6, guest: 'Taenamo Jiro' },
+        { id: 2, name: 'Cabin 2', status: 'reserved', seats: 4, guest: 'WOwmsi' },
+        { id: 3, name: 'Cabin 3', status: 'available', seats: 2, guest: '' },
+      ];
+      const grid = document.getElementById('cardsGrid');
+      if (grid) grid.innerHTML = `<div style="padding:18px;color:#900">Local fallback data (API failed).</div>`;
+      renderView();
+    }
+  }
+
+  // Expose for debugging
+  window._tablesApp = { data: tablesData, state, renderView, renderCardsInto, openEditModal, loadTables, TIME_SLOT_START, TIME_SLOT_END, TIME_SLOT_INTERVAL };
+
   loadTables();
-  window._tablesApp = { data: tablesData, state, renderView, renderCardsInto, openEditModal, loadTables };
 });

@@ -1,10 +1,12 @@
 // ../js/table.js
-// Full replacement with defensive fixes, duration support, and reservation cancel button.
+// Time-slot range is controlled by the constants below.
+// Set START / END / INTERVAL to control visible slots.
+//
+// NOTE: After replacing this file, do a hard refresh (Ctrl+F5) or open DevTools -> Network -> Disable cache -> Reload.
 
 document.addEventListener('DOMContentLoaded', () => {
   // small global error logging to surface client errors quickly
   window.addEventListener('error', (ev) => {
-    // log to console (visible in DevTools)
     console.error('Uncaught error:', ev.message, ev.filename, ev.lineno, ev.colno, ev.error);
   });
   window.addEventListener('unhandledrejection', (ev) => {
@@ -19,6 +21,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const API_GET_STATUS_BY_DATE = '../api/get_table_status_by_date.php';
   const API_CREATE_RESERVATION = '../api/create_reservation.php';
   const API_DELETE_RESERVATION = '../api/delete_reservation.php';
+
+  // CONFIG: change these to control the Time view slots
+  const TIME_SLOT_START = '10:00';   // first slot shown
+  const TIME_SLOT_END   = '16:00';   // last slot shown (inclusive)
+  const TIME_SLOT_INTERVAL = 30;     // minutes between slots (30 = half-hour, 60 = hourly)
+
+  // Debug: print the effective slot configuration to console
+  console.info('Time slots config:', TIME_SLOT_START, '→', TIME_SLOT_END, '@', TIME_SLOT_INTERVAL, 'min');
 
   let tablesData = [];
 
@@ -375,7 +385,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (deleteBtn) deleteBtn.addEventListener('click', e => { e.stopPropagation(); confirmDelete(tbl); });
 
       if (statusBtn) {
-        // Unified choice handler for All view (tbl variable)
         statusBtn.addEventListener('click', async (e) => {
           e.stopPropagation();
           try {
@@ -638,7 +647,6 @@ document.addEventListener('DOMContentLoaded', () => {
           const cancelBtn = card.querySelector('.cancel-res-btn');
 
           if (statusBtn) {
-            // Handler for Date view (t variable)
             statusBtn.addEventListener('click', async (ev) => {
               ev.stopPropagation();
               try {
@@ -792,7 +800,6 @@ document.addEventListener('DOMContentLoaded', () => {
           const cancelBtn = card.querySelector('.cancel-res-btn');
 
           if (statusBtn) {
-            // Handler for Time view (t variable)
             statusBtn.addEventListener('click', async (ev) => {
               ev.stopPropagation();
               try {
@@ -866,7 +873,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Time view helpers
-  function generateTimeSlots(start = '10:00', end = '23:00', interval = 30) {
+  function generateTimeSlots(start = TIME_SLOT_START, end = TIME_SLOT_END, interval = TIME_SLOT_INTERVAL) {
     function toMinutes(hhmm) {
       const [h, m] = String(hhmm).split(':').map(Number);
       return h * 60 + m;
@@ -930,7 +937,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    const slots = generateTimeSlots('10:00', '23:00', 30);
+    // Use the configured slot range
+    const slots = generateTimeSlots(TIME_SLOT_START, TIME_SLOT_END, TIME_SLOT_INTERVAL);
     const grid = document.getElementById('timeGrid');
     if (grid) {
       grid.innerHTML = '';
@@ -969,7 +977,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stopTimeMonitors();
   }
 
-  // Modals & actions (unchanged)
+  // Modals & actions (unchanged)...
   function openEditModal(table) {
     const isNew = !table || !table.id;
     const overlay = document.createElement('div');
@@ -1210,7 +1218,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Expose for debugging
-  window._tablesApp = { data: tablesData, state, renderView, renderCardsInto, openEditModal, loadTables };
+  window._tablesApp = { data: tablesData, state, renderView, renderCardsInto, openEditModal, loadTables, TIME_SLOT_START, TIME_SLOT_END, TIME_SLOT_INTERVAL };
 
   loadTables();
 });
