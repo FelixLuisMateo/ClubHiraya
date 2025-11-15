@@ -81,9 +81,15 @@
                 <input type="text" class="search-input" placeholder="Search products" id="searchBox" aria-label="Search products">
             </div>
             <!-- Changed the Select Cabins control from a button to an anchor so it navigates to Cabins.php -->
-            <a class="select-table-btn" role="link" href="../ClubHirayaEmployee/Cabins/Cabins.php">
-                Select Cabins <span class="table-icon"><img src="../ClubHirayaEmployee/assets/logos/table.png" alt=""></span>
-            </a>
+            <?php
+            if (isset($_POST['open_cabins'])) {
+                // Run the batch file silently
+                exec('start "" "C:\\xampp\\htdocs\\ClubHiraya\\ClubHirayaEmployee\\tables\\runReservation.bat"');
+            }
+            ?>
+            <form method="post">
+                <button type="submit" name="open_cabins">Select Cabins</button>
+            </form>
         </div>
 
         <!-- Content Area -->

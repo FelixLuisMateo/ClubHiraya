@@ -19,7 +19,7 @@
             </button>
             <button class="sidebar-btn">
                 <span class="sidebar-icon"><img src="assets/table.png" alt=""></span>
-                <span>Tables</span>
+                <span>Cabins</span>
             </button>
             <button class="sidebar-btn">
                 <span class="sidebar-icon"><img src="assets/inventory.png" alt=""></span>

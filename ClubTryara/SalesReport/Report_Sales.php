@@ -38,7 +38,7 @@
             </a>
             <a href="../../ClubTryara/tables/tables.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/table.png" alt="Tables icon"></span>
-                <span>Tables</span>
+                <span>Cabins</span>
             </a>
             <a href="../inventory/inventory.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="../../clubtryara/assets/logos/inventory.png" alt="Inventory icon"></span>
