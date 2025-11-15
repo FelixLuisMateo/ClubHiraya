@@ -20,6 +20,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const API_CREATE_RESERVATION = '../api/create_reservation.php';
   const API_DELETE_RESERVATION = '../api/delete_reservation.php';
 
+  // Time slot configuration: change these to control the Time view slots
+  // - TIME_SLOT_START: first slot (HH:MM)
+  // - TIME_SLOT_END: last slot (HH:MM)
+  // - TIME_SLOT_INTERVAL: minutes between slots (60 = hourly, 30 = half-hour)
+  const TIME_SLOT_START = '10:00';
+  const TIME_SLOT_END = '22:00';
+  const TIME_SLOT_INTERVAL = 60;
+
   let tablesData = [];
 
   // DOM refs
@@ -866,7 +874,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Time view helpers
-  function generateTimeSlots(start = '10:00', end = '23:00', interval = 30) {
+  function generateTimeSlots(start = '10:00', end = '23:00', interval = 60) {
     function toMinutes(hhmm) {
       const [h, m] = String(hhmm).split(':').map(Number);
       return h * 60 + m;
@@ -930,7 +938,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    const slots = generateTimeSlots('10:00', '15:00', 30);
+    // Use the global TIME_SLOT_* configuration
+    const slots = generateTimeSlots(TIME_SLOT_START, TIME_SLOT_END, TIME_SLOT_INTERVAL);
     const grid = document.getElementById('timeGrid');
     if (grid) {
       grid.innerHTML = '';
@@ -1187,7 +1196,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch(API_GET, { cache: 'no-store' });
       const json = await res.json().catch(e => { throw new Error('Invalid JSON from get_tables.php: ' + e.message); });
-      if (!json.success) throw new Error(json.error || 'Failed to load cabins');
+      if (!json.success) throw new Error(j.error || 'Failed to load cabins');
       tablesData = json.data.map(t => ({
         id: Number(t.id),
         name: t.name,
