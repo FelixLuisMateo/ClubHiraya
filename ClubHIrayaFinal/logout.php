@@ -6,7 +6,7 @@
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     // Optional: if someone visits logout.php directly by GET, redirect them back.
-    header('Location: ../ClubHirayaFinal/login.php');
+    header('Location: ../login.php');
     exit;
 }
 
@@ -31,5 +31,5 @@ if (ini_get("session.use_cookies")) {
 session_destroy();
 
 // Redirect to your login page. Adjust this path to match your project's login location.
-header('Location: ../ClubHirayaFinal/login.php');
+header('Location: ../login.php');
 exit;
