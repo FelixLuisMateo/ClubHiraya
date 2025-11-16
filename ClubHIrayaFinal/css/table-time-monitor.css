@@ -38,3 +38,46 @@
 @media (max-width: 900px) {
   .time-monitor { display:block; width:100%; }
 }
+
+/* -------- Progress bar styles (new) -------- */
+/* container for the timeline progress bar */
+.time-progress {
+  width: 100%;
+  height: 10px;
+  background: rgba(0,0,0,0.04);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 8px;
+  box-sizing: border-box;
+  border: 1px solid rgba(0,0,0,0.03);
+}
+
+/* actual fill */
+.time-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #bcefb2 0%, #6ecf6e 100%);
+  transition: width 800ms ease, background 300ms ease;
+  border-radius: 999px;
+}
+
+/* states */
+.time-progress-bar.not-started {
+  background: linear-gradient(90deg, #e6f0ff 0%, #cfe0ff 100%); /* light blue */
+}
+.time-progress-bar.ongoing {
+  background: linear-gradient(90deg, #bcefb2 0%, #6ecf6e 100%); /* green */
+}
+.time-progress-bar.ends-soon {
+  background: linear-gradient(90deg, #fff4d6 0%, #ffd36b 100%); /* yellowish */
+}
+.time-progress-bar.ended {
+  background: linear-gradient(90deg, #e9eef2 0%, #d6dfe8 100%); /* muted gray */
+  opacity: 0.9;
+}
+
+/* Accessibility: make progress bar focusable and visible outline on keyboard focus */
+.time-progress-bar[role="progressbar"]:focus {
+  outline: 3px solid rgba(43,140,255,0.18);
+  outline-offset: 2px;
+}

@@ -9,6 +9,8 @@
 //   duration (minutes, optional, default 90)
 //   party_size (int, optional)
 //   status (optional) - 'reserved' or 'occupied' (default 'reserved')
+// This patched version returns a richer 409 payload with conflicting reservation(s).
+
 header('Content-Type: application/json; charset=utf-8');
 
 ini_set('display_errors', 1);
@@ -94,11 +96,12 @@ try {
 
     // check overlapping reservations
     $sqlCheck = "
-        SELECT COUNT(*) AS cnt
+        SELECT r.id, r.table_id, r.guest, r.start, r.end, r.start_time, r.end_time, r.status
         FROM reservations r
         WHERE r.table_id = :table_id
           AND NOT (r.end <= :start_dt OR r.start >= :end_dt)
           AND r.status IN ('reserved','occupied')
+        ORDER BY r.start ASC
     ";
     $stmt = $pdo->prepare($sqlCheck);
     $stmt->execute([
@@ -106,12 +109,41 @@ try {
         ':start_dt' => $start_dt,
         ':end_dt'   => $end_dt
     ]);
-    $row = $stmt->fetch();
-    if ($row && (int)$row['cnt'] > 0) {
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if ($rows && count($rows) > 0) {
+        // Conflict -> return 409 with details about conflicting reservations
         http_response_code(409);
-        echo json_encode(['success' => false, 'error' => 'Table is already reserved for that time slot']);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Table is already reserved for that time slot',
+            'conflicts' => array_map(function($r) {
+              return [
+                'id' => (int)$r['id'],
+                'table_id' => (int)$r['table_id'],
+                'guest' => $r['guest'],
+                'start' => $r['start'],
+                'end' => $r['end'],
+                'start_time' => $r['start_time'],
+                'end_time' => $r['end_time'],
+                'status' => $r['status']
+              ];
+            }, $rows)
+        ]);
         exit;
     }
+
+    // compute total price if price column exists for table (optional)
+    $price_per_hour = 3000.00;
+    try {
+      $pstmt = $pdo->prepare("SELECT IFNULL(NULLIF(price_per_hour,0), IFNULL(NULLIF(price,0), 3000.00)) AS price FROM `tables` WHERE id = :id LIMIT 1");
+      $pstmt->execute([':id' => $table_id]);
+      $prow = $pstmt->fetch(PDO::FETCH_ASSOC);
+      if ($prow && isset($prow['price'])) $price_per_hour = (float)$prow['price'];
+    } catch (Exception $e) {
+      // ignore; fallback used
+    }
+    $hours = $duration_minutes / 60.0;
+    $total_price = round($price_per_hour * $hours, 2);
 
     // insert (populate both time-only and datetime columns and duration_minutes)
     $sqlInsert = "
@@ -142,7 +174,8 @@ try {
         $upd->execute([':id' => $table_id, ':guest' => $guest]);
     }
 
-    echo json_encode(['success' => true, 'id' => $newId]);
+    // Return success and include computed total_price (helpful for UI)
+    echo json_encode(['success' => true, 'id' => $newId, 'total_price' => $total_price]);
     exit;
 } catch (Exception $e) {
     http_response_code(500);

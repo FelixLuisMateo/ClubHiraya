@@ -1,0 +1,59 @@
+/* Tiny CSS tweak for reservation conflict modal */
+
+.modal.conflict-modal {
+  max-width: 680px;
+  width: calc(100% - 40px);
+  background: linear-gradient(180deg, #fff, #fbfbff);
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 12px 40px rgba(8,20,40,0.2);
+  border: 1px solid rgba(10,20,40,0.04);
+  color: #111;
+}
+
+.modal.conflict-modal h3 {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+  color: #111;
+}
+
+.modal.conflict-modal .form-row {
+  margin-bottom: 12px;
+}
+
+.modal.conflict-modal pre {
+  background: #f6f8fb;
+  border: 1px solid rgba(0,0,0,0.04);
+  padding: 10px;
+  border-radius: 8px;
+  max-height: 260px;
+  overflow: auto;
+  font-size: 13px;
+  color: #222;
+}
+
+.modal.conflict-modal .modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.modal.conflict-modal .btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #cfcfcf;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}
+.modal.conflict-modal .btn.primary {
+  background: #0066ff;
+  color: #fff;
+  border-color: #0066ff;
+}
+
+@media (max-width: 680px) {
+  .modal.conflict-modal { padding: 12px; width: calc(100% - 20px); }
+  .modal.conflict-modal pre { font-size: 12px; }
+}

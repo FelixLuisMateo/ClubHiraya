@@ -1,5 +1,8 @@
 // ../js/table.js
-// Updated: display price per hour and let the New Reservation modal set duration and show computed cost.
+// Time-slot range is controlled by the constants below.
+// Set START / END / INTERVAL to control visible slots.
+//
+// NOTE: After replacing this file, do a hard refresh (Ctrl+F5) or open DevTools -> Network -> Disable cache -> Reload.
 
 document.addEventListener('DOMContentLoaded', () => {
   // small global error logging to surface client errors quickly
@@ -34,6 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const viewHeader = document.getElementById('viewHeader');
   const viewContent = document.getElementById('viewContent');
   let cardsGrid = document.getElementById('cardsGrid');
+  const searchInput = document.getElementById('searchInput');
+  const searchClear = document.getElementById('searchClear');
   const filterButtons = document.querySelectorAll('.filter-btn');
   const partyControl = document.getElementById('partyControl');
   const partySelect = document.getElementById('partySelect');
@@ -129,14 +134,8 @@ document.addEventListener('DOMContentLoaded', () => {
       duration: Number(minutes),
       guest: guest || ''
     };
-    const res = await fetch(API_CREATE_RESERVATION, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const j = await res.json().catch(e => { throw new Error('Invalid JSON response from create_reservation.php: ' + e.message); });
-    if (!j.success) throw new Error(j.error || 'Create reservation failed');
-    return j;
+    // Use the performCreateReservation flow (handles 409 nicely)
+    return performCreateReservation(payload, null);
   }
 
   // Cancel reservation helper - call api/delete_reservation.php and refresh current view
@@ -285,6 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // --- updateTimeMonitors (enhanced with progress bar) ---
   function updateTimeMonitors() {
     const nodes = document.querySelectorAll('.time-monitor');
     const now = new Date();
@@ -294,28 +294,88 @@ document.addEventListener('DOMContentLoaded', () => {
         const end = el.dataset.end;
         if (!start && !end) {
           el.textContent = '';
+          // Also reset any progress bar if present
+          const card = el.closest('.table-card');
+          if (card) {
+            const bar = card.querySelector('.time-progress-bar');
+            if (bar) { bar.style.width = '0%'; bar.className = 'time-progress-bar not-started'; bar.setAttribute('aria-valuenow', '0'); }
+          }
           return;
         }
+
         const startIso = start ? start.replace(' ', 'T') : null;
         const endIso = end ? end.replace(' ', 'T') : null;
         const dStart = startIso ? new Date(startIso) : null;
         const dEnd = endIso ? new Date(endIso) : null;
 
+        // Ensure the progress bar exists next to this time-monitor (inject if missing)
+        const card = el.closest('.table-card');
+        if (card) {
+          let progressWrap = card.querySelector('.time-progress');
+          if (!progressWrap) {
+            progressWrap = document.createElement('div');
+            progressWrap.className = 'time-progress';
+            progressWrap.innerHTML = `<div class="time-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"></div>`;
+            // insert right after the .time-monitor element so it visually pairs with the label
+            el.insertAdjacentElement('afterend', progressWrap);
+          }
+        }
+
+        const progressBar = card ? card.querySelector('.time-progress-bar') : null;
+
         if (dStart && now < dStart) {
           const ms = dStart - now;
           el.textContent = `Starts in ${formatDuration(ms)}`;
-          el.classList.remove('ongoing');
-          el.classList.remove('ended');
+          el.classList.remove('ongoing', 'ended');
+          el.classList.add('starts-soon');
+
+          // update progress bar for "not started"
+          if (progressBar) {
+            progressBar.style.width = '0%';
+            progressBar.className = 'time-progress-bar not-started';
+            progressBar.setAttribute('aria-valuenow', '0');
+          }
         } else if (dStart && dEnd && now >= dStart && now <= dEnd) {
           const ms = dEnd - now;
           el.textContent = `Ends in ${formatDuration(ms)}`;
           el.classList.add('ongoing');
-          el.classList.remove('ended');
+          el.classList.remove('ended', 'starts-soon');
+
+          // compute progress fraction
+          if (progressBar) {
+            const total = dEnd - dStart;
+            let elapsed = now - dStart;
+            if (total <= 0) {
+              progressBar.style.width = '100%';
+              progressBar.setAttribute('aria-valuenow', '100');
+              progressBar.className = 'time-progress-bar ongoing';
+            } else {
+              let frac = Math.max(0, Math.min(1, elapsed / total));
+              const pct = Math.round(frac * 100);
+              progressBar.style.width = pct + '%';
+              progressBar.setAttribute('aria-valuenow', String(pct));
+              // color hint when ending soon (<10% left)
+              const endsSoonThreshold = 0.10;
+              if (1 - frac <= endsSoonThreshold) {
+                progressBar.className = 'time-progress-bar ends-soon';
+              } else {
+                progressBar.className = 'time-progress-bar ongoing';
+              }
+            }
+          }
         } else if (dEnd && now > dEnd) {
           const ms = now - dEnd;
           el.textContent = `Ended ${formatDuration(ms)} ago`;
           el.classList.remove('ongoing');
           el.classList.add('ended');
+
+          // finalize progress bar at 100%
+          if (progressBar) {
+            progressBar.style.width = '100%';
+            progressBar.setAttribute('aria-valuenow', '100');
+            progressBar.className = 'time-progress-bar ended';
+          }
+
           const resId = el.dataset.reservationId || el.dataset.resId || '';
           const cabinName = el.dataset.cabinName || el.dataset.tableName || '';
           if (resId) {
@@ -330,14 +390,119 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           }
         } else {
+          // fallback: no meaningful start/end
           el.textContent = '';
-          el.classList.remove('ongoing');
-          el.classList.remove('ended');
+          el.classList.remove('ongoing', 'ended', 'starts-soon');
+          if (progressBar) {
+            progressBar.style.width = '0%';
+            progressBar.className = 'time-progress-bar not-started';
+            progressBar.setAttribute('aria-valuenow', '0');
+          }
         }
       } catch (e) {
-        console.error('Error while updating single time-monitor element:', e, el);
+        console.error('Error while updating single time-monitor element (progress):', e, el);
       }
     });
+  }
+
+  // --- Conflict handling helpers (performCreateReservation + conflict modal) ---
+  function showReservationConflictModal(conflict = {}, retryCb = null, originalPayload = null) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    const serverMsg = (conflict && (conflict.error || conflict.message)) ? (conflict.error || conflict.message) : 'This slot is already taken.';
+    const conflictDetails = JSON.stringify(conflict, null, 2);
+
+    overlay.innerHTML = `
+      <div class="modal conflict-modal" role="dialog" aria-modal="true" aria-label="Reservation conflict">
+        <h3>Reservation Conflict</h3>
+        <div class="form-row">
+          <div style="font-weight:700; color:#b71c1c">Cannot create reservation: ${escapeHtml(serverMsg)}</div>
+          ${ originalPayload ? `<div style="margin-top:8px">Attempted: <strong>${escapeHtml(String(originalPayload.date || ''))} ${escapeHtml(String(originalPayload.start_time || ''))}</strong> • ${escapeHtml(String(originalPayload.duration || ''))} min</div>` : '' }
+        </div>
+
+        <div class="form-row" id="conflictActionsIntro">
+          <div style="font-size:13px; color:#444">You can choose another slot, view details about the conflict, or retry the same slot.</div>
+        </div>
+
+        <pre id="conflictDetails" style="display:none; white-space:pre-wrap; background:#f7f7f9; padding:10px; border-radius:6px; max-height:220px; overflow:auto;">${escapeHtml(conflictDetails)}</pre>
+
+        <div class="modal-actions">
+          <button id="btnChooseAnother" class="btn">Choose another slot</button>
+          <button id="btnViewConflict" class="btn">View conflict details</button>
+          ${ retryCb ? `<button id="btnRetry" class="btn primary">Retry</button>` : '' }
+          <button id="btnCloseConflict" class="btn">Cancel</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const pre = overlay.querySelector('#conflictDetails');
+    overlay.querySelector('#btnViewConflict').addEventListener('click', () => {
+      if (pre.style.display === 'none') pre.style.display = 'block';
+      else pre.style.display = 'none';
+    });
+
+    overlay.querySelector('#btnChooseAnother').addEventListener('click', () => {
+      state.filter = 'time';
+      renderView();
+      overlay.remove();
+      setTimeout(() => {
+        const dp = document.getElementById('viewDatePicker');
+        if (dp) dp.focus();
+      }, 100);
+    });
+
+    const btnRetry = overlay.querySelector('#btnRetry');
+    if (btnRetry) {
+      btnRetry.addEventListener('click', async () => {
+        btnRetry.disabled = true;
+        btnRetry.textContent = 'Retrying...';
+        try {
+          if (typeof retryCb === 'function') {
+            await retryCb();
+          }
+          overlay.remove();
+        } catch (e) {
+          alert('Retry failed: ' + (e && e.message ? e.message : e));
+          btnRetry.disabled = false;
+          btnRetry.textContent = 'Retry';
+        }
+      });
+    }
+
+    overlay.querySelector('#btnCloseConflict').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', ev => { if (ev.target === overlay) overlay.remove(); });
+  }
+
+  async function performCreateReservation(payload = {}, onSuccess = null) {
+    if (!payload || !payload.table_id || !payload.date || !payload.start_time) {
+      throw new Error('Missing reservation parameters');
+    }
+    try {
+      const res = await fetch(API_CREATE_RESERVATION, {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.status === 409) {
+        let json = {};
+        try { json = await res.json(); } catch (e) { json = { error: 'Conflict' }; }
+        showReservationConflictModal(json, async () => {
+          return performCreateReservation(payload, onSuccess);
+        }, payload);
+        return;
+      }
+
+      const j = await res.json().catch(e => { throw new Error('Invalid JSON response from create_reservation.php: ' + e.message); });
+      if (!j.success) throw new Error(j.error || 'Create reservation failed');
+
+      if (typeof onSuccess === 'function') onSuccess(j);
+      return j;
+    } catch (err) {
+      throw err;
+    }
   }
 
   // --- Renderers ---
@@ -360,7 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.dataset.id = tbl.id;
       if (state.selectedId === tbl.id) card.classList.add('active');
 
-      const pricePerHour = typeof tbl.price_per_hour !== 'undefined' && tbl.price_per_hour !== null ? Number(tbl.price_per_hour) : 3000;
+      const pricePerHour = typeof tbl.price_per_hour !== 'undefined' && tbl.price_per_hour !== null ? Number(tbl.price_per_hour) : (typeof tbl.price !== 'undefined' ? Number(tbl.price) : 3000);
 
       card.innerHTML = `
         <div class="title">${escapeHtml(tbl.name)}</div>
@@ -449,7 +614,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (selected) console.info('Selected cabin:', selected.name);
   }
 
-  // Views
+  // Views (Date / Time / Party / All)
   function renderAllView() {
     viewHeader.innerHTML = '<h1>All Cabins</h1>';
     viewContent.innerHTML = `<div class="cards-grid" id="cardsGrid" role="list"></div>`;
@@ -632,7 +797,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { duration = ''; }
           }
 
-          const pricePerHour = typeof t.price_per_hour !== 'undefined' && t.price_per_hour !== null ? Number(t.price_per_hour) : 3000;
+          const pricePerHour = typeof t.price_per_hour !== 'undefined' && t.price_per_hour !== null ? Number(t.price_per_hour) : (typeof t.price !== 'undefined' ? Number(t.price) : 3000);
           const totalPrice = (typeof t.total_price !== 'undefined' && t.total_price !== null) ? Number(t.total_price) : '';
 
           card.innerHTML = `
@@ -773,6 +938,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const cabinName = escapeHtml(t.name || '');
           const statusDotColor = status==='available'?'#00b256':status==='reserved'?'#ffd400':'#d20000';
 
+          // compute duration (minutes) if API didn't provide it
           let duration = '';
           if (typeof t.duration_minutes !== 'undefined' && t.duration_minutes !== null) {
             duration = t.duration_minutes;
@@ -788,7 +954,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { duration = ''; }
           }
 
-          const pricePerHour = typeof t.price_per_hour !== 'undefined' && t.price_per_hour !== null ? Number(t.price_per_hour) : 3000;
+          const pricePerHour = typeof t.price_per_hour !== 'undefined' && t.price_per_hour !== null ? Number(t.price_per_hour) : (typeof t.price !== 'undefined' ? Number(t.price) : 3000);
           const totalPrice = (typeof t.total_price !== 'undefined' && t.total_price !== null) ? Number(t.total_price) : '';
 
           card.innerHTML = `
@@ -885,7 +1051,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Time view helpers (unchanged)...
+  // Time view helpers
   function generateTimeSlots(start = TIME_SLOT_START, end = TIME_SLOT_END, interval = TIME_SLOT_INTERVAL) {
     function toMinutes(hhmm) {
       const [h, m] = String(hhmm).split(':').map(Number);
@@ -1008,7 +1174,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="form-row">
           <label for="modalPrice">Price per hour (PHP)</label>
-          <input id="modalPrice" type="number" min="0" step="0.01" value="${table && typeof table.price_per_hour !== 'undefined' ? Number(table.price_per_hour) : 3000}" />
+          <input id="modalPrice" type="number" min="0" step="0.01" value="${table && typeof table.price_per_hour !== 'undefined' ? Number(table.price_per_hour) : (typeof table.price !== 'undefined' ? Number(table.price) : 3000)}" />
         </div>
         <div class="form-row">
           <label for="modalGuest">Guest (optional)</label>
@@ -1107,7 +1273,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="form-row">
               <label for="modalTableSelect">Cabin</label>
               <select id="modalTableSelect">
-                ${available.map(t => `<option value="${t.id}" data-price="${t.price_per_hour || 3000}">${escapeHtml(t.name)} (${t.seats} beds) - ${escapeHtml(formatCurrencyPhp(t.price_per_hour || 3000))}/hr</option>`).join('')}
+                ${available.map(t => `<option value="${t.id}" data-price="${t.price_per_hour || t.price || 3000}">${escapeHtml(t.name)} (${t.seats} beds) - ${escapeHtml(formatCurrencyPhp(t.price_per_hour || t.price || 3000))}/hr</option>`).join('')}
               </select>
             </div>
             <div class="form-row">
@@ -1123,7 +1289,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <label for="modalGuest">Guest Name</label><input id="modalGuest" type="text" />
             </div>
             <div class="form-row">
-              <div style="font-weight:800">Estimated total: <span id="modalTotalPrice">${formatCurrencyPhp( (available[0].price_per_hour || 3000) * (90/60) )}</span></div>
+              <div style="font-weight:800">Estimated total: <span id="modalTotalPrice">${formatCurrencyPhp( (available[0].price_per_hour || available[0].price || 3000) * (90/60) )}</span></div>
             </div>
             <div class="modal-actions">
               <button id="modalCancel" class="btn">Cancel</button>
@@ -1150,33 +1316,58 @@ document.addEventListener('DOMContentLoaded', () => {
         durationInput.addEventListener('input', updateTotal);
 
         overlay.querySelector('#modalCancel').addEventListener('click', () => overlay.remove());
+
+        // Create handler uses performCreateReservation which handles 409 with a modal
         overlay.querySelector('#modalSave').addEventListener('click', () => {
           const table_id = parseInt(overlay.querySelector('#modalTableSelect').value, 10);
           const guest = overlay.querySelector('#modalGuest').value.trim();
           const duration = parseInt(overlay.querySelector('#modalDuration').value, 10) || 90;
-          fetch(API_CREATE_RESERVATION, {
-            method: 'POST',
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-              table_id,
-              date: state.date,
-              start_time: state.time,
-              guest,
-              duration
-            })
-          }).then(res => res.json()).then(j => {
-            if (!j.success) throw new Error(j.error || 'Create reservation failed');
+
+          // Disable Save button to avoid duplicate clicks
+          const btnSave = overlay.querySelector('#modalSave');
+          btnSave.disabled = true;
+          const origLabel = btnSave.textContent;
+          btnSave.textContent = 'Creating...';
+
+          const payload = {
+            table_id,
+            date: state.date,
+            start_time: state.time,
+            guest,
+            duration
+          };
+
+          performCreateReservation(payload, (j) => {
+            try { showToast('Reservation created' + (j.total_price ? (' • ' + formatCurrencyPhp(j.total_price)) : ''), { background: '#2b8cff' }); } catch (e) {}
             overlay.remove();
-            loadTableStatusForDateTime(state.date, state.time);
-            showToast('Reservation created: ' + (j.total_price ? formatCurrencyPhp(j.total_price) : ''), { background: '#2b8cff' });
-          }).catch(err => alert("Create reservation failed: " + err.message));
+            if (state.filter === 'date') {
+              if (state.time) loadTableStatusForDateTime(state.date, state.time);
+              else loadTableStatusForDate(state.date);
+            } else if (state.filter === 'time') {
+              loadTableStatusForDateTime(state.date, state.time);
+            } else {
+              loadTables();
+            }
+          }).catch(err => {
+            console.error('Create reservation failed', err);
+            alert('Create reservation failed: ' + (err && err.message ? err.message : err));
+          }).finally(() => {
+            try { btnSave.disabled = false; btnSave.textContent = origLabel; } catch (e) {}
+          });
         });
+
         overlay.addEventListener('click', ev => { if (ev.target === overlay) overlay.remove(); });
       })
       .catch(err => alert('Failed to fetch availability: ' + err.message));
   }
 
-  // Search & filters (small reuse from original)
+  // Search & filters
+  if (searchInput) {
+    searchInput.addEventListener('input', e => { state.search = e.target.value; renderView(); });
+  }
+  if (searchClear) {
+    searchClear.addEventListener('click', () => { if (searchInput) searchInput.value = ''; state.search = ''; renderView(); });
+  }
   if (filterButtons && filterButtons.length) {
     filterButtons.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1225,6 +1416,9 @@ document.addEventListener('DOMContentLoaded', () => {
       .btn { padding:8px 12px; border-radius:8px; border:1px solid #ccc; background:#f5f5f5; cursor:pointer; }
       .btn.primary { background:#001b89; color:#fff; border-color:#001b89; }
       #tables-toast-container { font-family: Inter, Poppins, sans-serif; }
+      /* conflict-modal small adjustments */
+      .conflict-modal .form-row { margin-bottom:10px; }
+      .conflict-modal pre { font-size:12px; color:#222; }
     `;
     const s = document.createElement('style');
     s.id = 'modal-styles';
@@ -1244,7 +1438,7 @@ document.addEventListener('DOMContentLoaded', () => {
         status: t.status,
         seats: Number(t.seats),
         guest: t.guest || "",
-        price_per_hour: typeof t.price_per_hour !== 'undefined' ? Number(t.price_per_hour) : 3000
+        price_per_hour: typeof t.price_per_hour !== 'undefined' ? Number(t.price_per_hour) : (typeof t.price !== 'undefined' ? Number(t.price) : 3000)
       }));
       renderView();
     } catch (err) {
