@@ -26,6 +26,7 @@ $status = isset($input['status']) ? trim($input['status']) : null;
 $seats = isset($input['seats']) ? (int)$input['seats'] : null;
 $guest = array_key_exists('guest', $input) ? trim($input['guest']) : null;
 $name  = isset($input['name']) ? trim($input['name']) : null;
+$price = array_key_exists('price_per_hour', $input) ? (float)$input['price_per_hour'] : null;
 
 if ($id <= 0) {
     http_response_code(400);
@@ -77,6 +78,16 @@ if ($name !== null) {
     $params[':name'] = $name;
 }
 
+if ($price !== null) {
+    if ($price < 0 || $price > 1000000) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid price_per_hour']);
+        exit;
+    }
+    $fields[] = "`price_per_hour` = :price";
+    $params[':price'] = round($price, 2);
+}
+
 if (empty($fields)) {
     echo json_encode(['success' => false, 'error' => 'No fields to update']);
     exit;
@@ -92,3 +103,4 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
+?>
