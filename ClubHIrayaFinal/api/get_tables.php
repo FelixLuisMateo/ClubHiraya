@@ -10,10 +10,12 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/db.php';
 
 try {
-        $stmt = $pdo->query("SELECT id, name, status, seats, IFNULL(guest,'') AS guest, updated_at FROM `tables` ORDER BY id ASC");
+        // include price_per_hour in query (fallback 3000 if column exists but NULL)
+        $stmt = $pdo->query("SELECT id, name, status, seats, IFNULL(guest,'') AS guest, IFNULL(price_per_hour, 3000.00) AS price_per_hour, updated_at FROM `tables` ORDER BY id ASC");
         $rows = $stmt->fetchAll();
         echo json_encode(['success' => true, 'data' => $rows]);
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
+?>

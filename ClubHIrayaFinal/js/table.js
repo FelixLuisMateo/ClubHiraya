@@ -1,8 +1,5 @@
 // ../js/table.js
-// Time-slot range is controlled by the constants below.
-// Set START / END / INTERVAL to control visible slots.
-//
-// NOTE: After replacing this file, do a hard refresh (Ctrl+F5) or open DevTools -> Network -> Disable cache -> Reload.
+// Updated: display price per hour and let the New Reservation modal set duration and show computed cost.
 
 document.addEventListener('DOMContentLoaded', () => {
   // small global error logging to surface client errors quickly
@@ -21,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const API_GET_STATUS_BY_DATE = '../api/get_table_status_by_date.php';
   const API_CREATE_RESERVATION = '../api/create_reservation.php';
   const API_DELETE_RESERVATION = '../api/delete_reservation.php';
+  const API_GET_AVAILABILITY = '../api/get_availability.php';
 
   // CONFIG: change these to control the Time view slots
   const TIME_SLOT_START = '10:00';   // first slot shown
@@ -36,8 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const viewHeader = document.getElementById('viewHeader');
   const viewContent = document.getElementById('viewContent');
   let cardsGrid = document.getElementById('cardsGrid');
-  const searchInput = document.getElementById('searchInput');
-  const searchClear = document.getElementById('searchClear');
   const filterButtons = document.querySelectorAll('.filter-btn');
   const partyControl = document.getElementById('partyControl');
   const partySelect = document.getElementById('partySelect');
@@ -72,6 +68,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function capitalize(s) { return s && s.length ? s[0].toUpperCase() + s.slice(1) : ''; }
   function escapeHtml(text = '') {
     return String(text).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+  }
+  function formatCurrencyPhp(num) {
+    try {
+      return '₱' + Number(num).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } catch (e) {
+      return '₱' + Number(num).toFixed(2);
+    }
   }
   function formatDateForHeader(dateIso, timeStr) {
     try {
@@ -357,6 +360,8 @@ document.addEventListener('DOMContentLoaded', () => {
       card.dataset.id = tbl.id;
       if (state.selectedId === tbl.id) card.classList.add('active');
 
+      const pricePerHour = typeof tbl.price_per_hour !== 'undefined' && tbl.price_per_hour !== null ? Number(tbl.price_per_hour) : 3000;
+
       card.innerHTML = `
         <div class="title">${escapeHtml(tbl.name)}</div>
         <div class="status-row">
@@ -364,6 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="status-label">${capitalize(status)}</span>
         </div>
         <div class="seats-row"><span>🛏️</span> ${escapeHtml(String(tbl.seats || tbl.party_size || ''))} Beds</div>
+        <div class="price-row" style="font-weight:800; margin-top:6px">${escapeHtml(formatCurrencyPhp(pricePerHour))} / hr</div>
         ${tbl.guest ? `<div class="guest">${escapeHtml(tbl.guest)}</div>` : ''}
         <div class="card-actions" aria-hidden="false">
           <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
@@ -626,15 +632,19 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { duration = ''; }
           }
 
+          const pricePerHour = typeof t.price_per_hour !== 'undefined' && t.price_per_hour !== null ? Number(t.price_per_hour) : 3000;
+          const totalPrice = (typeof t.total_price !== 'undefined' && t.total_price !== null) ? Number(t.total_price) : '';
+
           card.innerHTML = `
             <div class="title">${escapeHtml(t.name)}</div>
             <div class="seats-row"><span>🛏️</span> ${escapeHtml(t.seats)} Beds</div>
+            <div class="price-row" style="font-weight:800; margin-top:4px">${escapeHtml(formatCurrencyPhp(pricePerHour))} / hr</div>
             <div class="status-row">
               <span class="status-dot" style="background:${statusDotColor}"></span>
               <span class="status-label">${capitalize(status)}</span>
             </div>
             ${t.guest ? `<div class="guest">${escapeHtml(t.guest)}</div>` : ''}
-            ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}${duration ? ' • ' + duration + ' min' : ''}</div>` : ''}
+            ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}${duration ? ' • ' + duration + ' min' : ''}${totalPrice ? ' • ' + formatCurrencyPhp(totalPrice) : ''}</div>` : ''}
             <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}" data-duration="${escapeHtml(String(duration))}" data-reservation-id="${resIdEscaped}" data-cabin-name="${cabinName}"></div>
             <div class="card-actions" aria-hidden="false">
               <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
@@ -763,7 +773,6 @@ document.addEventListener('DOMContentLoaded', () => {
           const cabinName = escapeHtml(t.name || '');
           const statusDotColor = status==='available'?'#00b256':status==='reserved'?'#ffd400':'#d20000';
 
-          // compute duration (minutes) if API didn't provide it
           let duration = '';
           if (typeof t.duration_minutes !== 'undefined' && t.duration_minutes !== null) {
             duration = t.duration_minutes;
@@ -779,15 +788,19 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { duration = ''; }
           }
 
+          const pricePerHour = typeof t.price_per_hour !== 'undefined' && t.price_per_hour !== null ? Number(t.price_per_hour) : 3000;
+          const totalPrice = (typeof t.total_price !== 'undefined' && t.total_price !== null) ? Number(t.total_price) : '';
+
           card.innerHTML = `
             <div class="title">${escapeHtml(t.name)}</div>
             <div class="seats-row"><span>🛏️</span> ${escapeHtml(t.seats)} Beds</div>
+            <div class="price-row" style="font-weight:800; margin-top:4px">${escapeHtml(formatCurrencyPhp(pricePerHour))} / hr</div>
             <div class="status-row">
               <span class="status-dot" style="background:${statusDotColor}"></span>
               <span class="status-label">${capitalize(status)}</span>
             </div>
             ${t.guest ? `<div class="guest">${escapeHtml(t.guest)}</div>` : ''}
-            ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}${duration ? ' • ' + duration + ' min' : ''}</div>` : ''}
+            ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}${duration ? ' • ' + duration + ' min' : ''}${totalPrice ? ' • ' + formatCurrencyPhp(totalPrice) : ''}</div>` : ''}
             <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}" data-duration="${escapeHtml(String(duration))}" data-reservation-id="${resIdEscaped}" data-cabin-name="${cabinName}"></div>
             <div class="card-actions" aria-hidden="false">
               <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
@@ -872,7 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Time view helpers
+  // Time view helpers (unchanged)...
   function generateTimeSlots(start = TIME_SLOT_START, end = TIME_SLOT_END, interval = TIME_SLOT_INTERVAL) {
     function toMinutes(hhmm) {
       const [h, m] = String(hhmm).split(':').map(Number);
@@ -977,7 +990,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stopTimeMonitors();
   }
 
-  // Modals & actions (unchanged)...
+  // Modals & actions
   function openEditModal(table) {
     const isNew = !table || !table.id;
     const overlay = document.createElement('div');
@@ -994,6 +1007,10 @@ document.addEventListener('DOMContentLoaded', () => {
           <input id="modalSeats" type="number" min="1" max="50" value="${table && table.seats ? table.seats : 2}" />
         </div>
         <div class="form-row">
+          <label for="modalPrice">Price per hour (PHP)</label>
+          <input id="modalPrice" type="number" min="0" step="0.01" value="${table && typeof table.price_per_hour !== 'undefined' ? Number(table.price_per_hour) : 3000}" />
+        </div>
+        <div class="form-row">
           <label for="modalGuest">Guest (optional)</label>
           <input id="modalGuest" type="text" value="${table && table.guest ? escapeHtml(table.guest) : ''}" />
         </div>
@@ -1007,6 +1024,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const modalName = overlay.querySelector('#modalName');
     const modalSeats = overlay.querySelector('#modalSeats');
+    const modalPrice = overlay.querySelector('#modalPrice');
     const modalGuest = overlay.querySelector('#modalGuest');
     overlay.querySelector('#modalCancel').addEventListener('click', () => overlay.remove());
 
@@ -1014,12 +1032,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const name = modalName.value.trim() || (table && table.name) || 'Cabin';
       const seats = parseInt(modalSeats.value, 10) || 2;
       const guest = modalGuest.value.trim();
+      const price = parseFloat(modalPrice.value) || 3000;
+
       if (isNew) {
         try {
           const res = await fetch(API_CREATE, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, seats, guest })
+            body: JSON.stringify({ name, seats, guest, price_per_hour: price })
           });
           const j = await res.json();
           if (!j.success) throw new Error(j.error || 'Create failed');
@@ -1028,10 +1048,11 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         } catch (err) {
           console.warn('API create failed:', err);
+          alert('Failed to create cabin: ' + err.message);
         }
       } else {
         try {
-          const payload = { id: table.id, seats, name, guest };
+          const payload = { id: table.id, seats, name, guest, price_per_hour: price };
           const res = await fetch(API_UPDATE, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1071,11 +1092,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openNewReservationModal() {
     if (!state.date || !state.time) return alert('Please select date and time first!');
-    fetch(`../api/get_availability.php?date=${encodeURIComponent(state.date)}&time=${encodeURIComponent(state.time)}`)
+    fetch(`${API_GET_AVAILABILITY}?date=${encodeURIComponent(state.date)}&time=${encodeURIComponent(state.time)}`)
       .then(res => res.json())
       .then(json => {
         if (!json.success) throw new Error(json.error || 'API failed');
         const available = json.data.filter(t => t.status === 'available');
+        if (!available.length) return alert('No cabins available for the chosen date/time.');
+
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `
@@ -1084,7 +1107,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="form-row">
               <label for="modalTableSelect">Cabin</label>
               <select id="modalTableSelect">
-                ${available.map(t => `<option value="${t.id}">${escapeHtml(t.name)} (${t.seats} beds)</option>`).join('')}
+                ${available.map(t => `<option value="${t.id}" data-price="${t.price_per_hour || 3000}">${escapeHtml(t.name)} (${t.seats} beds) - ${escapeHtml(formatCurrencyPhp(t.price_per_hour || 3000))}/hr</option>`).join('')}
               </select>
             </div>
             <div class="form-row">
@@ -1094,7 +1117,13 @@ document.addEventListener('DOMContentLoaded', () => {
               <label>Time</label><input type="time" id="modalTime" value="${state.time}" readonly />
             </div>
             <div class="form-row">
+              <label>Duration (minutes)</label><input id="modalDuration" type="number" min="15" step="15" value="90" />
+            </div>
+            <div class="form-row">
               <label for="modalGuest">Guest Name</label><input id="modalGuest" type="text" />
+            </div>
+            <div class="form-row">
+              <div style="font-weight:800">Estimated total: <span id="modalTotalPrice">${formatCurrencyPhp( (available[0].price_per_hour || 3000) * (90/60) )}</span></div>
             </div>
             <div class="modal-actions">
               <button id="modalCancel" class="btn">Cancel</button>
@@ -1104,10 +1133,27 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         document.body.appendChild(overlay);
 
+        const tableSelect = overlay.querySelector('#modalTableSelect');
+        const durationInput = overlay.querySelector('#modalDuration');
+        const totalEl = overlay.querySelector('#modalTotalPrice');
+
+        function updateTotal() {
+          const opt = tableSelect.selectedOptions[0];
+          const price = parseFloat(opt.dataset.price || '3000');
+          const duration = parseInt(durationInput.value || '90', 10);
+          const hours = (isNaN(duration) || duration <= 0) ? 0 : (duration / 60);
+          const total = Math.round(price * hours * 100) / 100;
+          totalEl.textContent = formatCurrencyPhp(total);
+        }
+
+        tableSelect.addEventListener('change', updateTotal);
+        durationInput.addEventListener('input', updateTotal);
+
         overlay.querySelector('#modalCancel').addEventListener('click', () => overlay.remove());
         overlay.querySelector('#modalSave').addEventListener('click', () => {
-          const table_id = overlay.querySelector('#modalTableSelect').value;
+          const table_id = parseInt(overlay.querySelector('#modalTableSelect').value, 10);
           const guest = overlay.querySelector('#modalGuest').value.trim();
+          const duration = parseInt(overlay.querySelector('#modalDuration').value, 10) || 90;
           fetch(API_CREATE_RESERVATION, {
             method: 'POST',
             headers: {"Content-Type": "application/json"},
@@ -1115,12 +1161,14 @@ document.addEventListener('DOMContentLoaded', () => {
               table_id,
               date: state.date,
               start_time: state.time,
-              guest
+              guest,
+              duration
             })
           }).then(res => res.json()).then(j => {
             if (!j.success) throw new Error(j.error || 'Create reservation failed');
             overlay.remove();
             loadTableStatusForDateTime(state.date, state.time);
+            showToast('Reservation created: ' + (j.total_price ? formatCurrencyPhp(j.total_price) : ''), { background: '#2b8cff' });
           }).catch(err => alert("Create reservation failed: " + err.message));
         });
         overlay.addEventListener('click', ev => { if (ev.target === overlay) overlay.remove(); });
@@ -1128,13 +1176,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(err => alert('Failed to fetch availability: ' + err.message));
   }
 
-  // Search & filters
-  if (searchInput) {
-    searchInput.addEventListener('input', e => { state.search = e.target.value; renderView(); });
-  }
-  if (searchClear) {
-    searchClear.addEventListener('click', () => { if (searchInput) searchInput.value = ''; state.search = ''; renderView(); });
-  }
+  // Search & filters (small reuse from original)
   if (filterButtons && filterButtons.length) {
     filterButtons.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1201,15 +1243,16 @@ document.addEventListener('DOMContentLoaded', () => {
         name: t.name,
         status: t.status,
         seats: Number(t.seats),
-        guest: t.guest || ""
+        guest: t.guest || "",
+        price_per_hour: typeof t.price_per_hour !== 'undefined' ? Number(t.price_per_hour) : 3000
       }));
       renderView();
     } catch (err) {
       console.error('loadTables error', err);
       tablesData = [
-        { id: 1, name: 'Cabin 1', status: 'occupied', seats: 6, guest: 'Taenamo Jiro' },
-        { id: 2, name: 'Cabin 2', status: 'reserved', seats: 4, guest: 'WOwmsi' },
-        { id: 3, name: 'Cabin 3', status: 'available', seats: 2, guest: '' },
+        { id: 1, name: 'Cabin 1', status: 'occupied', seats: 6, guest: 'Taenamo Jiro', price_per_hour: 3000 },
+        { id: 2, name: 'Cabin 2', status: 'reserved', seats: 4, guest: 'WOwmsi', price_per_hour: 3000 },
+        { id: 3, name: 'Cabin 3', status: 'available', seats: 2, guest: '', price_per_hour: 3000 },
       ];
       const grid = document.getElementById('cardsGrid');
       if (grid) grid.innerHTML = `<div style="padding:18px;color:#900">Local fallback data (API failed).</div>`;
