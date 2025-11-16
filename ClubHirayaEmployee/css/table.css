@@ -197,7 +197,7 @@ body {
   padding: 8px;
   box-shadow: 0 3px 8px rgba(0,0,0,0.08);
   width: 100%;
-  max-width: 620px;
+  max-width: 615px;
   box-sizing: border-box;
   flex-wrap: wrap;
 }
@@ -651,6 +651,15 @@ body {
   .date-controls .picker-wrap input[type="time"] {
     min-width: 120px;
   }
+}
+.table-card.occupied {
+    background: #dc2626 !important; /* red */
+    color: white !important;
+    border-color: #b91c1c !important;
+}
+.table-card.occupied .table-status {
+    color: white !important;
+    font-weight: bold;
 }
 
 /* Dark mode overrides */

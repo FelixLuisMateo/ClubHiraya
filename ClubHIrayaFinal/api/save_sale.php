@@ -33,5 +33,24 @@ foreach ($order as $item) {
     $item_stmt->bind_param("isid", $sale_id, $name, $qty, $total);
     $item_stmt->execute();
 }
+/* ----------------------------------------------------
+   UPDATE CABIN STATUS TO OCCUPIED AFTER SUCCESSFUL SALE
+-----------------------------------------------------*/
+
+if (!empty($data['table']) && is_array($data['table'])) {
+
+    $tableId = intval($data['table']['id'] ?? 0);
+
+    if ($tableId > 0) {
+        $stmtCabin = $conn->prepare("
+            UPDATE tables 
+            SET status = 'occupied'
+            WHERE id = ?
+        ");
+        $stmtCabin->bind_param("i", $tableId);
+        $stmtCabin->execute();
+        $stmtCabin->close();
+    }
+}
 
 echo json_encode(['success' => true, 'sale_id' => $sale_id]);
