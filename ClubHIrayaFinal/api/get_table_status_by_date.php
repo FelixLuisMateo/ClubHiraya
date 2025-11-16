@@ -11,7 +11,7 @@ if (!$date) {
 }
 
 // Return one (the nearest) reservation for each table on that date (if any).
-// We alias fields to the names the frontend expects and include duration_minutes.
+// We alias fields to the names the frontend expects and include duration_minutes and total_price.
 $sql = "
 SELECT
   t.id AS id,
@@ -28,7 +28,9 @@ SELECT
   CASE WHEN r.`start` IS NOT NULL AND r.`end` IS NOT NULL
        THEN TIMESTAMPDIFF(MINUTE, r.`start`, r.`end`)
        ELSE r.duration_minutes
-  END AS duration_minutes
+  END AS duration_minutes,
+  IFNULL(r.total_price, NULL) AS total_price,
+  IFNULL(t.price_per_hour, 3000.00) AS price_per_hour
 FROM `tables` t
 LEFT JOIN (
     -- pick one reservation for the table on the requested date (if any).
@@ -52,3 +54,4 @@ try {
     echo json_encode(['success' => false, 'error' => 'Server error: ' . $e->getMessage()]);
     exit;
 }
+?>
