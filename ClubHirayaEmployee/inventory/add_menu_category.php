@@ -1,97 +1,135 @@
 <?php
-// add_category.php - add a new ingredient category (layout like create.php)
-session_start();
-require 'db_connect.php';
+// Protect this page: add require_admin since this file previously had no protection
+require_once __DIR__ . '/../includes/require_admin.php';
+?>
+<?php
+// add_ingredient copy - adapted from add_ingredient.php (uses mysqli from db_connect.php)
+require __DIR__ . '/db_connect.php';
 
+$feedback = '';
 $errors = [];
-if (empty($_SESSION['csrf_token'])) $_SESSION['csrf_token'] = bin2hex(random_bytes(24));
+
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(24));
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $posted = $_POST['csrf_token'] ?? '';
     if (!hash_equals($_SESSION['csrf_token'], (string)$posted)) {
-        $errors[] = "Invalid form submission.";
+        $errors[] = "Invalid form submission (CSRF token mismatch).";
     }
 
-    $name = trim($_POST['category'] ?? '');
+    $name = trim($_POST['name'] ?? '');
+    $category = (int)($_POST['category_id'] ?? 0);
+    $unit = trim($_POST['unit'] ?? '');
+    $stock = $_POST['current_stock'] ?? '';
+    $cost = $_POST['cost_per_unit'] ?? '';
+    $supplier = trim($_POST['supplier'] ?? '');
+    $par = $_POST['par_level'] ?? 0;
 
-    if ($name === '') $errors[] = "Category name is required.";
+    if ($name === '' || mb_strlen($name) < 1 || mb_strlen($name) > 255) $errors[] = "Name is required (1–255 chars).";
+    if ($category <= 0) $errors[] = "Category is required.";
+    if (!is_numeric($stock)) $errors[] = "Current stock must be numeric.";
+    if (!is_numeric($cost)) $errors[] = "Cost must be numeric.";
 
     if (empty($errors)) {
-        $stmt = $conn->prepare("INSERT INTO foods (category) VALUES (?)");
-        $stmt->bind_param("ss", $name, $desc);
-        if ($stmt->execute()) {
-            $_SESSION['success'] = "Category added.";
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(24));
-            header("Location: inventory.php");
-            exit;
+        // Prevent duplicate name (optional)
+        $check = $conn->prepare("SELECT ingredient_id FROM ingredient WHERE name = ?");
+        $check->bind_param("s", $name);
+        $check->execute();
+        $check->store_result();
+        if ($check->num_rows > 0) {
+            $errors[] = "Ingredient already exists.";
+            $check->close();
         } else {
-            $errors[] = "DB error: " . $conn->error;
+            $check->close();
+            $stmt = $conn->prepare("INSERT INTO ingredient (category_id, name, unit, par_level, current_stock, cost_per_unit, supplier) VALUES (?,?,?,?,?,?,?)");
+            $par = floatval($par);
+            $stock = floatval($stock);
+            $cost = floatval($cost);
+            $stmt->bind_param("issddds", $category, $name, $unit, $par, $stock, $cost, $supplier);
+            if ($stmt->execute()) {
+                $_SESSION['success'] = "Ingredient added successfully.";
+                $_SESSION['csrf_token'] = bin2hex(random_bytes(24));
+                header("Location: ingredients.php");
+                exit;
+            } else {
+                $errors[] = "Database error: " . $conn->error;
+            }
+            $stmt->close();
         }
-        $stmt->close();
+    }
+
+    if (!empty($errors)) {
+        $feedback = "<div class='alert alert-error'><ul style='margin:0;padding-left:18px;'>";
+        foreach ($errors as $e) $feedback .= "<li>" . htmlspecialchars($e) . "</li>";
+        $feedback .= "</ul></div>";
     }
 }
 
+// categories for select
+$categories = $conn->query("SELECT * FROM ingredient_category ORDER BY category_name");
 ?>
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Add Category - Club Hiraya</title>
+  <title>Add Ingredient - Club Hiraya</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="../css/inventory.css">
 </head>
-<body>
-  <aside class="sidebar" role="complementary" aria-label="Sidebar">
-    <div class="sidebar-header"><img src="../assets/logos/logo1.png" class="sidebar-header-img"></div>
-    <nav class="sidebar-menu">
-      <a href="../employee_dashboard.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/home.png"></span><span>Home</span></a>
-      <a href="../tables/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/cabin.png"></span><span>Cabins</span></a>
-      <a href="inventory.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../assets/logos/inventory.png"></span><span>Inventory</span></a>
-    </nav>
-    <div style="flex:1"></div>
-    <button class="sidebar-logout">Logout</button>
-  </aside>
+<body<?php
+  if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
+?>>
+  <!-- Sidebar include -->
+  <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
 
   <main class="main-content">
     <div class="topbar">
       <div class="search-section"></div>
       <div class="navlinks" style="display:flex;gap:12px;">
-        <a href="ingredients.php" class="btn-cancel" style="padding:8px 12px;">Ingredients</a>
-        <a href="ingredient_categories.php" class="btn-cancel" style="padding:8px 12px;">Categories</a>
-        <a href="inventory_transaction.php" class="btn-cancel" style="padding:8px 12px;">Transactions</a>
+        <a href="ingredients.php" class="btn-cancel" style="padding:8px 12px;text-decoration:none;">Ingredients</a>
+        <a href="ingredient_categories.php" class="btn-cancel" style="padding:8px 12px;text-decoration:none;">Categories</a>
+        <a href="inventory_transaction.php" class="btn-cancel" style="padding:8px 12px;text-decoration:none;">Transactions</a>
       </div>
     </div>
 
     <div class="inventory-container">
-      <div class="form-card" style="max-width:700px;">
+      <div class="form-card" style="max-width:900px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <div>
-            <div style="font-size:20px;font-weight:800;">Add Category</div>
-            <div style="color:#666;margin-top:6px;">Create a new ingredient category</div>
+            <div style="font-size:20px;font-weight:800;">Add New Ingredient</div>
+            <div style="color:#666;margin-top:6px;">Create a new ingredient used for recipes and stock tracking</div>
           </div>
-          <div><a class="btn-cancel" href="ingredient_categories.php">Back</a></div>
+          <div><a href="ingredients.php" class="btn-cancel" style="padding:10px 14px;display:inline-block;">Back to Ingredients</a></div>
         </div>
 
-        <?php if (!empty($errors)): ?>
-          <div class="alert alert-error"><ul style="margin:0;padding-left:18px;"><?php foreach($errors as $e) echo '<li>'.htmlspecialchars($e).'</li>'; ?></ul></div>
-        <?php endif; ?>
+        <?php if ($feedback) echo $feedback; ?>
 
-        <form method="post">
+        <form method="POST" action="">
           <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
           <div class="form-grid">
-            <div class="form-group">
-              <label>Category name</label>
-              <input name="category_name" required value="<?php echo htmlspecialchars($_POST['category_name'] ?? ''); ?>">
+            <div class="form-group"><label>Name</label><input name="name" required value="<?php echo htmlspecialchars($_POST['name'] ?? ''); ?>"></div>
+
+            <div class="form-group"><label>Category</label>
+              <select name="category_id" required>
+                <option value="">-- Select --</option>
+                <?php while($c = $categories->fetch_assoc()): ?>
+                  <option value="<?php echo $c['category_id']; ?>"><?php echo htmlspecialchars($c['category_name']); ?></option>
+                <?php endwhile; ?>
+              </select>
             </div>
-            <div class="form-group">
-              <label>Description</label>
-              <input name="description" value="<?php echo htmlspecialchars($_POST['description'] ?? ''); ?>">
-            </div>
+
+            <div class="form-group"><label>Unit</label><input name="unit" required value="<?php echo htmlspecialchars($_POST['unit'] ?? ''); ?>"></div>
+            <div class="form-group"><label>Current Stock</label><input name="current_stock" type="number" step="0.0001" required value="<?php echo htmlspecialchars($_POST['current_stock'] ?? '0'); ?>"></div>
+            <div class="form-group"><label>Cost per Unit (₱)</label><input name="cost_per_unit" type="number" step="0.01" required value="<?php echo htmlspecialchars($_POST['cost_per_unit'] ?? '0'); ?>"></div>
+            <div class="form-group"><label>Supplier</label><input name="supplier" value="<?php echo htmlspecialchars($_POST['supplier'] ?? ''); ?>"></div>
+            <div class="form-group"><label>Par Level</label><input name="par_level" type="number" step="0.0001" value="<?php echo htmlspecialchars($_POST['par_level'] ?? '0'); ?>"></div>
           </div>
 
           <div class="form-actions">
-            <a class="btn-cancel" href="ingredient_categories.php">Cancel</a>
-            <button class="btn-save" type="submit">Save Category</button>
+            <a href="ingredients.php" class="btn-cancel">Cancel</a>
+            <button type="submit" class="btn-save">Save Ingredient</button>
           </div>
         </form>
       </div>

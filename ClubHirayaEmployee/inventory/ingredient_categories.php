@@ -1,7 +1,12 @@
 <?php
+require_once __DIR__ . '/../includes/require_admin.php';
+?>
+
+<?php
 // ingredient_categories.php - layout aligned with inventory.php, Add Category links to add_category.php
-require 'db_connect.php';
-session_start();
+require __DIR__ . '/db_connect.php';
+
+// session already started in require_admin.php
 
 $action = $_GET['action'] ?? '';
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -38,6 +43,7 @@ if ($action === 'delete' && $id) {
 
 $categories = $conn->query("SELECT * FROM ingredient_category ORDER BY category_name");
 ?>
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -46,8 +52,7 @@ $categories = $conn->query("SELECT * FROM ingredient_category ORDER BY category_
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="../css/inv_ingredient.css">
 </head>
-<body
-<?php
+<body<?php
   if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
   if (isset($_SESSION['accent_color'])) {
     $accent = $_SESSION['accent_color'];
@@ -60,18 +65,8 @@ $categories = $conn->query("SELECT * FROM ingredient_category ORDER BY category_
     echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
   }
 ?>>
-  <aside class="sidebar" role="complementary" aria-label="Sidebar">
-    <div class="sidebar-header"><img src="../assets/logos/logo1.png" class="sidebar-header-img" alt="logo"></div>
-    <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
-      <a href="../employee_dashboard.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/home.png" alt="Home"></span><span>Home</span></a>
-      <a href="../tables/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/cabin.png" alt="Tables"></span><span>Cabins</span></a>
-      <a href="inventory.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../assets/logos/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
-      <a href="../SalesReport/sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/sales.png" alt="Sales"></span><span>Sales Report</span></a>
-      <a href="../settings/settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/setting.png" alt="Settings"></span><span>Settings</span></a>
-    </nav>
-    <div style="flex:1" aria-hidden="true"></div>
-    <button class="sidebar-logout">Logout</button>
-  </aside>
+  <!-- Sidebar include -->
+  <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
 
   <main class="main-content">
     <div class="topbar">

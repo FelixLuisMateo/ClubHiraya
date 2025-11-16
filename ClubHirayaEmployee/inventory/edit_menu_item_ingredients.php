@@ -1,8 +1,11 @@
 <?php
+require_once __DIR__ . '/../includes/require_admin.php';
+?>
+
+<?php
 // edit_menu_item_ingredients.php - edit a single menu_item_ingredient entry (quantity/unit)
 // Form uses same classes/layout as edit.php. Back button goes to inventory.php per request.
-require 'db_connect.php';
-session_start();
+require __DIR__ . '/db_connect.php';
 
 $mii_id = isset($_GET['mii_id']) ? (int)$_GET['mii_id'] : 0;
 if ($mii_id <= 0) {
@@ -55,6 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -63,8 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="../css/inventory.css">
 </head>
-<body
-<?php
+<body<?php
   if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
   if (isset($_SESSION['accent_color'])) {
     $accent = $_SESSION['accent_color'];
@@ -77,18 +80,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
   }
 ?>>
-  <aside class="sidebar" role="complementary" aria-label="Sidebar">
-    <div class="sidebar-header"><img src="../assets/logos/logo1.png" class="sidebar-header-img" alt="logo"></div>
-    <nav class="sidebar-menu">
-      <a href="../employee_dashboard.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/home.png"></span><span>Home</span></a>
-      <a href="../tables/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/cabin.png"></span><span>Cabins</span></a>
-      <a href="inventory.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../assets/logos/inventory.png"></span><span>Inventory</span></a>
-      <a href="../SalesReport/sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/sales.png"></span><span>Sales Report</span></a>
-      <a href="../settings/settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/setting.png"></span><span>Settings</span></a>
-    </nav>
-    <div style="flex:1"></div>
-    <button class="sidebar-logout">Logout</button>
-  </aside>
+  <!-- Sidebar include -->
+  <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
 
   <main class="main-content">
     <div class="topbar">

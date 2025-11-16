@@ -1,5 +1,8 @@
 <?php
-session_start();
+require_once __DIR__ . '/../includes/require_admin.php';
+?>
+<?php
+// session started in require_admin.php
 require_once __DIR__ . '/../php/db_connect.php';
 date_default_timezone_set('Asia/Manila');
 
@@ -101,6 +104,7 @@ if ($range === 'year') {
 
 $totalToDate = array_sum($chartTotals);
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -139,7 +143,7 @@ th { background:#f0f0f0; }
 }
 </style>
 </head>
-<body <?php
+<body<?php
     if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo 'class="dark-mode"';
     if (isset($_SESSION['accent_color'])) {
         $accent = $_SESSION['accent_color'];
@@ -153,26 +157,8 @@ th { background:#f0f0f0; }
     }
 ?>>
 
-
-<!-- Sidebar -->
-<aside class="sidebar" role="complementary" aria-label="Sidebar">
-    <div class="sidebar-header">
-        <img src="../../clubtryara/assets/logos/logo1.png" alt="Club Hiraya logo" class="sidebar-header-img">
-    </div>
-    <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
-        <a href="../employee_dashboard.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/home.png" alt="Home"></span><span>Home</span></a>
-        <a href="../tables/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/cabin.png" alt="Tables"></span><span>Cabins</span></a>
-        <a href="../inventory/inventory.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
-        <a href="Sales_Report.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/sales.png" alt="Sales report"></span><span>Sales Report</span></a>
-        <a href="../settings/settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/setting.png" alt="Settings"></span><span>Settings</span></a>
-    </nav>
-    <div style="flex:1" aria-hidden="true"></div>
-    <form method="post" action="../logout.php" style="margin:0;">
-            <button class="sidebar-logout" type="submit" aria-label="Logout">
-            <span>Logout</span>
-        </button>
-        </form>
-</aside>
+<!-- Sidebar include -->
+<?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
 
 <!-- Main -->
 <main class="main-content" role="main" aria-label="Main content" style="padding:22px;">

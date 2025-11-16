@@ -1,6 +1,10 @@
 <?php
+require_once __DIR__ . '/../includes/require_admin.php';
+?>
+
+<?php
 // edit_ingredient.php - copy of edit.php behavior but for ingredient (uses PDO like edit.php)
-session_start();
+// session started in require_admin.php
 
 // PDO connection (match edit.php approach)
 $host = 'localhost';
@@ -92,7 +96,7 @@ $cats = $pdo->query("SELECT * FROM ingredient_category ORDER BY category_name")-
 ?>
 <?php
 // view_edit_ingredients.php - view ingredient details using same design/layout as edit/inventory
-require 'db_connect.php';
+require __DIR__ . '/db_connect.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if (!$id) {
@@ -124,6 +128,7 @@ $q->execute();
 $menuRows = $q->get_result();
 $q->close();
 ?>
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -132,8 +137,7 @@ $q->close();
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="../css/ingredients.css">
 </head>
-<body
-<?php
+<body<?php
   if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
   if (isset($_SESSION['accent_color'])) {
     $accent = $_SESSION['accent_color'];
@@ -146,19 +150,8 @@ $q->close();
     echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
   }
 ?>>
-  <!-- Sidebar identical to inventory.php -->
-  <aside class="sidebar" role="complementary" aria-label="Sidebar">
-      <div class="sidebar-header"><img src="../assets/logos/logo1.png" class="sidebar-header-img" alt="logo"></div>
-      <nav class="sidebar-menu">
-        <a href="../employee_dashboard.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/home.png" alt="Home"></span><span>Home</span></a>
-        <a href="../tables/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/cabin.png" alt="Tables"></span><span>Cabins</span></a>
-        <a href="inventory.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../assets/logos/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
-        <a href="../SalesReport/sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/sales.png" alt="Sales"></span><span>Sales Report</span></a>
-        <a href="../settings/settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/setting.png" alt="Settings"></span><span>Settings</span></a>
-      </nav>
-      <div style="flex:1"></div>
-      <button class="sidebar-logout">Logout</button>
-  </aside>
+  <!-- Sidebar include -->
+  <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
 
   <main class="main-content">
     <div class="topbar">
@@ -218,9 +211,9 @@ $q->close();
           <?php else: ?>
             <?php while($m = $menuRows->fetch_assoc()): ?>
               <div class="table-row" style="grid-template-columns:1fr 220px;">
-                <span><a href="menu_item_ingredients.php?id=<?=$m['menu_item_id']?>" style="text-decoration:none;color:inherit;"><?=htmlspecialchars($m['name'])?></a></span>
+                <span><a href="menu_item_ingredients.php?id=<?php echo $m['menu_item_id']; ?>" style="text-decoration:none;color:inherit;"><?php echo htmlspecialchars($m['name']); ?></a></span>
                 <div class="action-buttons">
-                  <a class="btn small" href="menu_item_ingredients.php?id=<?=$m['menu_item_id']?>">View Recipe</a>
+                  <a class="btn small" href="menu_item_ingredients.php?id=<?php echo $m['menu_item_id']; ?>">View Recipe</a>
                 </div>
               </div>
             <?php endwhile; ?>

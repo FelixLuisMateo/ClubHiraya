@@ -1,7 +1,10 @@
 <?php
+require_once __DIR__ . '/../includes/require_admin.php';
+?>
+<?php
 // add_ingredient.php - copy of create.php logic adapted to ingredient table (uses mysqli from db_connect.php)
-session_start();
-require 'db_connect.php';
+// session started in require_admin.php
+require __DIR__ . '/db_connect.php';
 
 $feedback = '';
 $errors = [];
@@ -67,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // categories for select
 $categories = $conn->query("SELECT * FROM ingredient_category ORDER BY category_name");
 ?>
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -75,8 +79,7 @@ $categories = $conn->query("SELECT * FROM ingredient_category ORDER BY category_
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="../css/inventory.css">
 </head>
-<body
-<?php
+<body<?php
   if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
   if (isset($_SESSION['accent_color'])) {
     $accent = $_SESSION['accent_color'];
@@ -89,18 +92,8 @@ $categories = $conn->query("SELECT * FROM ingredient_category ORDER BY category_
     echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
   }
 ?>>
-  <aside class="sidebar" role="complementary" aria-label="Sidebar">
-      <div class="sidebar-header"><img src="../assets/logos/logo1.png" class="sidebar-header-img" alt="logo"></div>
-      <nav class="sidebar-menu">
-        <a href="../employee_dashboard.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/home.png"></span><span>Home</span></a>
-        <a href="../tables/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/cabin.png"></span><span>Cabins</span></a>
-        <a href="inventory.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../assets/logos/inventory.png"></span><span>Inventory</span></a>
-        <a href="../SalesReport/sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/sales.png"></span><span>Sales Report</span></a>
-        <a href="../settings/settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/setting.png"></span><span>Settings</span></a>
-      </nav>
-      <div style="flex:1"></div>
-      <button class="sidebar-logout" type="button">Logout</button>
-  </aside>
+  <!-- Sidebar include -->
+  <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
 
   <main class="main-content">
     <div class="topbar">
@@ -133,7 +126,7 @@ $categories = $conn->query("SELECT * FROM ingredient_category ORDER BY category_
               <select name="category_id" required>
                 <option value="">-- Select --</option>
                 <?php while($c = $categories->fetch_assoc()): ?>
-                  <option value="<?=$c['category_id']?>"><?=htmlspecialchars($c['category_name'])?></option>
+                  <option value="<?php echo $c['category_id']; ?>"><?php echo htmlspecialchars($c['category_name']); ?></option>
                 <?php endwhile; ?>
               </select>
             </div>

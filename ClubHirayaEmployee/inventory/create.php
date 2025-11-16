@@ -1,7 +1,11 @@
 <?php
+require_once __DIR__ . '/../includes/require_admin.php';
+?>
+
+<?php
 // create.php - themed Add New Item page with server-side validation + CSRF
-session_start();
-include "db_connect.php"; // expects $conn (mysqli)
+// session already started in require_admin.php
+include __DIR__ . '/db_connect.php'; // expects $conn (mysqli)
 
 $feedback = '';
 $errors = [];
@@ -80,6 +84,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $sql = "INSERT INTO foods (name, price, category, stock, image) VALUES (?, ?, ?, ?, ?)";
             $insert = mysqli_prepare($conn, $sql);
             // types: s = string, d = double, s = string, i = int, s = string
+            $stock = 0;
             mysqli_stmt_bind_param($insert, 'sdsis', $name, $price, $category, $stock, $image);
             if (mysqli_stmt_execute($insert)) {
                 $_SESSION['success'] = "New item added successfully!";
@@ -102,6 +107,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 ?>
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -110,8 +116,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="../css/inventory.css">
 </head>
-<body
-<?php
+<body<?php
   if (isset($_SESSION['dark_mode']) && $_SESSION['dark_mode']) echo ' class="dark-mode"';
   if (isset($_SESSION['accent_color'])) {
     $accent = $_SESSION['accent_color'];
@@ -124,21 +129,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
   }
 ?>>
-  <!-- Sidebar (same as inventory) -->
-  <aside class="sidebar" role="complementary" aria-label="Sidebar">
-      <div class="sidebar-header">
-          <img src="../assets/logos/logo1.png" alt="Club Hiraya logo" class="sidebar-header-img">
-      </div>
-      <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
-          <a href="../employee_dashboard.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/home.png" alt="Home"></span><span>Home</span></a>
-          <a href="../tables/tables.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/cabin.png" alt="Tables"></span><span>Cabins</span></a>
-          <a href="inventory.php" class="sidebar-btn active"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/inventory.png" alt="Inventory"></span><span>Inventory</span></a>
-          <a href="../SalesReport/sales_report.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../../clubtryara/assets/logos/sales.png" alt="Sales"></span><span>Sales Report</span></a>
-          <a href="../Settings/settings.php" class="sidebar-btn"><span class="sidebar-icon"><img src="../assets/logos/setting.png" alt="Settings"></span><span>Settings</span></a>
-      </nav>
-      <div style="flex:1" aria-hidden="true"></div>
-      <button class="sidebar-logout" type="button" aria-label="Logout">Logout</button>
-  </aside>
+  <!-- Sidebar include -->
+  <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
 
   <main class="main-content" role="main" aria-label="Main content">
     <div class="inventory-container">
