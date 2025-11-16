@@ -62,7 +62,7 @@ if (!empty($order['payment_details'])) {
         } elseif ($payment === 'Bank_transfer') {
             $paymentDetailsHTML = "<div><strong>Bank Transfer:</strong> {$json['name']} ({$json['ref']})</div>";
         } elseif ($payment === 'Cash') {
-            $paymentDetailsHTML = "<div><strong>Cash Given:</strong> " . fmt($json['given']) .
+            $paymentDetailsHTML = "<div><strong>Cash Given:</strong> " . fmt($json['cashgiven']) .
                                   "<br><strong>Change:</strong> " . fmt($json['change']) . "</div>";
         }
     }
