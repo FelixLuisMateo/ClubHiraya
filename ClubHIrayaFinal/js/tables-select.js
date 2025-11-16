@@ -62,7 +62,7 @@
 
   function emitReservedPriceChanged() {
     try {
-      const ev = new CustomEvent('reserved-price-changed', { detail: { price: parseFloat(document.body.dataset.reservedTablePrice || 0) || 0 } });
+      const ev = new CustomEvent('reserved-price-changed', { detail: { price_per_hour: parseFloat(document.body.dataset.reservedTablePrice || 0) || 0 } });
       window.dispatchEvent(ev);
     } catch (e) {
       // ignore
