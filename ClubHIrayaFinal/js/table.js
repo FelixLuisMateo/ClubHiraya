@@ -102,12 +102,32 @@ document.addEventListener('DOMContentLoaded', () => {
     return order[(idx + 1) % order.length];
   }
 
-  async function changeTableStatus(tableId, newStatus, refreshCallback) {
+  // changeTableStatus now accepts optional guest param while remaining backwards-compatible
+  async function changeTableStatus(tableId, newStatus, maybeGuestOrCallback, maybeCallback) {
+    // normalize parameters:
+    // - existing callers often passed (id, status, refreshCallback)
+    // - new callers may pass (id, status, guest, refreshCallback)
+    let guest = null;
+    let refreshCallback = null;
+    if (typeof maybeGuestOrCallback === 'function') {
+      // old style: (id, status, refreshCallback)
+      refreshCallback = maybeGuestOrCallback;
+    } else {
+      if (typeof maybeGuestOrCallback !== 'undefined' && maybeGuestOrCallback !== null) {
+        guest = maybeGuestOrCallback;
+      }
+      if (typeof maybeCallback === 'function') refreshCallback = maybeCallback;
+    }
+
     try {
+      const payload = { id: Number(tableId), status: newStatus };
+      // include guest explicitly when provided (including empty string to clear)
+      if (guest !== null) payload.guest = guest;
+
       const res = await fetch(API_UPDATE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: Number(tableId), status: newStatus })
+        body: JSON.stringify(payload)
       });
       const j = await res.json().catch(e => { throw new Error('Invalid JSON response from update_table.php: ' + e.message); });
       if (!j.success) throw new Error(j.error || 'Update failed');
@@ -132,7 +152,9 @@ document.addEventListener('DOMContentLoaded', () => {
       date,
       start_time: startTime,
       duration: Number(minutes),
-      guest: guest || ''
+      guest: guest || '',
+      // Create the reservation as "occupied" so the server can update the table.guest and table.status
+      status: 'occupied'
     };
     // Use the performCreateReservation flow (handles 409 nicely)
     return performCreateReservation(payload, null);
@@ -576,8 +598,10 @@ document.addEventListener('DOMContentLoaded', () => {
               if (!isNaN(minutes) && minutes > 0) {
                 const guest = prompt('Guest name (optional):') || '';
                 try {
+                  // create reservation marked as occupied (create_reservation will also update table.guest)
                   await createReservationNow(tableId, minutes, guest);
-                  await changeTableStatus(tableId, 'occupied', () => renderView());
+                  // Ensure table row is updated and guest is set; pass guest defensively in case API didn't set the table row
+                  await changeTableStatus(tableId, 'occupied', guest, () => renderView());
                 } catch (err) {
                   console.error('createReservationNow failed', err);
                   alert('Failed to create reservation and mark occupied: ' + err.message);
@@ -585,12 +609,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
               } else {
                 if (!confirm(`Mark "${tbl.name}" as occupied without timer?`)) return;
-                await changeTableStatus(tableId, 'occupied', () => renderView());
+                // ask for guest when marking occupied manually
+                const guest = prompt('Guest name (optional):') || '';
+                await changeTableStatus(tableId, 'occupied', guest, () => renderView());
                 return;
               }
             } else if (c === 'a') {
               if (!confirm(`Change status of "${tbl.name}" from "${current}" to "available"?`)) return;
-              await changeTableStatus(tableId, 'available', () => renderView());
+              // explicitly send empty guest to ensure API clears it
+              await changeTableStatus(tableId, 'available', '', () => renderView());
               return;
             } else {
               alert('No action taken. Enter r, o, or a next time (or cancel).');
@@ -845,7 +872,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const guest = prompt('Guest name (optional):') || '';
                     try {
                       await createReservationNow(tableId, minutes, guest);
-                      await changeTableStatus(tableId, 'occupied', () => {
+                      await changeTableStatus(tableId, 'occupied', guest, () => {
                         if (state.time) loadTableStatusForDateTime(state.date, state.time);
                         else loadTableStatusForDate(state.date);
                       });
@@ -856,7 +883,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                   } else {
                     if (!confirm(`Mark "${t.name}" as occupied without timer?`)) return;
-                    await changeTableStatus(tableId, 'occupied', () => {
+                    const guest = prompt('Guest name (optional):') || '';
+                    await changeTableStatus(tableId, 'occupied', guest, () => {
                       if (state.time) loadTableStatusForDateTime(state.date, state.time);
                       else loadTableStatusForDate(state.date);
                     });
@@ -864,7 +892,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   }
                 } else if (c === 'a') {
                   if (!confirm(`Change status of "${t.name}" from "${current}" to "available"?`)) return;
-                  await changeTableStatus(tableId, 'available', () => {
+                  await changeTableStatus(tableId, 'available', '', () => {
                     if (state.time) loadTableStatusForDateTime(state.date, state.time);
                     else loadTableStatusForDate(state.date);
                   });
@@ -999,7 +1027,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const guest = prompt('Guest name (optional):') || '';
                     try {
                       await createReservationNow(tableId, minutes, guest);
-                      await changeTableStatus(tableId, 'occupied', () => loadTableStatusForDateTime(state.date, state.time));
+                      await changeTableStatus(tableId, 'occupied', guest, () => loadTableStatusForDateTime(state.date, state.time));
                     } catch (err) {
                       console.error('createReservationNow failed (Time view)', err);
                       alert('Failed to create reservation and mark occupied: ' + err.message);
@@ -1007,12 +1035,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                   } else {
                     if (!confirm(`Mark "${t.name}" as occupied without timer?`)) return;
-                    await changeTableStatus(tableId, 'occupied', () => loadTableStatusForDateTime(state.date, state.time));
+                    const guest = prompt('Guest name (optional):') || '';
+                    await changeTableStatus(tableId, 'occupied', guest, () => loadTableStatusForDateTime(state.date, state.time));
                     return;
                   }
                 } else if (c === 'a') {
                   if (!confirm(`Change status of "${t.name}" from "${current}" to "available"?`)) return;
-                  await changeTableStatus(tableId, 'available', () => loadTableStatusForDateTime(state.date, state.time));
+                  await changeTableStatus(tableId, 'available', '', () => loadTableStatusForDateTime(state.date, state.time));
                   return;
                 } else {
                   alert('No action taken. Enter r, o, or a next time (or cancel).');
