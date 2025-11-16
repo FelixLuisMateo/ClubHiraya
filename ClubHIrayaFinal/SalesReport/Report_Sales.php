@@ -7,31 +7,80 @@ date_default_timezone_set('Asia/Manila');
 $range = $_GET['range'] ?? 'week';
 $offset = intval($_GET['offset'] ?? 0); // offset to move between weeks/months/years
 
+// Selected month/year (from dropdowns). 0 means "not selected".
+$selectedMonth = intval($_GET['month_select'] ?? 0);
+$selectedYear  = intval($_GET['year_select'] ?? 0);
+
 $today = new DateTime();
 $startDate = new DateTime();
 $endDate = new DateTime();
 
-// Handle date range with offset logic
+// Handle date range with offset logic (robust)
 switch ($range) {
     case 'month':
-        $startDate->modify('first day of this month');
-        $startDate->modify("$offset month");
+        // If user selected a month/year, use it; otherwise default to current month/year
+        if ($selectedMonth >= 1 && $selectedMonth <= 12 && $selectedYear >= 1900) {
+            $startDate = DateTime::createFromFormat('Y-n-j', sprintf('%04d-%d-1', $selectedYear, $selectedMonth));
+        } else {
+            $startDate = new DateTime('first day of this month');
+        }
+
+        // Apply month offset safely
+        if ($offset !== 0) {
+            $months = abs($offset);
+            if ($offset > 0) {
+                $startDate->add(new DateInterval('P' . $months . 'M'));
+            } else {
+                $startDate->sub(new DateInterval('P' . $months . 'M'));
+            }
+        }
+
         $endDate = (clone $startDate)->modify('last day of this month');
+        $startDate->setTime(0,0,0);
+        $endDate->setTime(23,59,59);
         break;
+
     case 'year':
-        $startDate->modify('first day of January this year');
-        $startDate->modify("$offset year");
-        $endDate = (clone $startDate)->modify('last day of December this year');
+        // If user selected year, use it; otherwise default to this year
+        if ($selectedYear >= 1900) {
+            $startDate = DateTime::createFromFormat('Y-m-d', sprintf('%04d-01-01', $selectedYear));
+        } else {
+            $startDate = new DateTime('first day of January this year');
+        }
+
+        // Apply year offset safely
+        if ($offset !== 0) {
+            $years = abs($offset);
+            if ($offset > 0) {
+                $startDate->add(new DateInterval('P' . $years . 'Y'));
+            } else {
+                $startDate->sub(new DateInterval('P' . $years . 'Y'));
+            }
+        }
+
+        $yearNum = intval($startDate->format('Y'));
+        $endDate = new DateTime("$yearNum-12-31 23:59:59");
+        $startDate->setTime(0,0,0);
         break;
+
     default:
+        // week
+        $startDate = new DateTime();
         $startDate->modify('monday this week');
-        $startDate->modify(($offset * 7) . ' days');
+        if ($offset !== 0) {
+            $weeks = abs($offset);
+            $days = $weeks * 7;
+            if ($offset > 0) $startDate->add(new DateInterval('P' . $days . 'D'));
+            else $startDate->sub(new DateInterval('P' . $days . 'D'));
+        }
         $endDate = (clone $startDate)->modify('sunday this week');
+        $startDate->setTime(0,0,0);
+        $endDate->setTime(23,59,59);
         break;
 }
 
-$startStr = $startDate->format('Y-m-d 00:00:00');
-$endStr = $endDate->format('Y-m-d 23:59:59');
+$startStr = $startDate->format('Y-m-d H:i:s');
+$endStr = $endDate->format('Y-m-d H:i:s');
 
 // --- Fetch Data ---
 $salesData = [];
@@ -62,13 +111,15 @@ if ($conn) {
         ");
     }
 
-    $stmt->bind_param('ss', $startStr, $endStr);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    while ($r = $res->fetch_assoc()) {
-        $salesData[$r['period']] = floatval($r['total']);
+    if ($stmt) {
+        $stmt->bind_param('ss', $startStr, $endStr);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while ($r = $res->fetch_assoc()) {
+            $salesData[$r['period']] = floatval($r['total']);
+        }
+        $stmt->close();
     }
-    $stmt->close();
 }
 
 // --- Prepare Chart Data ---
@@ -77,15 +128,15 @@ $chartTotals = [];
 
 if ($range === 'year') {
     $months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    $year = $startDate->format('Y');
+    $yearNum = intval($startDate->format('Y'));
     for ($i = 1; $i <= 12; $i++) {
-        $key = "$year-" . str_pad($i, 2, '0', STR_PAD_LEFT);
+        $key = sprintf('%04d-%02d', $yearNum, $i);
         $chartLabels[] = $months[$i - 1];
         $chartTotals[] = $salesData[$key] ?? 0;
     }
 } elseif ($range === 'month') {
     $weeks = ['Week 1','Week 2','Week 3','Week 4','Week 5'];
-    $weekNum = (int)$startDate->format('W');
+    $weekNum = intval($startDate->format('W'));
     foreach ($weeks as $index => $label) {
         $chartLabels[] = $label;
         $chartTotals[] = $salesData[$weekNum + $index] ?? 0;
@@ -218,12 +269,50 @@ th { background:#f0f0f0; }
                     <button onclick="navigateRange(1)">Next ➡️</button>
                 </div>
                 <form method="get">
+                    <?php
+                    // Reset offset to 0 when selecting month/year
+                    if ($range === 'month' && isset($_GET['month_select'])) {
+                        $offset = 0;
+                    }
+                    if ($range === 'year' && isset($_GET['year_select'])) {
+                        $offset = 0;
+                    }
+                    ?>
                     <input type="hidden" name="offset" value="<?php echo $offset; ?>">
+
                     <select name="range" onchange="this.form.submit()">
                         <option value="week" <?php if($range=='week') echo 'selected'; ?>>This Week</option>
                         <option value="month" <?php if($range=='month') echo 'selected'; ?>>This Month</option>
                         <option value="year" <?php if($range=='year') echo 'selected'; ?>>This Year</option>
                     </select>
+
+                    <!-- Month dropdown (shows ONLY when range=month) -->
+                    <select name="month_select" id="monthSelect" onchange="this.form.submit()" style="display:<?php echo ($range==='month')?'inline-block':'none'; ?>; margin-left:8px;">
+                        <?php
+                        $defaultMonth = intval($startDate->format('n'));
+                        $useMonth = ($selectedMonth >=1 && $selectedMonth <=12) ? $selectedMonth : $defaultMonth;
+                        for ($m=1;$m<=12;$m++) {
+                            $sel = ($m == $useMonth) ? 'selected' : '';
+                            echo "<option value='$m' $sel>" . date('F', mktime(0,0,0,$m,1)) . "</option>";
+                        }
+                        ?>
+                    </select>
+
+                    <!-- Year dropdown (shows ONLY when range=year) -->
+                    <select name="year_select" id="yearSelect" onchange="this.form.submit()" style="display:<?php echo ($range==='year')?'inline-block':'none'; ?>; margin-left:8px;">
+                        <?php
+                        // Years: current year down to current-10
+                        $currYear = intval((new DateTime())->format('Y'));
+                        $startYear = $currYear;
+                        $endYear = $currYear - 10;
+                        $useYear = ($selectedYear >= 1900) ? $selectedYear : intval($startDate->format('Y'));
+                        for ($y = $startYear; $y >= $endYear; $y--) {
+                            $sel = ($y == $useYear) ? 'selected' : '';
+                            echo "<option value='$y' $sel>$y</option>";
+                        }
+                        ?>
+                    </select>
+
                 </form>
             </div>
             <table>
@@ -254,10 +343,18 @@ function navigateRange(direction) {
   let offset = parseInt(url.searchParams.get('offset') || 0);
   offset += direction;
   url.searchParams.set('offset', offset);
+  // keep range param (use current selection from server-rendered PHP)
   url.searchParams.set('range', '<?php echo $range; ?>');
+  // when month/year dropdowns are visible include their current values
+  const monthEl = document.getElementById('monthSelect');
+  const yearEl = document.getElementById('yearSelect');
+  if (monthEl && monthEl.style.display !== 'none') url.searchParams.set('month_select', monthEl.value);
+  if (yearEl && yearEl.style.display !== 'none') url.searchParams.set('year_select', yearEl.value);
   window.location.href = url.toString();
 }
+</script>
 
+<script>
 const ctx = document.getElementById('salesChart').getContext('2d');
 new Chart(ctx, {
     type: 'bar',
