@@ -175,7 +175,7 @@ $ok = flash('change_pass_success');
 ?>
 <!doctype html>
 <html lang="en">
-<head>
+<head >
   <meta charset="utf-8">
   <title>Change Password</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
