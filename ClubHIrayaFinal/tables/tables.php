@@ -84,7 +84,7 @@
 
       <!-- party-size control -->
       <div id="partyControl" class="party-size-control" aria-hidden="true">
-        <label for="partySelect">Seats:</label>
+        <label for="partySelect">Beds:</label>
         <select id="partySelect" aria-label="Filter by number of seats">
           <option value="any">Any</option>
           <option value="2">1-2</option>
@@ -95,7 +95,7 @@
 
       <!-- NEW: Party sort control -->
       <div id="partySortControl" class="party-sort-control" aria-hidden="true" style="margin-left:12px;">
-        <label for="partySortSelect">Sort by Seats:</label>
+        <label for="partySortSelect">Sort by Beds:</label>
         <select id="partySortSelect">
           <option value="default">Default</option>
           <option value="asc">Ascending</option>
