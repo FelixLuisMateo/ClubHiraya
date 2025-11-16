@@ -61,7 +61,7 @@ require_once __DIR__ . '/ChangePassword.php';
                 <span class="sidebar-icon"><img src="../../ClubHirayaEmployee/assets/logos/home.png" alt="Home icon"></span>
                 <span>Home</span>
             </a>
-            <a href="../../ClubHirayaEmployee/tables/tables.php" class="sidebar-btn">
+            <a href="../../ClubHirayaFinal/tables/tables.php" class="sidebar-btn">
                 <span class="sidebar-icon"><img src="../assets/logos/cabin.png" alt="Tables icon"></span>
                 <span>Cabins</span>
             </a>
