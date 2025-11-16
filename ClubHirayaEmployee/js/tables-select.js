@@ -280,46 +280,80 @@
     rows.forEach((t) => {
       const tr = document.createElement('tr');
 
+      const isOccupied =
+        String(t.status || '').toLowerCase() === 'occupied' ||
+        String(t.reservation_status || '').toLowerCase() === 'occupied';
+
+      // --- Cell: Name ---
       const nameTd = document.createElement('td');
       nameTd.style.padding = '6px';
       nameTd.textContent = t.name || t.guest_name || '';
       tr.appendChild(nameTd);
 
+      // --- Cell: Cabin Number ---
       const numberTd = document.createElement('td');
       numberTd.style.padding = '6px';
       numberTd.textContent = t.table_number || t.table_no || t.id || '';
       tr.appendChild(numberTd);
 
+      // --- Cell: Party Size ---
       const partyTd = document.createElement('td');
       partyTd.style.padding = '6px';
       partyTd.textContent = t.party_size || t.pax || '';
       tr.appendChild(partyTd);
 
+      // --- Cell: Status ---
       const statusTd = document.createElement('td');
       statusTd.style.padding = '6px';
-      statusTd.textContent = t.status || t.reservation_status || '';
+
+      if (isOccupied) {
+        statusTd.innerHTML =
+          `<span style="
+            background:#d9534f;
+            color:white;
+            padding:2px 6px;
+            border-radius:4px;
+            font-size:11px;
+          ">Occupied</span>`;
+      } else {
+        statusTd.textContent = t.status || t.reservation_status || 'Available';
+      }
+
       tr.appendChild(statusTd);
 
+      // --- Cell: Price ---
       const priceTd = document.createElement('td');
       priceTd.style.padding = '6px';
       priceTd.style.textAlign = 'right';
       priceTd.textContent = (parseFloat(t.price) || 0).toFixed(2);
       tr.appendChild(priceTd);
 
+      // --- Cell: Action Button ---
       const actionTd = document.createElement('td');
       actionTd.style.padding = '6px';
+
       const selectBtn = document.createElement('button');
       selectBtn.className = 'btn-small table-select-btn';
       selectBtn.type = 'button';
-      selectBtn.textContent = 'Select';
-      selectBtn.dataset.table = JSON.stringify({
-        id: t.id || t.table_id || null,
-        name: t.name || t.guest_name || '',
-        table_number: t.table_number || t.table_no || '',
-        party_size: t.party_size || t.pax || '',
-        status: t.status || t.reservation_status || '',
-        price: parseFloat(t.price) || 0
-      });
+      selectBtn.textContent = isOccupied ? 'Unavailable' : 'Select';
+
+      // Disable button if occupied
+      if (isOccupied) {
+        selectBtn.disabled = true;
+        selectBtn.style.background = '#ccc';
+        selectBtn.style.cursor = 'not-allowed';
+      } else {
+        // normal case
+        selectBtn.dataset.table = JSON.stringify({
+          id: t.id || t.table_id || null,
+          name: t.name || t.guest_name || '',
+          table_number: t.table_number || t.table_no || '',
+          party_size: t.party_size || t.pax || '',
+          status: t.status || t.reservation_status || '',
+          price: parseFloat(t.price) || 0
+        });
+      }
+
       actionTd.appendChild(selectBtn);
       tr.appendChild(actionTd);
 

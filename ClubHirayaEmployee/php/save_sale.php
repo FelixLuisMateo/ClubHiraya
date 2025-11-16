@@ -38,6 +38,9 @@ $change_amount   = floatval($data['change_amount']  ?? 0);
 $cabin_name      = $data['cabin_name']              ?? '';
 $cabin_price     = floatval($data['cabin_price']    ?? 0);
 
+/* 🔥 NEW — Capture the Cabin ID so we can mark it occupied */
+$table_id        = isset($data['table_id']) ? intval($data['table_id']) : 0;
+
 $payment_details = $data['payment_details'] ?? null;
 $items           = (isset($data['items']) && is_array($data['items'])) ? $data['items'] : [];
 
@@ -64,7 +67,6 @@ try {
     if (!$stmt) throw new Exception('Prepare failed: ' . $conn->error);
 
     $types = "sidddsssddsddsd"; 
-    //  s i d d d s s s d d s d d s d = 15 params
 
     $stmt->bind_param(
         $types,
@@ -132,6 +134,18 @@ try {
         }
 
         $stmtItem->close();
+    }
+
+    /* ---------------------------------------------------
+       🔥 NEW: UPDATE cabin to "Occupied" after a sale
+    ---------------------------------------------------- */
+    if ($table_id > 0) {
+        $stmtOcc = $conn->prepare("UPDATE tables SET status = 'Occupied' WHERE id = ?");
+        if ($stmtOcc) {
+            $stmtOcc->bind_param("i", $table_id);
+            $stmtOcc->execute();
+            $stmtOcc->close();
+        }
     }
 
     $conn->commit();

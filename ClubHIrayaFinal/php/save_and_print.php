@@ -119,8 +119,6 @@ try {
     // d - change_amount
     // s - cabin_name
     // d - cabin_price
-    $types = 'sidddsssddsdds'; // we'll build correct below to avoid mistakes
-
     // Construct correct types string explicitly:
     $types = 'sidddsssddsddsd'; // s i d d d s s s d d s d d s d  (15 chars)
 
@@ -168,6 +166,26 @@ try {
 
     $sales_id = $stmt->insert_id;
     $stmt->close();
+
+    /* ----------------------------------------------------
+    SET CABIN STATUS TO OCCUPIED AFTER SUCCESSFUL SALE
+    -----------------------------------------------------*/
+    if (!empty($raw['table']) && is_array($raw['table'])) {
+
+        $tableId = intval($raw['table']['id'] ?? 0);
+
+        if ($tableId > 0) {
+            $stmtCabin = $conn->prepare("
+                UPDATE tables
+                SET status = 'occupied'
+                WHERE id = ?
+            ");
+            $stmtCabin->bind_param("i", $tableId);
+            $stmtCabin->execute();
+            $stmtCabin->close();
+        }
+    }
+
 
     // -----------------------
     // INSERT sales_items

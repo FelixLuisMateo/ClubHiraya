@@ -652,6 +652,15 @@ body {
     min-width: 120px;
   }
 }
+.table-card.occupied {
+    background: #dc2626 !important; /* red */
+    color: white !important;
+    border-color: #b91c1c !important;
+}
+.table-card.occupied .table-status {
+    color: white !important;
+    font-weight: bold;
+}
 
 /* Dark mode overrides */
 body.dark-mode {

@@ -408,6 +408,20 @@
 
     // confirm handler
     confirm.onclick = async () => {
+      // --- INSUFFICIENT CASH VALIDATION ---
+      if (selectedMethod === 'Cash') {
+        const cashInput = parseFloat($id('paymentCashGiven')?.value || 0);
+        const totalsCheck = await computeTotalsFromOrder();
+        const totalPayable = totalsCheck.payable || 0;
+
+        if (cashInput < totalPayable) {
+          alert("Insufficient cash. Please enter an amount equal or greater than the total payable.");
+          confirm.disabled = false;
+          confirm.textContent = 'Save & Print';
+          return; // stop save/print
+        }
+      }
+
       confirm.disabled = true;
       confirm.textContent = 'Saving...';
 
@@ -498,8 +512,44 @@
           <input type="hidden" name="note" value='${(meta.note || "").replace(/'/g,"&#39;").replace(/"/g,"&quot;")}'>
         `;
         document.body.appendChild(form);
-        form.submit();
 
+      /* ---------------------------------------------------------
+        CABIN UI PATCH — Mark cabin as OCCUPIED before navigation
+      --------------------------------------------------------- */
+      try {
+          let raw = sessionStorage.getItem('clubtryara:selected_table_v1');
+          if (raw) {
+              let tbl = JSON.parse(raw);
+              if (tbl.id) {
+
+                  // find cabin card in the UI
+                  const btn = document.querySelector(`.table-card[data-id="${tbl.id}"]`);
+                  if (btn) {
+
+                      // visually mark occupied
+                      btn.classList.add('occupied');
+                      btn.classList.remove('available');
+
+                      // disable card
+                      btn.style.pointerEvents = "none";
+                      btn.style.opacity = "0.6";
+
+                      // update its label
+                      const status = btn.querySelector('.table-status');
+                      if (status) status.textContent = "Occupied";
+                  }
+              }
+
+              // IMPORTANT — clear table selection so next order is fresh
+              sessionStorage.removeItem('clubtryara:selected_table_v1');
+          }
+      } catch (e) {
+          console.warn("Cabin UI patch failed:", e);
+      }
+
+      /* ---------- SUBMIT RECEIPT PAGE ---------- */
+      form.submit();
+      
         clearOrderUI();
         overlay.remove();
         alert('Sale saved (ID:' + id + ')');
