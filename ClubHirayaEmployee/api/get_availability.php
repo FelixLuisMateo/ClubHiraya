@@ -10,8 +10,7 @@
 //   seats=integer       (optional, default 1)
 //
 // Response:
-//   { success: true, data: [ { id, name, seats, status }, ... ] }
-//   or { success: false, error: "message" }
+//   { success: true, data: [ { id, name, seats, status, price_per_hour }, ... ] }
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -54,12 +53,8 @@ $end_dt = $end_dt_obj->format('Y-m-d H:i:00');
 
 try {
     // We want tables that have seats >= requested seats and are NOT blocked by an overlapping reservation
-    // Consider reservations overlapping if NOT (r.end <= requested_start OR r.start >= requested_end)
-    // Also filter out tables that are currently occupied (optional — you may want to include them depending on your logic)
-
-    // Prepared statement: select tables meeting seats, then exclude table_ids that have overlapping reservations
     $sql = "
-        SELECT t.id, t.name, t.seats, t.status
+        SELECT t.id, t.name, t.seats, t.status, IFNULL(t.price_per_hour, 3000.00) AS price_per_hour
         FROM `tables` t
         WHERE t.seats >= :seats
           AND t.id NOT IN (
@@ -77,9 +72,6 @@ try {
     ]);
     $rows = $stmt->fetchAll();
 
-    // If you want to also respect table.status (e.g., exclude 'occupied' permanently), you can filter here.
-    // For now we return whatever status is in the table row; frontend can decide how to present it.
-
     echo json_encode(['success' => true, 'data' => $rows]);
     exit;
 } catch (Exception $e) {
@@ -87,3 +79,4 @@ try {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     exit;
 }
+?>

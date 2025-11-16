@@ -3,7 +3,7 @@
 // Create a new table row. Accepts JSON or form POST, returns { success: true, id: <new id> }.
 //
 // Required fields: name (string)
-// Optional: status ('available'|'occupied'|'reserved'), seats (int), guest (string)
+// Optional: status ('available'|'occupied'|'reserved'), seats (int), guest (string), price_per_hour (decimal)
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -32,6 +32,7 @@ $name = isset($data['name']) ? trim($data['name']) : '';
 $status = isset($data['status']) ? trim($data['status']) : 'reserved';
 $seats = isset($data['seats']) ? (int)$data['seats'] : 2;
 $guest = isset($data['guest']) ? trim($data['guest']) : '';
+$price = isset($data['price_per_hour']) ? (float)$data['price_per_hour'] : 3000.00;
 
 if ($name === '') {
     http_response_code(400);
@@ -46,12 +47,13 @@ if (!in_array($status, $allowed_status, true)) {
 }
 
 try {
-    $stmt = $pdo->prepare("INSERT INTO `tables` (`name`, `status`, `seats`, `guest`, `updated_at`) VALUES (:name, :status, :seats, :guest, NOW())");
+    $stmt = $pdo->prepare("INSERT INTO `tables` (`name`, `status`, `seats`, `guest`, `price_per_hour`, `updated_at`) VALUES (:name, :status, :seats, :guest, :price, NOW())");
     $stmt->execute([
         ':name' => $name,
         ':status' => $status,
         ':seats' => max(1, $seats),
-        ':guest' => $guest
+        ':guest' => $guest,
+        ':price' => round(max(0, $price), 2)
     ]);
     $newId = (int)$pdo->lastInsertId();
     echo json_encode(['success' => true, 'id' => $newId]);

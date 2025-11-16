@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const API_GET_STATUS_BY_DATE = '../api/get_table_status_by_date.php';
   const API_CREATE_RESERVATION = '../api/create_reservation.php';
   const API_DELETE_RESERVATION = '../api/delete_reservation.php';
+  const API_GET_AVAILABILITY = '../api/get_availability.php';
 
   // CONFIG: change these to control the Time view slots
   const TIME_SLOT_START = '10:00';   // first slot shown
@@ -72,6 +73,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function capitalize(s) { return s && s.length ? s[0].toUpperCase() + s.slice(1) : ''; }
   function escapeHtml(text = '') {
     return String(text).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+  }
+  function formatCurrencyPhp(num) {
+    try {
+      return '₱' + Number(num).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } catch (e) {
+      return '₱' + Number(num).toFixed(2);
+    }
   }
   function formatDateForHeader(dateIso, timeStr) {
     try {
@@ -126,14 +134,8 @@ document.addEventListener('DOMContentLoaded', () => {
       duration: Number(minutes),
       guest: guest || ''
     };
-    const res = await fetch(API_CREATE_RESERVATION, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const j = await res.json().catch(e => { throw new Error('Invalid JSON response from create_reservation.php: ' + e.message); });
-    if (!j.success) throw new Error(j.error || 'Create reservation failed');
-    return j;
+    // Use the performCreateReservation flow (handles 409 nicely)
+    return performCreateReservation(payload, null);
   }
 
   // Cancel reservation helper - call api/delete_reservation.php and refresh current view
@@ -282,6 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // --- updateTimeMonitors (enhanced with progress bar) ---
   function updateTimeMonitors() {
     const nodes = document.querySelectorAll('.time-monitor');
     const now = new Date();
@@ -291,28 +294,88 @@ document.addEventListener('DOMContentLoaded', () => {
         const end = el.dataset.end;
         if (!start && !end) {
           el.textContent = '';
+          // Also reset any progress bar if present
+          const card = el.closest('.table-card');
+          if (card) {
+            const bar = card.querySelector('.time-progress-bar');
+            if (bar) { bar.style.width = '0%'; bar.className = 'time-progress-bar not-started'; bar.setAttribute('aria-valuenow', '0'); }
+          }
           return;
         }
+
         const startIso = start ? start.replace(' ', 'T') : null;
         const endIso = end ? end.replace(' ', 'T') : null;
         const dStart = startIso ? new Date(startIso) : null;
         const dEnd = endIso ? new Date(endIso) : null;
 
+        // Ensure the progress bar exists next to this time-monitor (inject if missing)
+        const card = el.closest('.table-card');
+        if (card) {
+          let progressWrap = card.querySelector('.time-progress');
+          if (!progressWrap) {
+            progressWrap = document.createElement('div');
+            progressWrap.className = 'time-progress';
+            progressWrap.innerHTML = `<div class="time-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"></div>`;
+            // insert right after the .time-monitor element so it visually pairs with the label
+            el.insertAdjacentElement('afterend', progressWrap);
+          }
+        }
+
+        const progressBar = card ? card.querySelector('.time-progress-bar') : null;
+
         if (dStart && now < dStart) {
           const ms = dStart - now;
           el.textContent = `Starts in ${formatDuration(ms)}`;
-          el.classList.remove('ongoing');
-          el.classList.remove('ended');
+          el.classList.remove('ongoing', 'ended');
+          el.classList.add('starts-soon');
+
+          // update progress bar for "not started"
+          if (progressBar) {
+            progressBar.style.width = '0%';
+            progressBar.className = 'time-progress-bar not-started';
+            progressBar.setAttribute('aria-valuenow', '0');
+          }
         } else if (dStart && dEnd && now >= dStart && now <= dEnd) {
           const ms = dEnd - now;
           el.textContent = `Ends in ${formatDuration(ms)}`;
           el.classList.add('ongoing');
-          el.classList.remove('ended');
+          el.classList.remove('ended', 'starts-soon');
+
+          // compute progress fraction
+          if (progressBar) {
+            const total = dEnd - dStart;
+            let elapsed = now - dStart;
+            if (total <= 0) {
+              progressBar.style.width = '100%';
+              progressBar.setAttribute('aria-valuenow', '100');
+              progressBar.className = 'time-progress-bar ongoing';
+            } else {
+              let frac = Math.max(0, Math.min(1, elapsed / total));
+              const pct = Math.round(frac * 100);
+              progressBar.style.width = pct + '%';
+              progressBar.setAttribute('aria-valuenow', String(pct));
+              // color hint when ending soon (<10% left)
+              const endsSoonThreshold = 0.10;
+              if (1 - frac <= endsSoonThreshold) {
+                progressBar.className = 'time-progress-bar ends-soon';
+              } else {
+                progressBar.className = 'time-progress-bar ongoing';
+              }
+            }
+          }
         } else if (dEnd && now > dEnd) {
           const ms = now - dEnd;
           el.textContent = `Ended ${formatDuration(ms)} ago`;
           el.classList.remove('ongoing');
           el.classList.add('ended');
+
+          // finalize progress bar at 100%
+          if (progressBar) {
+            progressBar.style.width = '100%';
+            progressBar.setAttribute('aria-valuenow', '100');
+            progressBar.className = 'time-progress-bar ended';
+          }
+
           const resId = el.dataset.reservationId || el.dataset.resId || '';
           const cabinName = el.dataset.cabinName || el.dataset.tableName || '';
           if (resId) {
@@ -327,14 +390,119 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           }
         } else {
+          // fallback: no meaningful start/end
           el.textContent = '';
-          el.classList.remove('ongoing');
-          el.classList.remove('ended');
+          el.classList.remove('ongoing', 'ended', 'starts-soon');
+          if (progressBar) {
+            progressBar.style.width = '0%';
+            progressBar.className = 'time-progress-bar not-started';
+            progressBar.setAttribute('aria-valuenow', '0');
+          }
         }
       } catch (e) {
-        console.error('Error while updating single time-monitor element:', e, el);
+        console.error('Error while updating single time-monitor element (progress):', e, el);
       }
     });
+  }
+
+  // --- Conflict handling helpers (performCreateReservation + conflict modal) ---
+  function showReservationConflictModal(conflict = {}, retryCb = null, originalPayload = null) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    const serverMsg = (conflict && (conflict.error || conflict.message)) ? (conflict.error || conflict.message) : 'This slot is already taken.';
+    const conflictDetails = JSON.stringify(conflict, null, 2);
+
+    overlay.innerHTML = `
+      <div class="modal conflict-modal" role="dialog" aria-modal="true" aria-label="Reservation conflict">
+        <h3>Reservation Conflict</h3>
+        <div class="form-row">
+          <div style="font-weight:700; color:#b71c1c">Cannot create reservation: ${escapeHtml(serverMsg)}</div>
+          ${ originalPayload ? `<div style="margin-top:8px">Attempted: <strong>${escapeHtml(String(originalPayload.date || ''))} ${escapeHtml(String(originalPayload.start_time || ''))}</strong> • ${escapeHtml(String(originalPayload.duration || ''))} min</div>` : '' }
+        </div>
+
+        <div class="form-row" id="conflictActionsIntro">
+          <div style="font-size:13px; color:#444">You can choose another slot, view details about the conflict, or retry the same slot.</div>
+        </div>
+
+        <pre id="conflictDetails" style="display:none; white-space:pre-wrap; background:#f7f7f9; padding:10px; border-radius:6px; max-height:220px; overflow:auto;">${escapeHtml(conflictDetails)}</pre>
+
+        <div class="modal-actions">
+          <button id="btnChooseAnother" class="btn">Choose another slot</button>
+          <button id="btnViewConflict" class="btn">View conflict details</button>
+          ${ retryCb ? `<button id="btnRetry" class="btn primary">Retry</button>` : '' }
+          <button id="btnCloseConflict" class="btn">Cancel</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const pre = overlay.querySelector('#conflictDetails');
+    overlay.querySelector('#btnViewConflict').addEventListener('click', () => {
+      if (pre.style.display === 'none') pre.style.display = 'block';
+      else pre.style.display = 'none';
+    });
+
+    overlay.querySelector('#btnChooseAnother').addEventListener('click', () => {
+      state.filter = 'time';
+      renderView();
+      overlay.remove();
+      setTimeout(() => {
+        const dp = document.getElementById('viewDatePicker');
+        if (dp) dp.focus();
+      }, 100);
+    });
+
+    const btnRetry = overlay.querySelector('#btnRetry');
+    if (btnRetry) {
+      btnRetry.addEventListener('click', async () => {
+        btnRetry.disabled = true;
+        btnRetry.textContent = 'Retrying...';
+        try {
+          if (typeof retryCb === 'function') {
+            await retryCb();
+          }
+          overlay.remove();
+        } catch (e) {
+          alert('Retry failed: ' + (e && e.message ? e.message : e));
+          btnRetry.disabled = false;
+          btnRetry.textContent = 'Retry';
+        }
+      });
+    }
+
+    overlay.querySelector('#btnCloseConflict').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', ev => { if (ev.target === overlay) overlay.remove(); });
+  }
+
+  async function performCreateReservation(payload = {}, onSuccess = null) {
+    if (!payload || !payload.table_id || !payload.date || !payload.start_time) {
+      throw new Error('Missing reservation parameters');
+    }
+    try {
+      const res = await fetch(API_CREATE_RESERVATION, {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.status === 409) {
+        let json = {};
+        try { json = await res.json(); } catch (e) { json = { error: 'Conflict' }; }
+        showReservationConflictModal(json, async () => {
+          return performCreateReservation(payload, onSuccess);
+        }, payload);
+        return;
+      }
+
+      const j = await res.json().catch(e => { throw new Error('Invalid JSON response from create_reservation.php: ' + e.message); });
+      if (!j.success) throw new Error(j.error || 'Create reservation failed');
+
+      if (typeof onSuccess === 'function') onSuccess(j);
+      return j;
+    } catch (err) {
+      throw err;
+    }
   }
 
   // --- Renderers ---
@@ -357,6 +525,8 @@ document.addEventListener('DOMContentLoaded', () => {
       card.dataset.id = tbl.id;
       if (state.selectedId === tbl.id) card.classList.add('active');
 
+      const pricePerHour = typeof tbl.price_per_hour !== 'undefined' && tbl.price_per_hour !== null ? Number(tbl.price_per_hour) : (typeof tbl.price !== 'undefined' ? Number(tbl.price) : 3000);
+
       card.innerHTML = `
         <div class="title">${escapeHtml(tbl.name)}</div>
         <div class="status-row">
@@ -364,6 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="status-label">${capitalize(status)}</span>
         </div>
         <div class="seats-row"><span>🛏️</span> ${escapeHtml(String(tbl.seats || tbl.party_size || ''))} Beds</div>
+        <div class="price-row" style="font-weight:800; margin-top:6px">${escapeHtml(formatCurrencyPhp(pricePerHour))} / hr</div>
         ${tbl.guest ? `<div class="guest">${escapeHtml(tbl.guest)}</div>` : ''}
         <div class="card-actions" aria-hidden="false">
           <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
@@ -443,7 +614,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (selected) console.info('Selected cabin:', selected.name);
   }
 
-  // Views
+  // Views (Date / Time / Party / All)
   function renderAllView() {
     viewHeader.innerHTML = '<h1>All Cabins</h1>';
     viewContent.innerHTML = `<div class="cards-grid" id="cardsGrid" role="list"></div>`;
@@ -626,15 +797,19 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { duration = ''; }
           }
 
+          const pricePerHour = typeof t.price_per_hour !== 'undefined' && t.price_per_hour !== null ? Number(t.price_per_hour) : (typeof t.price !== 'undefined' ? Number(t.price) : 3000);
+          const totalPrice = (typeof t.total_price !== 'undefined' && t.total_price !== null) ? Number(t.total_price) : '';
+
           card.innerHTML = `
             <div class="title">${escapeHtml(t.name)}</div>
             <div class="seats-row"><span>🛏️</span> ${escapeHtml(t.seats)} Beds</div>
+            <div class="price-row" style="font-weight:800; margin-top:4px">${escapeHtml(formatCurrencyPhp(pricePerHour))} / hr</div>
             <div class="status-row">
               <span class="status-dot" style="background:${statusDotColor}"></span>
               <span class="status-label">${capitalize(status)}</span>
             </div>
             ${t.guest ? `<div class="guest">${escapeHtml(t.guest)}</div>` : ''}
-            ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}${duration ? ' • ' + duration + ' min' : ''}</div>` : ''}
+            ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}${duration ? ' • ' + duration + ' min' : ''}${totalPrice ? ' • ' + formatCurrencyPhp(totalPrice) : ''}</div>` : ''}
             <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}" data-duration="${escapeHtml(String(duration))}" data-reservation-id="${resIdEscaped}" data-cabin-name="${cabinName}"></div>
             <div class="card-actions" aria-hidden="false">
               <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
@@ -779,15 +954,19 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { duration = ''; }
           }
 
+          const pricePerHour = typeof t.price_per_hour !== 'undefined' && t.price_per_hour !== null ? Number(t.price_per_hour) : (typeof t.price !== 'undefined' ? Number(t.price) : 3000);
+          const totalPrice = (typeof t.total_price !== 'undefined' && t.total_price !== null) ? Number(t.total_price) : '';
+
           card.innerHTML = `
             <div class="title">${escapeHtml(t.name)}</div>
             <div class="seats-row"><span>🛏️</span> ${escapeHtml(t.seats)} Beds</div>
+            <div class="price-row" style="font-weight:800; margin-top:4px">${escapeHtml(formatCurrencyPhp(pricePerHour))} / hr</div>
             <div class="status-row">
               <span class="status-dot" style="background:${statusDotColor}"></span>
               <span class="status-label">${capitalize(status)}</span>
             </div>
             ${t.guest ? `<div class="guest">${escapeHtml(t.guest)}</div>` : ''}
-            ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}${duration ? ' • ' + duration + ' min' : ''}</div>` : ''}
+            ${(t.start_time && t.end_time) ? `<div class="time-range">${t.start_time} - ${t.end_time}${duration ? ' • ' + duration + ' min' : ''}${totalPrice ? ' • ' + formatCurrencyPhp(totalPrice) : ''}</div>` : ''}
             <div class="time-monitor" data-start="${escapeHtml(startAttr)}" data-end="${escapeHtml(endAttr)}" data-duration="${escapeHtml(String(duration))}" data-reservation-id="${resIdEscaped}" data-cabin-name="${cabinName}"></div>
             <div class="card-actions" aria-hidden="false">
               <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
@@ -977,7 +1156,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stopTimeMonitors();
   }
 
-  // Modals & actions (unchanged)...
+  // Modals & actions
   function openEditModal(table) {
     const isNew = !table || !table.id;
     const overlay = document.createElement('div');
@@ -994,6 +1173,10 @@ document.addEventListener('DOMContentLoaded', () => {
           <input id="modalSeats" type="number" min="1" max="50" value="${table && table.seats ? table.seats : 2}" />
         </div>
         <div class="form-row">
+          <label for="modalPrice">Price per hour (PHP)</label>
+          <input id="modalPrice" type="number" min="0" step="0.01" value="${table && typeof table.price_per_hour !== 'undefined' ? Number(table.price_per_hour) : (typeof table.price !== 'undefined' ? Number(table.price) : 3000)}" />
+        </div>
+        <div class="form-row">
           <label for="modalGuest">Guest (optional)</label>
           <input id="modalGuest" type="text" value="${table && table.guest ? escapeHtml(table.guest) : ''}" />
         </div>
@@ -1007,6 +1190,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const modalName = overlay.querySelector('#modalName');
     const modalSeats = overlay.querySelector('#modalSeats');
+    const modalPrice = overlay.querySelector('#modalPrice');
     const modalGuest = overlay.querySelector('#modalGuest');
     overlay.querySelector('#modalCancel').addEventListener('click', () => overlay.remove());
 
@@ -1014,12 +1198,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const name = modalName.value.trim() || (table && table.name) || 'Cabin';
       const seats = parseInt(modalSeats.value, 10) || 2;
       const guest = modalGuest.value.trim();
+      const price = parseFloat(modalPrice.value) || 3000;
+
       if (isNew) {
         try {
           const res = await fetch(API_CREATE, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, seats, guest })
+            body: JSON.stringify({ name, seats, guest, price_per_hour: price })
           });
           const j = await res.json();
           if (!j.success) throw new Error(j.error || 'Create failed');
@@ -1028,10 +1214,11 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         } catch (err) {
           console.warn('API create failed:', err);
+          alert('Failed to create cabin: ' + err.message);
         }
       } else {
         try {
-          const payload = { id: table.id, seats, name, guest };
+          const payload = { id: table.id, seats, name, guest, price_per_hour: price };
           const res = await fetch(API_UPDATE, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1071,11 +1258,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openNewReservationModal() {
     if (!state.date || !state.time) return alert('Please select date and time first!');
-    fetch(`../api/get_availability.php?date=${encodeURIComponent(state.date)}&time=${encodeURIComponent(state.time)}`)
+    fetch(`${API_GET_AVAILABILITY}?date=${encodeURIComponent(state.date)}&time=${encodeURIComponent(state.time)}`)
       .then(res => res.json())
       .then(json => {
         if (!json.success) throw new Error(json.error || 'API failed');
         const available = json.data.filter(t => t.status === 'available');
+        if (!available.length) return alert('No cabins available for the chosen date/time.');
+
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `
@@ -1084,7 +1273,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="form-row">
               <label for="modalTableSelect">Cabin</label>
               <select id="modalTableSelect">
-                ${available.map(t => `<option value="${t.id}">${escapeHtml(t.name)} (${t.seats} beds)</option>`).join('')}
+                ${available.map(t => `<option value="${t.id}" data-price="${t.price_per_hour || t.price || 3000}">${escapeHtml(t.name)} (${t.seats} beds) - ${escapeHtml(formatCurrencyPhp(t.price_per_hour || t.price || 3000))}/hr</option>`).join('')}
               </select>
             </div>
             <div class="form-row">
@@ -1094,7 +1283,13 @@ document.addEventListener('DOMContentLoaded', () => {
               <label>Time</label><input type="time" id="modalTime" value="${state.time}" readonly />
             </div>
             <div class="form-row">
+              <label>Duration (minutes)</label><input id="modalDuration" type="number" min="15" step="15" value="90" />
+            </div>
+            <div class="form-row">
               <label for="modalGuest">Guest Name</label><input id="modalGuest" type="text" />
+            </div>
+            <div class="form-row">
+              <div style="font-weight:800">Estimated total: <span id="modalTotalPrice">${formatCurrencyPhp( (available[0].price_per_hour || available[0].price || 3000) * (90/60) )}</span></div>
             </div>
             <div class="modal-actions">
               <button id="modalCancel" class="btn">Cancel</button>
@@ -1104,25 +1299,63 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         document.body.appendChild(overlay);
 
+        const tableSelect = overlay.querySelector('#modalTableSelect');
+        const durationInput = overlay.querySelector('#modalDuration');
+        const totalEl = overlay.querySelector('#modalTotalPrice');
+
+        function updateTotal() {
+          const opt = tableSelect.selectedOptions[0];
+          const price = parseFloat(opt.dataset.price || '3000');
+          const duration = parseInt(durationInput.value || '90', 10);
+          const hours = (isNaN(duration) || duration <= 0) ? 0 : (duration / 60);
+          const total = Math.round(price * hours * 100) / 100;
+          totalEl.textContent = formatCurrencyPhp(total);
+        }
+
+        tableSelect.addEventListener('change', updateTotal);
+        durationInput.addEventListener('input', updateTotal);
+
         overlay.querySelector('#modalCancel').addEventListener('click', () => overlay.remove());
+
+        // Create handler uses performCreateReservation which handles 409 with a modal
         overlay.querySelector('#modalSave').addEventListener('click', () => {
-          const table_id = overlay.querySelector('#modalTableSelect').value;
+          const table_id = parseInt(overlay.querySelector('#modalTableSelect').value, 10);
           const guest = overlay.querySelector('#modalGuest').value.trim();
-          fetch(API_CREATE_RESERVATION, {
-            method: 'POST',
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-              table_id,
-              date: state.date,
-              start_time: state.time,
-              guest
-            })
-          }).then(res => res.json()).then(j => {
-            if (!j.success) throw new Error(j.error || 'Create reservation failed');
+          const duration = parseInt(overlay.querySelector('#modalDuration').value, 10) || 90;
+
+          // Disable Save button to avoid duplicate clicks
+          const btnSave = overlay.querySelector('#modalSave');
+          btnSave.disabled = true;
+          const origLabel = btnSave.textContent;
+          btnSave.textContent = 'Creating...';
+
+          const payload = {
+            table_id,
+            date: state.date,
+            start_time: state.time,
+            guest,
+            duration
+          };
+
+          performCreateReservation(payload, (j) => {
+            try { showToast('Reservation created' + (j.total_price ? (' • ' + formatCurrencyPhp(j.total_price)) : ''), { background: '#2b8cff' }); } catch (e) {}
             overlay.remove();
-            loadTableStatusForDateTime(state.date, state.time);
-          }).catch(err => alert("Create reservation failed: " + err.message));
+            if (state.filter === 'date') {
+              if (state.time) loadTableStatusForDateTime(state.date, state.time);
+              else loadTableStatusForDate(state.date);
+            } else if (state.filter === 'time') {
+              loadTableStatusForDateTime(state.date, state.time);
+            } else {
+              loadTables();
+            }
+          }).catch(err => {
+            console.error('Create reservation failed', err);
+            alert('Create reservation failed: ' + (err && err.message ? err.message : err));
+          }).finally(() => {
+            try { btnSave.disabled = false; btnSave.textContent = origLabel; } catch (e) {}
+          });
         });
+
         overlay.addEventListener('click', ev => { if (ev.target === overlay) overlay.remove(); });
       })
       .catch(err => alert('Failed to fetch availability: ' + err.message));
@@ -1183,6 +1416,9 @@ document.addEventListener('DOMContentLoaded', () => {
       .btn { padding:8px 12px; border-radius:8px; border:1px solid #ccc; background:#f5f5f5; cursor:pointer; }
       .btn.primary { background:#001b89; color:#fff; border-color:#001b89; }
       #tables-toast-container { font-family: Inter, Poppins, sans-serif; }
+      /* conflict-modal small adjustments */
+      .conflict-modal .form-row { margin-bottom:10px; }
+      .conflict-modal pre { font-size:12px; color:#222; }
     `;
     const s = document.createElement('style');
     s.id = 'modal-styles';
@@ -1201,15 +1437,16 @@ document.addEventListener('DOMContentLoaded', () => {
         name: t.name,
         status: t.status,
         seats: Number(t.seats),
-        guest: t.guest || ""
+        guest: t.guest || "",
+        price_per_hour: typeof t.price_per_hour !== 'undefined' ? Number(t.price_per_hour) : (typeof t.price !== 'undefined' ? Number(t.price) : 3000)
       }));
       renderView();
     } catch (err) {
       console.error('loadTables error', err);
       tablesData = [
-        { id: 1, name: 'Cabin 1', status: 'occupied', seats: 6, guest: 'Taenamo Jiro' },
-        { id: 2, name: 'Cabin 2', status: 'reserved', seats: 4, guest: 'WOwmsi' },
-        { id: 3, name: 'Cabin 3', status: 'available', seats: 2, guest: '' },
+        { id: 1, name: 'Cabin 1', status: 'occupied', seats: 6, guest: 'Taenamo Jiro', price_per_hour: 3000 },
+        { id: 2, name: 'Cabin 2', status: 'reserved', seats: 4, guest: 'WOwmsi', price_per_hour: 3000 },
+        { id: 3, name: 'Cabin 3', status: 'available', seats: 2, guest: '', price_per_hour: 3000 },
       ];
       const grid = document.getElementById('cardsGrid');
       if (grid) grid.innerHTML = `<div style="padding:18px;color:#900">Local fallback data (API failed).</div>`;
