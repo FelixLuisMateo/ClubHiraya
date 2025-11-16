@@ -152,7 +152,7 @@
                     <thead>
                         <tr>
                             <th style="text-align:left;padding:6px;">Name</th>
-                            <th style="text-align:left;padding:6px;">Table #</th>
+                            <th style="text-align:left;padding:6px;">Cabin #</th>
                             <th style="text-align:left;padding:6px;">Party size</th>
                             <th style="text-align:left;padding:6px;">Status</th>
                             <th style="text-align:right;padding:6px;">Price</th>

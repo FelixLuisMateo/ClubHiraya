@@ -90,7 +90,7 @@ try {
         COALESCE(`table_number`, CAST(`id` AS CHAR)) AS table_number,
         COALESCE(`party_size`, `seats`, 0) AS party_size,
         COALESCE(`status`, '') AS status,
-        COALESCE(`price`, 0) AS price
+        COALESCE(`price_per_hour`, 0) AS price
       FROM `tables`
       WHERE {$where}
       ORDER BY CAST(COALESCE(`table_number`, CAST(`id` AS CHAR)) AS UNSIGNED) ASC
