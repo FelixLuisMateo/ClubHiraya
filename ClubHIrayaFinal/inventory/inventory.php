@@ -80,7 +80,7 @@ if ($search !== '') {
       </div>
 
       <nav class="sidebar-menu" role="navigation" aria-label="Main menu">
-          <a href="../employee_dashboard.php" class="sidebar-btn" aria-current="page">
+          <a href="../admin_dashboard.php" class="sidebar-btn" aria-current="page">
               <span class="sidebar-icon"><img src="../assets/logos/home.png" alt="Home icon"></span>
               <span>Home</span>
           </a>
@@ -184,8 +184,7 @@ if ($search !== '') {
 
                       <div class="action-buttons">
                           <!-- Updated: View Ingredients button linking to menu_item_ingredients.php with the item id -->
-                          <a class="btn-edit" href="menu_item_ingredients.php?id=<?php echo urlencode($item['id']); ?>" title="View Ingredients">View Ingredients</a>
-
+                          <a class="btn-view" href="menu_item_ingredients.php?id=<?php echo urlencode($item['id']); ?>" title="View Ingredients">View Ingredients</a>
                           <a href="edit.php?id=<?php echo urlencode($item['id']); ?>" class="btn-edit">Edit</a>
                           <button onclick="confirmDelete(<?php echo htmlspecialchars($item['id']); ?>)" class="btn-delete">Delete</button>
                       </div>

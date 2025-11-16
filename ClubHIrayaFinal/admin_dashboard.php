@@ -14,6 +14,7 @@
     <script defer src="js/tables-select.js"></script>
     <script defer src="js/app-actions.js"></script>
     <script defer src="js/app-payment.js"></script>
+    <script defer src="js/notifications.js"></script>
 </head>
 <body
 <?php

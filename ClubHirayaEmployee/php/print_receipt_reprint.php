@@ -2,13 +2,18 @@
 require_once __DIR__ . '/db_connect.php';
 date_default_timezone_set('Asia/Manila');
 
+/* -----------------------------
+   RECEIPT ID
+------------------------------*/
 $id = intval($_GET['id'] ?? 0);
 if (!$id) {
     echo "<h2>Invalid Order ID</h2>";
     exit;
 }
 
-// 🔹 Fetch order data
+/* -----------------------------
+   FETCH ORDER
+------------------------------*/
 $stmt = $conn->prepare("SELECT * FROM sales_report WHERE id = ?");
 $stmt->bind_param("i", $id);
 $stmt->execute();
@@ -21,7 +26,9 @@ if (!$order) {
     exit;
 }
 
-// 🔹 Fetch sales items
+/* -----------------------------
+   FETCH ORDER ITEMS
+------------------------------*/
 $items = [];
 $stmt = $conn->prepare("SELECT * FROM sales_items WHERE sales_id = ?");
 $stmt->bind_param("i", $id);
@@ -30,90 +37,179 @@ $r = $stmt->get_result();
 while ($row = $r->fetch_assoc()) $items[] = $row;
 $stmt->close();
 
+/* PHP PESO FORMAT */
 function fmt($n) { return '₱' . number_format((float)$n, 2); }
 
-$date = date('F d, Y h:i:s A', strtotime($order['created_at']));
-$payment = ucfirst($order['payment_method'] ?? 'Cash');
-$note = trim($order['note'] ?? '');
-$discountType = $order['discount_type'] ?? 'Regular';
-$discountRate = $order['discount_rate'] ?? 0;
-$cabin = $order['table_no'] ?? '';
-$cabinPrice = $order['cabin_price'] ?? 0;
-$subtotal = $order['subtotal'] ?? 0;
-$service = $order['service_charge'] ?? 0;
-$tax = $order['tax'] ?? 0;
-$discount = $order['discount'] ?? 0;
-$reserved = $order['table_price'] ?? 0;
-$total = $order['total_amount'] ?? 0;
-$cash = $order['cash_given'] ?? 0;
-$change = $order['change_amount'] ?? 0;
+/* -----------------------------
+   REFORMAT ORDER DATA
+------------------------------*/
+$date          = date('F d, Y h:i:s A', strtotime($order['created_at']));
+$paymentMethod = ucfirst($order['payment_method'] ?? 'Cash');
+$note          = trim($order['note'] ?? '');
 
-// 🔹 Extract Payment Details JSON from note
-$paymentDetailsHTML = '';
-if (preg_match('/Payment Details:\s*(\{.*\})/s', $note, $m)) {
-    $json = json_decode($m[1], true);
-    if (is_array($json)) {
-        if (strtolower($payment) === 'gcash') {
-            $name = htmlspecialchars($json['name'] ?? '');
-            $ref  = htmlspecialchars($json['ref'] ?? '');
-            $paymentDetailsHTML = "<div><strong>GCash:</strong> {$name}".($ref ? " ({$ref})" : "")."</div>";
-        } elseif (strtolower($payment) === 'bank_transfer') {
-            $name = htmlspecialchars($json['name'] ?? '');
-            $ref  = htmlspecialchars($json['ref'] ?? '');
-            $paymentDetailsHTML = "<div><strong>Bank Transfer:</strong> {$name}".($ref ? " ({$ref})" : "")."</div>";
-        } elseif (strtolower($payment) === 'cash') {
-            $given = isset($json['given']) ? fmt($json['given']) : '—';
-            $chng  = isset($json['change']) ? fmt($json['change']) : '—';
-            $paymentDetailsHTML = "<div><strong>Cash Given:</strong> {$given}<br><strong>Change:</strong> {$chng}</div>";
-        }
+$discountType  = $order['discount_type'] ?? 'Regular';
+$discountRate  = floatval($order['discount_rate'] ?? 0) * 100;
+
+/* Cabin */
+$cabinName     = $order['table_no'] ?: 'No Cabin Selected';
+$cabinPrice    = floatval($order['table_price'] ?? 0);
+
+/* Totals */
+$subtotal      = floatval($order['subtotal'] ?? 0);
+$service       = floatval($order['service_charge'] ?? 0);
+$tax           = floatval($order['tax'] ?? 0);
+$discount      = floatval($order['discount'] ?? 0);
+$total         = floatval($order['total_amount'] ?? 0);
+
+/* Payment Details JSON */
+$paymentDetails = json_decode($order['payment_details'] ?? '{}', true);
+
+$cash    = $paymentDetails['given'] ?? ($order['cash_given'] ?? 0);
+$change  = $paymentDetails['change'] ?? ($order['change_amount'] ?? 0);
+
+$gcashName = $paymentDetails['name'] ?? '';
+$gcashRef  = $paymentDetails['ref']  ?? '';
+
+/* Created By (get role) */
+$createdBy = 'Unknown';
+if (!empty($order['created_by'])) {
+    $uid = intval($order['created_by']);
+    $u = $conn->query("SELECT role FROM users WHERE id = $uid LIMIT 1");
+    if ($u && $ur = $u->fetch_assoc()) {
+        $createdBy = ucfirst($ur['role']);
     }
 }
-$note = preg_replace('/Payment Details:\s*\{.*?\}\s*/s', '', $note);
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Club Hiraya — Receipt Reprint</title>
+
 <style>
+/* 80MM THERMAL RECEIPT PRINTING */
 body {
-  font-family: Arial, sans-serif;
-  background: #fff;
-  color: #111;
-  width: 100%;
+  font-family: "Arial", sans-serif;
   margin: 0;
-  padding: 24px;
-  font-size: 18px;
-  box-sizing: border-box;
+  padding: 0;
+  background: #fff;
+  color: #000;
+  width: 80mm;            /* 🔥 Very important */
+  max-width: 80mm;
+  font-size: 14px;        /* Receipt font size */
+  line-height: 1.25;
 }
-h2{text-align:center;margin:0;font-size:26px;}
-h3{text-align:center;margin:4px 0 12px;font-size:16px;color:#555;}
-hr{border:none;border-top:1px dashed #aaa;margin:10px 0;}
-.items{width:100%;border-collapse:collapse;margin-top:10px;}
-.items th,.items td{padding:4px 0;font-size:17px;border-bottom:1px solid #eee;}
-.right{text-align:right;}
-.summary td{padding:3px 0;font-size:17px;}
-.summary tr.total td{border-top:2px solid #000;font-weight:bold;font-size:19px;}
-footer{text-align:center;margin-top:12px;font-size:15px;color:#555;}
-button{margin:4px;padding:8px 16px;border:none;border-radius:6px;cursor:pointer;color:#fff;}
-.print-btn{background:#2563eb;}
-.close-btn{background:#6b7280;}
-@media print{.no-print{display:none}}
+
+@page {
+  size: 80mm auto;        /* 🔥 Forces thermal printer size */
+  margin: 0;              /* 🔥 Remove page margins */
+}
+
+h2, h3 {
+  text-align: center;
+  margin: 0;
+  padding: 0;
+}
+
+h2 { font-size: 18px; }
+h3 { font-size: 12px; margin-bottom: 8px; }
+
+hr {
+  border: none;
+  border-top: 1px dashed #000;
+  margin: 6px 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.items th,
+.items td {
+  font-size: 14px;
+  padding: 3px 0;
+  border-bottom: 1px dotted #bbb;
+}
+
+.right {
+  text-align: right;
+}
+
+.summary td {
+  padding: 3px 0;
+}
+
+.summary tr.total td {
+  border-top: 2px solid #000;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+footer {
+  text-align: center;
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.no-print {
+  margin-top: 8px;
+  text-align: center;
+}
+
+button {
+  padding: 6px 16px;
+  font-size: 14px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+}
+
+.print-btn { background: #2563eb; color: #fff; }
+.close-btn { background: #6b7280; color: #fff; }
+
+/* 🔥 MAKE RECEIPT LOOK PERFECT WHEN PRINTING */
+@media print {
+  .no-print { display: none !important; }
+  body {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
 </style>
+
 </head>
+
 <body>
+
 <h2>Club Hiraya</h2>
 <h3>Hanin Town Subd., Friendship, Angeles City<br>Opening Hours: 4:00PM - 1:00AM</h3>
 <hr>
+
 <table width="100%">
   <tr><td>Date:</td><td class="right"><?= htmlspecialchars($date) ?></td></tr>
-  <tr><td>Payment:</td><td class="right"><?= htmlspecialchars($payment) ?></td></tr>
-  <?php if ($paymentDetailsHTML): ?><tr><td colspan="2"><?= $paymentDetailsHTML ?></td></tr><?php endif; ?>
-  <tr><td>Discount:</td><td class="right"><?= htmlspecialchars($discountType) ?> (<?= htmlspecialchars($discountRate) ?>%)</td></tr>
-  <tr><td>Cabin:</td><td class="right"><?= htmlspecialchars($cabin) ?></td></tr>
-  <?php if ($cabinPrice > 0): ?><tr><td>Cabin Price:</td><td class="right"><?= fmt($cabinPrice) ?></td></tr><?php endif; ?>
+  <tr><td>Payment:</td><td class="right"><?= htmlspecialchars($paymentMethod) ?></td></tr>
+  <tr><td>Created By:</td><td class="right"><?= htmlspecialchars($createdBy) ?></td></tr>
+
+  <tr><td>Discount:</td>
+      <td class="right"><?= htmlspecialchars($discountType) ?> (<?= number_format($discountRate) ?>%)</td></tr>
+
+  <tr><td>Cabin:</td><td class="right"><?= htmlspecialchars($cabinName) ?></td></tr>
+
+  <?php if ($cabinPrice > 0): ?>
+  <tr><td>Cabin Price:</td><td class="right"><?= fmt($cabinPrice) ?></td></tr>
+  <?php endif; ?>
 </table>
+
+<?php if ($paymentMethod !== 'Cash'): ?>
+<div style="margin-top:6px;font-size:16px;">
+  <strong>Payer:</strong> <?= htmlspecialchars($gcashName) ?><br>
+  <strong>Reference:</strong> <?= htmlspecialchars($gcashRef) ?>
+</div>
+<?php endif; ?>
+
 <hr>
 
 <table class="items">
@@ -121,16 +217,18 @@ button{margin:4px;padding:8px 16px;border:none;border-radius:6px;cursor:pointer;
   <tr><th>Qty</th><th>Item</th><th class="right">Unit</th><th class="right">Total</th></tr>
 </thead>
 <tbody>
+
 <?php if (!$items): ?>
   <tr><td colspan="4" align="center">(No items)</td></tr>
 <?php else: foreach ($items as $it): ?>
   <tr>
     <td><?= htmlspecialchars($it['qty']) ?></td>
-    <td><?= htmlspecialchars($it['item_name'] ?? $it['name']) ?></td>
+    <td><?= htmlspecialchars($it['item_name']) ?></td>
     <td class="right"><?= fmt($it['unit_price']) ?></td>
     <td class="right"><?= fmt($it['line_total']) ?></td>
   </tr>
 <?php endforeach; endif; ?>
+
 </tbody>
 </table>
 
@@ -141,12 +239,17 @@ button{margin:4px;padding:8px 16px;border:none;border-radius:6px;cursor:pointer;
 <?php endif; ?>
 
 <hr>
+
 <table class="summary" width="100%">
   <tr><td>Subtotal</td><td class="right"><?= fmt($subtotal) ?></td></tr>
   <tr><td>Service</td><td class="right"><?= fmt($service) ?></td></tr>
   <tr><td>Tax</td><td class="right"><?= fmt($tax) ?></td></tr>
   <tr><td>Discount</td><td class="right"><?= fmt($discount) ?></td></tr>
-  <tr><td>Reserved</td><td class="right"><?= fmt($reserved) ?></td></tr>
+
+  <?php if ($cabinPrice > 0): ?>
+  <tr><td>Reserved</td><td class="right"><?= fmt($cabinPrice) ?></td></tr>
+  <?php endif; ?>
+
   <tr class="total"><td>Total Payable</td><td class="right"><?= fmt($total) ?></td></tr>
   <tr><td>Cash</td><td class="right"><?= fmt($cash) ?></td></tr>
   <tr><td>Change</td><td class="right"><?= fmt($change) ?></td></tr>
@@ -160,5 +263,6 @@ button{margin:4px;padding:8px 16px;border:none;border-radius:6px;cursor:pointer;
 <footer>
   Thank you for dining at Club Hiraya!<br>Please come again.
 </footer>
+
 </body>
 </html>
