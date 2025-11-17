@@ -2,84 +2,42 @@
 session_start();
 
 /**
- * Sales_Report.php
- *
- * Purpose:
- * - Render sales list on the left as cards.
- * - When clicking a left card, fetch the detail HTML from sales_order_detail.php and inject into the right panel.
- * - Uses column names from your supplied SQL (sales_report table).
- *
- * Important:
- * - Design/structure left intact from your original file.
- * - Only changed how data is read / displayed from the SQL and added optional cabin small-text per "Option C".
- * - Keeps compatibility with sales_order_detail.php (you uploaded it separately).
- *
- * Notes:
- * - This file intentionally verbose / commented to match your request for a large file and to make the logic explicit.
- * - Uses the exact columns you provided: payment_details, cabin_name, cabin_price, subtotal, tax, discount_type, cash_given, change_amount, is_voided, etc.
+ * Sales_Report.php (updated)
+ * - Search only matches Order ID
+ * - Left panel loads all rows (no LIMIT) so scrolling doesn't cut off
+ * - Minimal changes elsewhere to keep original layout & behavior
  */
 
-// small helper to send JSON if needed (kept for parity with earlier versions)
-function send_json($data) {
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode($data);
-    exit;
-}
+date_default_timezone_set('Asia/Manila');
 
 // database connection include
 $connectPath = __DIR__ . '/../php/db_connect.php';
 if (file_exists($connectPath)) {
     require_once $connectPath;
 } else {
-    // keep $conn defined to avoid undefined variable notices later in the script
     $conn = null;
 }
 
 // ---------------------------
-// Helper functions
+// Helpers
 // ---------------------------
-
-/**
- * Safe HTML escape helper.
- */
 function e($s) {
     return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE, 'UTF-8');
 }
 
-/**
- * Format a decimal/float value as Philippine Peso with 2 decimals.
- */
 function fmt_currency($n) {
-    // ensure numeric
     if ($n === null || $n === '') $n = 0;
     return '₱ ' . number_format((float)$n, 2);
 }
 
-/**
- * Parse payment_details (JSON or plain) into a readable short summary.
- *
- * Input examples found in your SQL dump:
- * - '\nPayment Details: {"given":2000,"change":227.83999999999992}'
- * - '\nPayment Details: {"name":"Carlora Manaloto","ref":"0920409857"}'
- *
- * This function returns a short one-line summary suitable for the left card subtext (if needed).
- */
 function parse_payment_summary_from_note_and_payment_details($note, $payment_method, $payment_details) {
     $summary = '';
 
-    // If payment_details column contains JSON already (or stringified JSON), use it.
     if (!empty($payment_details)) {
-        // sometimes payment_details may be raw JSON string or null
         $decoded = null;
         if (is_string($payment_details)) {
             $trim = trim($payment_details);
-            // defend against prepended "Payment Details: {..}" in the note instead of this column
-            if (strlen($trim) && $trim[0] === '{') {
-                $decoded = json_decode($trim, true);
-            } else {
-                // maybe empty or not JSON
-                $decoded = json_decode($trim, true);
-            }
+            $decoded = json_decode($trim, true);
         } elseif (is_array($payment_details)) {
             $decoded = $payment_details;
         }
@@ -97,7 +55,6 @@ function parse_payment_summary_from_note_and_payment_details($note, $payment_met
                 if ($given !== null) $summary .= ' (Given: ' . number_format($given,2) . ')';
                 if ($change !== null) $summary .= ' (Change: ' . number_format($change,2) . ')';
             } else {
-                // generic assembly
                 $parts = [];
                 if (!empty($decoded['name'])) $parts[] = $decoded['name'];
                 if (!empty($decoded['ref'])) $parts[] = $decoded['ref'];
@@ -108,16 +65,14 @@ function parse_payment_summary_from_note_and_payment_details($note, $payment_met
         }
     }
 
-    // If we didn't get a summary from payment_details, try to parse it from note
     if (empty($summary) && !empty($note)) {
-        // Look for embedded JSON in note (some rows had '\nPayment Details: {...}')
         if (preg_match('/Payment Details:\s*(\{.*\})/s', $note, $m)) {
             $jsonStr = trim($m[1]);
             $decoded = json_decode($jsonStr, true);
             if (is_array($decoded)) {
                 $pm = strtolower((string)$payment_method);
                 if ($pm === 'gcash' || $pm === 'bank_transfer') {
-                    $summary = strtoupper($pm === 'gcash' ? 'GCash' : 'Bank') . ($decoded['name'] ? ' — ' . ($decoded['name']) : '') . (!empty($decoded['ref']) ? ' (' . $decoded['ref'] . ')' : '');
+                    $summary = strtoupper($pm === 'gcash' ? 'GCash' : 'Bank') . (!empty($decoded['name']) ? ' — ' . $decoded['name'] : '') . (!empty($decoded['ref']) ? ' (' . $decoded['ref'] . ')' : '');
                 } elseif ($pm === 'cash') {
                     $given = $decoded['given'] ?? null;
                     $change = $decoded['change'] ?? null;
@@ -125,20 +80,17 @@ function parse_payment_summary_from_note_and_payment_details($note, $payment_met
                     if ($given !== null) $summary .= ' (Given: ' . number_format((float)$given,2) . ')';
                     if ($change !== null) $summary .= ' (Change: ' . number_format((float)$change,2) . ')';
                 } else {
-                    // fallback
                     $parts = [];
                     if (!empty($decoded['name'])) $parts[] = $decoded['name'];
                     if (!empty($decoded['ref'])) $parts[] = $decoded['ref'];
                     $summary = implode(' — ', $parts);
                 }
             } else {
-                // Not JSON — short substring fallback
                 $summary = substr($jsonStr, 0, 60) . (strlen($jsonStr) > 60 ? '…' : '');
             }
         }
     }
 
-    // Final fallback: if the note looks like "Table 2" use it
     if (empty($summary) && !empty($note)) {
         if (preg_match('/\b(Table|Tables|Cabin)\b/i', $note)) {
             $firstLine = strtok($note, "\n");
@@ -149,37 +101,18 @@ function parse_payment_summary_from_note_and_payment_details($note, $payment_met
     return $summary;
 }
 
-/**
- * Build the label for the left card. This function tries this order:
- *  - If cabin_name exists -> blank (we're using small text for cabin per Option C)
- *  - Otherwise try first line of note (if meaningful)
- *  - Else fallback to 'Order {id}'
- *
- * We intentionally keep the visible "Order ID: {id}" on top (as required)
- * and use cabin as small text at bottom if present (Option C).
- */
-function build_left_card_label($row) {
-    // The caller wants "Order ID: {id}" always on top, so label is simple.
-    // This function is kept for future extension.
-    return 'Order ' . intval($row['id']);
-}
-
 // ---------------------------
 // Fetch orders (left panel)
 // ---------------------------
-
 $orders = [];
 
 if ($conn) {
-    // Select important columns according to your provided schema.
-    // We fetch cabin_name, payment_details, cash_given, change_amount, subtotal, tax, discount_type, is_voided, status, voided_at, voided_by
+    // Removed LIMIT so all rows are fetched and the left-panel scrolling won't stop at 219.
     $sql = "SELECT id, created_at, total_amount, discount, note, payment_method, table_no, payment_details, cabin_name, cabin_price, subtotal, tax, discount_type, cash_given, change_amount, is_voided, status, voided_at, voided_by
             FROM sales_report
-            ORDER BY created_at DESC
-            LIMIT 200";
+            ORDER BY created_at DESC";
     if ($res = $conn->query($sql)) {
         while ($r = $res->fetch_assoc()) {
-            // normalize certain fields so template usage is simpler
             if (!isset($r['cabin_name'])) $r['cabin_name'] = '';
             if (!isset($r['payment_details'])) $r['payment_details'] = null;
             if (!isset($r['is_voided'])) $r['is_voided'] = 0;
@@ -187,11 +120,10 @@ if ($conn) {
         }
         $res->free();
     } else {
-        // Query failed — keep empty list but log to error log for debugging
         error_log("sales_report query failed: " . ($conn->error ?? 'no conn error'));
     }
 } else {
-    // When DB not present, provide a small set of placeholders (kept minimal)
+    // Fallback placeholder rows when DB missing
     $orders = [
         ['id'=>101,'created_at'=>'2025-11-03 17:44:00','total_amount'=>1965.70,'discount'=>0,'note'=>'T-13/14','payment_method'=>null,'table_no'=>'Table 13','cabin_name'=>'','payment_details'=>null,'is_voided'=>0],
         ['id'=>102,'created_at'=>'2025-11-03 16:00:00','total_amount'=>1148.54,'discount'=>0,'note'=>'G-4','payment_method'=>null,'table_no'=>null,'cabin_name'=>'Cabin A','payment_details'=>null,'is_voided'=>0],
@@ -200,7 +132,7 @@ if ($conn) {
 }
 
 // ---------------------------
-// Output HTML (page)
+// Output HTML
 // ---------------------------
 ?><!DOCTYPE html>
 <html lang="en">
@@ -210,7 +142,6 @@ if ($conn) {
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <link rel="stylesheet" href="sales.css">
     <style>
-        /* Keep your original styles intact — copied here to ensure left-cards look right even if sales.css isn't loaded */
         .sales-container { display:flex; gap:18px; padding:18px; box-sizing:border-box; }
         .left-panel { width: 320px; background: #e8e8ea; padding:14px; border-radius:12px; max-height: calc(100vh - 160px); overflow-y:auto; box-sizing:border-box; }
         .orders-list { display:flex; flex-direction:column; gap:12px; }
@@ -254,9 +185,8 @@ if ($conn) {
         $g = $gradientMap[$accent] ?? $gradientMap['#d33fd3'];
         echo ' style="--accent-start: '.$g[0].'; --accent-end: '.$g[1].';"';
     }
-?>>
+?>> 
 
-    <!-- Sidebar (kept similar to your layout) -->
     <aside class="sidebar" role="complementary" aria-label="Sidebar">
         <div class="sidebar-header">
             <img src="../../clubtryara/assets/logos/logo1.png" alt="Club Hiraya logo" class="sidebar-header-img">
@@ -294,67 +224,36 @@ if ($conn) {
             <div class="left-panel" id="leftPanel" aria-label="Orders list">
                 <div class="orders-list" id="ordersList">
                     <?php
-                    // Render left cards using the values from $orders
                     foreach ($orders as $o) {
-                        // ensure id exists and is integer
                         $id = intval($o['id'] ?? 0);
                         $created_raw = $o['created_at'] ?? null;
-                        // format date like "Feb 14 — 5:33 PM"
                         if ($created_raw) {
                             $created_ts = strtotime($created_raw);
-                            // month short name + day (no leading zero)
                             $date_str = date('M j', $created_ts);
-                            // 12-hour without leading zero for hour (g), with minutes and AM/PM
                             $time_str = date('g:i A', $created_ts);
                         } else {
                             $date_str = date('M j');
                             $time_str = date('g:i A');
                         }
-
-                        // currency
                         $amount = fmt_currency($o['total_amount'] ?? 0);
-
-                        // cabin_name (we will show small text only if present, per Option C)
                         $cabin = trim((string)($o['cabin_name'] ?? ''));
-                        // if cabin_name empty, check table_no for fallback (but we will not show it as cabin)
                         $tableNo = trim((string)($o['table_no'] ?? ''));
-
-                        // build payment short summary if needed (not printed by default, but kept to allow future usage)
                         $payment_summary = parse_payment_summary_from_note_and_payment_details($o['note'] ?? '', $o['payment_method'] ?? '', $o['payment_details'] ?? null);
-
-                        // is voided?
                         $isVoided = !empty($o['is_voided']) ? true : false;
                         $voidClass = $isVoided ? ' voided' : '';
 
-                        // Print the card; must match the exact textual order required:
-                        // Order ID: 32
-                        // Feb 14 — 5:33 PM
-                        // ₱ 1,450.00
-                        // (cabin A)  <-- only if cabin exists (small muted text at bottom)
                         echo '<div class="order-card' . $voidClass . '" data-id="' . e($id) . '">';
-
                         echo '<div class="meta">';
-                        // Top line: Order ID: 32
                         echo '<span class="label">Order ID: ' . e($id) . '</span>';
-                        // Middle line: date — time
                         echo '<span class="sub">' . e($date_str) . ' — ' . e($time_str) . '</span>';
-                        // optionally show payment summary as another sub (kept commented out if not needed)
-                        // if ($payment_summary) echo '<span class="sub">' . e($payment_summary) . '</span>';
-
-                        // Option C: show small cabin text at bottom (in parentheses) if cabin_name is set
                         if ($cabin !== '') {
                             echo '<span class="cabin">(' . e($cabin) . ')</span>';
                         }
-
-                        echo '</div>'; // end meta
-
-                        // right side amount
+                        echo '</div>';
                         echo '<div class="amount">' . e($amount) . '</div>';
-
-                        echo '</div>'; // end order-card
+                        echo '</div>';
                     }
 
-                    // If empty dataset, show a friendly placeholder card
                     if (empty($orders)) {
                         echo '<div class="order-card"><div class="meta"><span class="label">No orders</span><span class="sub small-muted">No sales yet</span></div><div class="amount">—</div></div>';
                     }
@@ -385,15 +284,6 @@ if ($conn) {
     </main>
 
 <script>
-/*
- * Client-side behaviour:
- * - Clicking a left card will fetch details from sales_order_detail.php?id={id}
- * - The returned HTML (already prepared by your sales_order_detail.php) will be injected into #orderItems
- * - The script keeps an 'active' class on the currently selected card
- *
- * Note: sales_order_detail.php must expect ?id=NN and return fragment HTML (you uploaded that file earlier).
- */
-
 (function(){
     const detailTitle = document.getElementById('detailTitle');
     const detailDate = document.getElementById('detailDate');
@@ -407,7 +297,6 @@ if ($conn) {
     }
 
     function formatCurrency(n) {
-        // simple frontend formatting fallback
         const num = Number(n || 0);
         return '₱ ' + num.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
@@ -421,7 +310,6 @@ if ($conn) {
         detailDiscount.textContent = '';
 
         try {
-            // Fetch detail fragment from server (sales_order_detail.php returns HTML)
             const res = await fetch('sales_order_detail.php?id=' + encodeURIComponent(id));
             if (!res.ok) {
                 orderItems.innerHTML = '<div class="order-item-empty">Failed to load order details (server error).</div>';
@@ -429,31 +317,18 @@ if ($conn) {
                 return;
             }
             const text = await res.text();
-
-            // inject returned HTML directly
             orderItems.innerHTML = text;
-
-            // set top title
             detailTitle.textContent = 'Order #' + id;
 
-            // attempt to extract a displayed total in the returned HTML (sales_order_detail.php prints Total Payable)
-            // We'll try to find an element with text like "Total Payable" and the next sibling numeric text.
-            // If not found, leave empty.
             try {
-                // create a temporary container to query the returned HTML
                 const tmp = document.createElement('div');
                 tmp.innerHTML = text;
-
-                // Check for known patterns: a row with "Total Payable" or <strong>Total Payable</strong>
                 const strongs = tmp.querySelectorAll('strong');
                 for (let s of strongs) {
                     const txt = (s.textContent || '').trim().toLowerCase();
                     if (txt.indexOf('total payable') !== -1 || txt.indexOf('total') !== -1) {
-                        // next sibling or parent row contains amount
-                        // try DOM traversal
                         let parent = s.parentElement;
                         if (parent) {
-                            // find numeric substring in parent's text
                             const amountText = parent.textContent.replace(/[\s\xa0]+/g, ' ').match(/₱\s*[\d,]+\.\d{2}/);
                             if (amountText) {
                                 detailTotal.textContent = amountText[0];
@@ -463,11 +338,9 @@ if ($conn) {
                     }
                 }
             } catch (err) {
-                // ignore parsing errors — detailTotal stays empty
                 console.warn('Detail total parse failed', err);
             }
 
-            // Rebind Void button if present inside injected HTML
             const voidBtn = orderItems.querySelector('#voidBtn');
             if (voidBtn) {
                 voidBtn.addEventListener('click', async function () {
@@ -483,7 +356,6 @@ if ($conn) {
                         const data = await res.json();
                         if (data.ok) {
                             alert(data.message || 'Order voided successfully.');
-                            // reload page to reflect voided state
                             location.reload();
                         } else {
                             alert('Failed to void: ' + (data.error || 'Unknown error.'));
@@ -502,7 +374,6 @@ if ($conn) {
         }
     }
 
-    // attach click handlers
     document.querySelectorAll('.order-card').forEach(card => {
         card.addEventListener('click', function(){
             const id = this.getAttribute('data-id');
@@ -511,28 +382,32 @@ if ($conn) {
         });
     });
 
-    // auto-click first card for convenience
     const firstCard = document.querySelector('.order-card');
     if (firstCard) firstCard.click();
 
-    // search filter
     const searchBox = document.getElementById('searchBox');
     if (searchBox) {
       searchBox.addEventListener('input', function(){
-        const q = this.value.trim().toLowerCase();
+        const q = this.value.trim();
+        // Only match Order ID. Extract digits from input.
+        const digits = q.replace(/\D/g, '');
         document.querySelectorAll('.order-card').forEach(card => {
-          const metaLabelEl = card.querySelector('.meta .label');
-          const metaSubEl = card.querySelector('.meta .sub');
-          const cabinEl = card.querySelector('.meta .cabin');
-          const meta = (metaLabelEl && metaLabelEl.textContent) || '';
-          const sub = (metaSubEl && metaSubEl.textContent) || '';
-          const cabin = (cabinEl && cabinEl.textContent) || '';
-          const amt = (card.querySelector('.amount') && card.querySelector('.amount').textContent) || '';
-          const haystack = (meta + ' ' + sub + ' ' + cabin + ' ' + amt).toLowerCase();
-          if (!q || haystack.includes(q)) {
+          const id = (card.getAttribute('data-id') || '');
+          // If input is empty -> show all
+          if (!q) {
             card.style.display = '';
+            return;
+          }
+          // If user typed digits, filter by id substring
+          if (digits.length > 0) {
+            if (id.indexOf(digits) !== -1) {
+              card.style.display = '';
+            } else {
+              card.style.display = 'none';
+            }
           } else {
-            card.style.display = 'none';
+            // Non-digit input: show all (you can change to hide-all if preferred)
+            card.style.display = '';
           }
         });
       });

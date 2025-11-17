@@ -148,9 +148,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             <div style="font-size:20px;font-weight:800;">Add New Menu Item</div>
             <div style="color:#666;margin-top:6px;">Create a new food or drink entry for the POS system</div>
           </div>
-          <div>
-            <a href="inventory.php" class="btn-cancel" style="padding:10px 14px;display:inline-block;">Back to Inventory</a>
-          </div>
+          <div style="display:flex; gap:10px;">
+            <a href="inventory.php" class="btn-cancel" 
+              style="padding:10px 14px; display:inline-block;">
+              Back to Inventory
+            </a>
+
+            <a href="create_category.php" class="btn-save" 
+              style="padding:10px 14px; display:inline-block; text-decoration: none;">
+              Create New Category
+            </a>
+        </div>
+
         </div>
 
         <?php if ($feedback) echo $feedback; ?>

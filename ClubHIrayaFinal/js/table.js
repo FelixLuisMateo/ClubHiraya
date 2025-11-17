@@ -534,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="status-label">${capitalize(status)}</span>
         </div>
         <div class="seats-row"><span>🛏️</span> ${escapeHtml(String(tbl.seats || tbl.party_size || ''))} Beds</div>
-        <div class="price-row" style="font-weight:800; margin-top:6px">${escapeHtml(formatCurrencyPhp(pricePerHour))} / hr</div>
+        <div class="price-row" style="font-weight:800; margin-top:6px">${escapeHtml(formatCurrencyPhp(pricePerHour))} / day</div>
         ${tbl.guest ? `<div class="guest">${escapeHtml(tbl.guest)}</div>` : ''}
         <div class="card-actions" aria-hidden="false">
           <button class="icon-btn status-btn" aria-label="Change status" title="Change status">⚑</button>
@@ -803,7 +803,7 @@ document.addEventListener('DOMContentLoaded', () => {
           card.innerHTML = `
             <div class="title">${escapeHtml(t.name)}</div>
             <div class="seats-row"><span>🛏️</span> ${escapeHtml(t.seats)} Beds</div>
-            <div class="price-row" style="font-weight:800; margin-top:4px">${escapeHtml(formatCurrencyPhp(pricePerHour))} / hr</div>
+            <div class="price-row" style="font-weight:800; margin-top:4px">${escapeHtml(formatCurrencyPhp(pricePerHour))} / day</div>
             <div class="status-row">
               <span class="status-dot" style="background:${statusDotColor}"></span>
               <span class="status-label">${capitalize(status)}</span>
@@ -960,7 +960,7 @@ document.addEventListener('DOMContentLoaded', () => {
           card.innerHTML = `
             <div class="title">${escapeHtml(t.name)}</div>
             <div class="seats-row"><span>🛏️</span> ${escapeHtml(t.seats)} Beds</div>
-            <div class="price-row" style="font-weight:800; margin-top:4px">${escapeHtml(formatCurrencyPhp(pricePerHour))} / hr</div>
+            <div class="price-row" style="font-weight:800; margin-top:4px">${escapeHtml(formatCurrencyPhp(pricePerHour))} / day</div>
             <div class="status-row">
               <span class="status-dot" style="background:${statusDotColor}"></span>
               <span class="status-label">${capitalize(status)}</span>
